@@ -9,7 +9,7 @@
       // render pieces
       // move pieces by mouse
       // requests to server
-      // Christofor
+
 
       // settings
       let cell_size = 25;
@@ -57,31 +57,7 @@
         { color: 0, x: 6, y: 5, mode: "p" },
       ];
 
-      function draw_piece_by_type(ctx, piece) {
-        ctx.fillStyle = colors[piece.color];
-        ctx.strokeStyle = colors[piece.color ? 0 : 1];
-        const centerX = cell_size * (piece.x + 1.5);
-        const centerY = cell_size * (piece.y + 1.5);
-        const radius = (cell_size / 2) * 0.8;
-
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        if (piece.mode == "p") {
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius * 0.7, 0, 2 * Math.PI, false);
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        } else {
-          ctx.strokeStyle = "gold";
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius * 0.5, 0, 2 * Math.PI, false);
-          ctx.lineWidth = 6;
-          ctx.stroke();
-        }
-      }
+      
 
       function win(stat) {
         if (stat == "b3")
@@ -92,6 +68,12 @@
             "<div class='win'> Победили белые</div>";
       }
 
+      function define_coordinates(){
+        const canvas = document.getElementById("board");
+        const ctx = canvas.getContext("2d");
+        let MousePos =  ctx.MousePos();
+        return (x,y);
+      }
       // render code
       function adjustScreen() {
         const canvas = document.getElementById("board");
@@ -107,6 +89,33 @@
         render_Pieces();
       }
 
+
+      function draw_piece_by_type(ctx, piece) {
+        ctx.fillStyle = colors[piece.color];
+        ctx.strokeStyle = colors[piece.color ? 0 : 1];
+        const X = cell_size * (piece.x + 1.5);
+        const Y = cell_size * (piece.y + 1.5);
+        const radius = (cell_size / 2) * 0.8;
+
+        ctx.beginPath();
+        ctx.arc(X, Y, radius, 0, 2 * Math.PI, false);
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        if (piece.mode == "p") {
+          ctx.beginPath();
+          ctx.arc(X, Y, radius * 0.7, 0, 2 * Math.PI, false);
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = "gold";
+          ctx.beginPath();
+          ctx.arc(X, Y, radius * 0.5, 0, 2 * Math.PI, false);
+          ctx.lineWidth = 6;
+          ctx.stroke();
+        }
+      }
+      
       function render_Board() {
         document.getElementById("status").innerHTML = status["w1"];
         document.getElementById("step").innerHTML = steps[0];
@@ -133,6 +142,7 @@
           step++;
         }
       }
+      
       function render_Pieces() {
         const canvas = document.getElementById("board");
         const ctx = canvas.getContext("2d");
