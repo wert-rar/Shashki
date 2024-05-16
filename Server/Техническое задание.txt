@@ -1,0 +1,4 @@
+1 написать сервер на flask
+2 добавить шаблон index.html
+3 добавить approute move
+4 добавить approute board
