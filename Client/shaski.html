@@ -96,33 +96,36 @@
         render_Pieces();
       }
 
+      function draw_circle(x,y,r,width,strokeColor,fillColor){
+        CTX.beginPath();
+        CTX.arc(x, y, r, 0, 2 * Math.PI, false);
+        if(fillColor){
+          CTX.fillStyle = fillColor;
+          CTX.fill();
+        }
+        if(strokeColor){
+          CTX.strokeStyle = strokeColor;
+          CTX.lineWidth = width;
+          CTX.stroke();
+        }
 
-      function draw_piece_by_type(ctx, piece) {
-        ctx.fillStyle = colors[piece.color];
-        ctx.strokeStyle = colors[piece.color ? 0 : 1];
+      }
+      function draw_piece_by_type(piece)
+      {
+        let fillStyle = colors[piece.color];
+        let strokeStyle = colors[piece.color ? 0 : 1];
         const X = cell_size * (piece.x + 1.5);
         const Y = cell_size * (piece.y + 1.5);
         const radius = (cell_size / 2) * 0.8;
-
-        ctx.beginPath();
-        ctx.arc(X, Y, radius, 0, 2 * Math.PI, false);
-        ctx.fill();
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        if (piece.mode == "p") {
-          ctx.beginPath();
-          ctx.arc(X, Y, radius * 0.7, 0, 2 * Math.PI, false);
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        } else {
-          ctx.strokeStyle = "gold";
-          ctx.beginPath();
-          ctx.arc(X, Y, radius * 0.5, 0, 2 * Math.PI, false);
-          ctx.lineWidth = 6;
-          ctx.stroke();
+        draw_circle(X,Y,radius,3,strokeStyle,fillStyle);
+        draw_circle(X,Y,radius*0.7,3,strokeStyle,false);
+  
+        if (piece.mode != "p")
+        {
+          draw_circle(X,Y,radius*0.5,6,"gold");
         }
       }
-      
+
       function render_Board() {
         document.getElementById("status").innerHTML = status["w1"];
         document.getElementById("step").innerHTML = steps[0];
