@@ -84,8 +84,8 @@
         CANVAS.addEventListener("mousemove", onMouseMove);
         CANVAS.addEventListener("mouseup", onMouseUp);
         CANVAS.addEventListener("touchstart", onTouchStart);
-        CANVAS.addEventListener("mousemove", onTouchMove);
-        CANVAS.addEventListener("mouseup", onTouchEnd);
+        CANVAS.addEventListener("touchmove", onTouchMove);
+        CANVAS.addEventListener("touchend", onTouchEnd);
       }
 
       function onMouseDown(evt) {
@@ -99,12 +99,14 @@
         }
       }
 
-      function onMouseUp() {
+      function onMouseUp(evt) {
+        if(SELECTED_PIECE!= null){
         console.log("server request");
         let coords = getCoordinates(evt);
         SELECTED_PIECE.piece.x = coords.x;
         SELECTED_PIECE.piece.y = coords.y;
         SELECTED_PIECE = null;
+      }
       }
 
       function onTouchStart(evt) {
@@ -128,7 +130,7 @@
           x: evt.touches[0].clientX,
           y: evt.touches[0].clientY,
         };
-        onMouseUp();
+        onMouseUp(loc);
       }
       
       function getCoordinates(loc) {
