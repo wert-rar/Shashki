@@ -1,0 +1,22 @@
+.header {
+    color: white;
+    font-size: 24pt;
+    text-align: center;
+    background-color: rgb(225, 112, 14);
+    height: 5%;
+    margin: 0px;
+    padding: 0px;
+  }
+
+  .board {
+    align-items: center;
+    height: 100%;
+  }
+
+  .win {
+    color: white;
+    font-size: 24pt;
+    background-color: #8fec8d;
+    text-align: center;
+    height: 80%;
+  }
