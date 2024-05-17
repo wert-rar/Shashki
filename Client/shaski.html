@@ -101,14 +101,13 @@
         CANVAS.addEventListener("mousedown",onMouseDown);
         CANVAS.addEventListener("mousemove",onMouseMove);
         CANVAS.addEventListener("mouseup",onMouseUp);
+        CANVAS.addEventListener("touchstart",onTouchStart);
+        CANVAS.addEventListener("mousemove",onTouchMove);
+        CANVAS.addEventListener("mouseup",onTouchEnd);
       }
 
       function onMouseDown(evt){
         SELECTED_PIECE = getPressedPiece(evt);
-        if(SELECTED_PIECE != null){
-          
-        }
-        console.log(SELECTED_PIECE);
       }
 
       function onMouseMove(evt){
@@ -118,14 +117,39 @@
         }
 
       }
-      function onMouseUp(evt){
+      function onMouseUp(){
         console.log("server request");
         let coords = getCoordinates(evt);
         SELECTED_PIECE.piece.x = coords.x;
         SELECTED_PIECE.piece.y = coords.y;
         SELECTED_PIECE = null;
       }
+      function onTouchStart(evt){
+        let loc = {
+          x: evt.touches[0].clientX,
+          y: evt.touches[0].clientY,
 
+        };
+        onMouseDown(loc);
+      }
+
+      function onTouchMove(evt){
+        let loc = {
+          x: evt.touches[0].clientX,
+          y: evt.touches[0].clientY,
+
+        };
+        onMouseMove(loc);
+      }
+
+      function onTouchEnd(evt){
+        let loc = {
+          x: evt.touches[0].clientX,
+          y: evt.touches[0].clientY,
+
+        };
+        onMouseUp();
+      }
       function getCoordinates(loc){
         for (let i = 0; i < 8; i++) {
           for(let j = 0;j<8;j++){
