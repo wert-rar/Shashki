@@ -11,6 +11,8 @@
       // requests to server
 
 
+      let CANVAS = null;
+      let CTX = null;
       // settings
       let cell_size = 25;
       let steps = ["Ход белых", "Ход черных"];
@@ -81,9 +83,14 @@
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight * 0.95;
         cell_size = canvas.height * 0.1;
+        CANVAS.width = window.innerWidth;
+        CANVAS.height = window.innerHeight * 0.95;
+        cell_size = CANVAS.height * 0.1;
         console.log(cell_size);
       }
       function onLoad() {
+        CANVAS = document.getElementById("board");
+        CTX = CANVAS.getContext("2d");
         adjustScreen();
         render_Board();
         render_Pieces();
