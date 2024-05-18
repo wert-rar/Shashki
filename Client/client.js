@@ -82,12 +82,15 @@ function addEventListeners() {
 
 function onMouseDown(evt) {
   SELECTED_PIECE = getPressedPiece(evt);
+  if (SELECTED_PIECE) {
+    SELECTED_PIECE.y = evt.y - cell_size * 0.45;
+  }
 }
 
 function onMouseMove(evt) {
   if (SELECTED_PIECE != null) {
     SELECTED_PIECE.x = evt.x;
-    SELECTED_PIECE.y = evt.y;
+    SELECTED_PIECE.y = evt.y - cell_size * 0.45;
   }
 }
 
@@ -126,18 +129,14 @@ function onTouchEnd(evt) {
 }
 
 function getCoordinates(loc) {
+  let headerHeight = document.getElementsByClassName("header")[0].clientHeight;
   for (let i = 0; i < 8; i++) {
-    for (let j = 0; j < 8; j++) {
-      if (
-        (i + 1) * cell_size < loc.y &&
-        loc.y < (i + 1) * cell_size + cell_size
-      ) {
-        if (
-          (j + 1) * cell_size < loc.x &&
-          loc.x < (j + 1) * cell_size + cell_size
-        ) {
+    let y_range = (i + 1) * cell_size + headerHeight;
+    if (y_range < loc.y && loc.y < y_range + cell_size) {
+      for (let j = 0; j < 8; j++) {
+        let x_range = (j + 1) * cell_size;
+        if (x_range < loc.x && loc.x < x_range + cell_size)
           return { x: j, y: i };
-        }
       }
     }
   }
@@ -146,7 +145,6 @@ function getCoordinates(loc) {
 
 function getPressedPiece(loc) {
   let coords = getCoordinates(loc);
-  console.log(coords);
   for (let i = 0; i < pieces.length; i++) {
     if (pieces[i].x == coords.x && pieces[i].y == coords.y)
       return { piece: pieces[i], x: loc.x, y: loc.y };
@@ -160,7 +158,7 @@ function getPressedPiece(loc) {
 // RENDER CODE
 function adjustScreen() {
   CANVAS.width = window.innerWidth;
-  CANVAS.height = window.innerHeight * 0.95;
+  CANVAS.height = window.innerHeight * 0.9;
   cell_size = CANVAS.height * 0.1;
   console.log(cell_size);
 }
