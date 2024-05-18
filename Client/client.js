@@ -1,14 +1,14 @@
 // TODO:
-// fix bug with wrong offset
 // Make requests to server
 // Write TT
 
 let CANVAS = null;
 let CTX = null;
 let SELECTED_PIECE = null;
-// settings
-let cell_size = 25;
-let steps = ["Ход белых", "Ход черных"];
+let CELL_SIZE = 0;
+let HEADER_HEIGHT = 0;
+
+
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -19,11 +19,11 @@ let status = {
 };
 let colors = {
   1: "rgb(0,0,0)",
-  0: "rgb(255,255,255)",
+  0: "rgb(255,255,255)"
 };
 let b_colors = {
   1: "#DA7422",
-  0: "#FFFBDB",
+  0: "#FFFBDB"
 };
 
 let pieces = [
@@ -65,7 +65,9 @@ let pieces = [
 function onLoad() {
   CANVAS = document.getElementById("board");
   CTX = CANVAS.getContext("2d");
+  HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
   adjustScreen();
+  
   update();
   addEventListeners();
 }
@@ -81,20 +83,23 @@ function addEventListeners() {
 }
 
 function onMouseDown(evt) {
+  evt.preventDefault();
   SELECTED_PIECE = getPressedPiece(evt);
   if (SELECTED_PIECE) {
-    SELECTED_PIECE.y = evt.y - cell_size * 0.45;
+    SELECTED_PIECE.y = evt.y - HEADER_HEIGHT;
   }
 }
 
 function onMouseMove(evt) {
+  evt.preventDefault();
   if (SELECTED_PIECE != null) {
     SELECTED_PIECE.x = evt.x;
-    SELECTED_PIECE.y = evt.y - cell_size * 0.45;
+    SELECTED_PIECE.y = evt.y - HEADER_HEIGHT;
   }
 }
 
 function onMouseUp(evt) {
+  evt.preventDefault();
   if (SELECTED_PIECE != null) {
     console.log("server request");
     let coords = getCoordinates(evt);
@@ -129,14 +134,13 @@ function onTouchEnd(evt) {
 }
 
 function getCoordinates(loc) {
-  let headerHeight = document.getElementsByClassName("header")[0].clientHeight;
+
   for (let i = 0; i < 8; i++) {
-    let y_range = (i + 1) * cell_size + headerHeight;
-    if (y_range < loc.y && loc.y < y_range + cell_size) {
+    let y_range = (i + 1) * CELL_SIZE + HEADER_HEIGHT;
+    if (y_range < loc.y && loc.y < y_range + CELL_SIZE) {
       for (let j = 0; j < 8; j++) {
-        let x_range = (j + 1) * cell_size;
-        if (x_range < loc.x && loc.x < x_range + cell_size)
-          return { x: j, y: i };
+        let x_range = (j + 1) * CELL_SIZE;
+        if (x_range < loc.x && loc.x < x_range + CELL_SIZE) return { x: j, y: i };
       }
     }
   }
@@ -159,8 +163,8 @@ function getPressedPiece(loc) {
 function adjustScreen() {
   CANVAS.width = window.innerWidth;
   CANVAS.height = window.innerHeight * 0.9;
-  cell_size = CANVAS.height * 0.1;
-  console.log(cell_size);
+  CELL_SIZE = CANVAS.height * 0.1;
+  console.log(CELL_SIZE);
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
@@ -180,9 +184,9 @@ function draw_circle(x, y, r, width, strokeColor, fillColor) {
 function draw_piece(piece) {
   let fillStyle = colors[piece.color];
   let strokeStyle = colors[piece.color ? 0 : 1];
-  const X = cell_size * (piece.x + 1.5);
-  const Y = cell_size * (piece.y + 1.5);
-  const radius = (cell_size / 2) * 0.8;
+  const X = CELL_SIZE * (piece.x + 1.5);
+  const Y = CELL_SIZE * (piece.y + 1.5);
+  const radius = (CELL_SIZE / 2) * 0.8;
   draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
   draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
 
@@ -196,7 +200,7 @@ function draw_SELECTED_PIECE() {
   let strokeStyle = colors[SELECTED_PIECE.piece.color ? 0 : 1];
   const X = SELECTED_PIECE.x;
   const Y = SELECTED_PIECE.y;
-  const radius = (cell_size / 2) * 0.8;
+  const radius = (CELL_SIZE / 2) * 0.8;
   draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
   draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
 
@@ -207,24 +211,22 @@ function draw_SELECTED_PIECE() {
 
 function render_Board() {
   document.getElementById("status").innerHTML = status["w1"];
-  document.getElementById("step").innerHTML = steps[0];
+
 
   CTX.fillStyle = "white";
   CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
-  CTX.fillStyle = "black";
-  CTX.lineWidth = 2;
-  CTX.strokeRect(cell_size, cell_size, cell_size * 8, cell_size * 8);
+  
 
   let step = 0;
   for (let i = 0; i < 8; i++) {
     for (let j = 0; j < 8; j++) {
       CTX.fillStyle = b_colors[step % 2];
       CTX.fillRect(
-        cell_size + cell_size * j,
-        cell_size + cell_size * i,
-        cell_size,
-        cell_size
+        CELL_SIZE + CELL_SIZE * j,
+        CELL_SIZE + CELL_SIZE * i,
+        CELL_SIZE,
+        CELL_SIZE
       );
       step++;
     }
