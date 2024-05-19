@@ -7,7 +7,8 @@ let CTX = null;
 let SELECTED_PIECE = null;
 let CELL_SIZE = 0;
 let HEADER_HEIGHT = 0;
-
+let CURRENT_STATUS = "w1";
+let SERVER_IP = "";
 
 let status = {
   w1: "Ход белых",
@@ -16,6 +17,8 @@ let status = {
   b2: "Нельзя двигать фигуру, сейчас ход черных",
   w3: "Победили белые",
   b3: "Победили черные",
+  w4:"Белые продолжают ход",
+  b4:"Черные продолжают ход"
 };
 let colors = {
   1: "rgb(0,0,0)",
@@ -53,6 +56,21 @@ let pieces = [
   { color: 0, x: 6, y: 5, mode: "p" },
 ];
 
+// GAMEPLAY CODE
+function update_data(data){
+  CURRENT_STATUS = data.status_;
+  pieces = data.pieces;
+  document.getElementById("status").innerHTML = status[CURRENT_STATUS];
+  update();
+}
+function server_request(status,pieces){
+  let body = {status_:status,pieces:pieces}
+  $.post(SERVER_IP, body, (data, status) => {
+  update_data(data)
+});
+}
+//
+//
 // function win(stat) {
 //   if (stat == "b3")
 //     document.getElementsByClassName("board")[0].innerHTML =
@@ -66,8 +84,8 @@ function onLoad() {
   CANVAS = document.getElementById("board");
   CTX = CANVAS.getContext("2d");
   HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
+
   adjustScreen();
-  
   update();
   addEventListeners();
 }
@@ -101,11 +119,12 @@ function onMouseMove(evt) {
 function onMouseUp(evt) {
   evt.preventDefault();
   if (SELECTED_PIECE != null) {
-    console.log("server request");
+
     let coords = getCoordinates(evt);
     SELECTED_PIECE.piece.x = coords.x;
     SELECTED_PIECE.piece.y = coords.y;
     SELECTED_PIECE = null;
+    server_request(CURRENT_STATUS,pieces);
   }
 }
 
@@ -210,9 +229,6 @@ function draw_SELECTED_PIECE() {
 }
 
 function render_Board() {
-  document.getElementById("status").innerHTML = status["w1"];
-
-
   CTX.fillStyle = "white";
   CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
