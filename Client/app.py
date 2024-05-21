@@ -61,6 +61,7 @@ def move():
     new_status = data.get("status_", current_player)
     new_pieces = data.get("pieces", pieces)
 
+
     if new_status not in ["w1", "b1"]:
         current_status = new_status
         pieces = new_pieces
