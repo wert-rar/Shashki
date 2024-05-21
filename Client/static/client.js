@@ -68,7 +68,9 @@ function server_request(status,pieces){
   let body = {status_:status,pieces:pieces}
   $.post(SERVER_IP, body, (data, status) => {
   update_data(data)
-});
+}).fail(() => {
+        update_data({status_: "e1", pieces: pieces});
+    });
 }
 //
 //
