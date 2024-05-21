@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
 
 current_player = "w1"
+
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
     {"color": 1, "x": 3, "y": 0, "mode": "p"},
@@ -30,7 +31,7 @@ pieces = [
     {"color": 0, "x": 6, "y": 5, "mode": "p"}
 ]
 
-status_message = {
+status_ = {
     "w1": "Ход белых",
     "b1": "Ход черных",
     "w2": "Нельзя двигать фигуру, сейчас ход белых",
