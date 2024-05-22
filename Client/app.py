@@ -58,15 +58,29 @@ def move():
     global current_player, pieces
 
     data = request.get_json()
+    if not data or not isinstance(data, dict):
+        return jsonify({"status_": "e1", "pieces": pieces})
     new_status = data.get("status_", current_player)
     new_pieces = data.get("pieces", pieces)
 
-
-    if new_status not in ["w1", "b1"]:
-        current_status = new_status
-        pieces = new_pieces
-    else:
+    if not new_pieces or not isinstance(new_pieces, list):
         current_status = "e1"
+    elif current_player not in ["w1", "b1", "w4", "b4"]:
+        current_status = "e1"
+    else:
+        captured = len(new_pieces) != len(pieces)
+
+        pieces = new_pieces
+
+        if captured:
+            if current_player == "w1":
+                current_status = "w4"
+            elif current_player == "b1":
+                current_status = "b4"
+        else:
+            current_status = "b1" if current_player == "w1" else "w1"
+
+        current_player = current_status
 
     response = {
         "status_": current_status,
