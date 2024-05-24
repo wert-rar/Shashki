@@ -67,7 +67,7 @@ def move():
     if not new_pieces or not isinstance(new_pieces, list):
         current_status = "e1"
     else:
-
+        # Проверка на правильность хода текущего игрока
         white_pieces = [p for p in pieces if p["color"] == 1]
         black_pieces = [p for p in pieces if p["color"] == 0]
 
@@ -79,15 +79,19 @@ def move():
             current_status = "b2"
         else:
             captured = len(new_pieces) != len(pieces)
-
             pieces = new_pieces
 
-            if captured:
-                current_status = "w4" if (current_player == "w1" or current_player == "w4") else "b4"
+            if all(p["color"] == 1 for p in pieces):
+                current_status = "w3"
+            elif all(p["color"] == 0 for p in pieces):
+                current_status = "b3"
             else:
-                current_status = "b1" if (current_player == "w1" or current_player == "w4") else "w1"
+                if captured:
+                    current_status = "w4" if (current_player == "w1" or current_player == "w4") else "b4"
+                else:
+                    current_status = "b1" if (current_player == "w1" or current_player == "w4") else "w1"
 
-            current_player = current_status
+                current_player = current_status
 
     response = {
         "status_": current_status,
