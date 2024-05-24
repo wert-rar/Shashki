@@ -62,27 +62,32 @@ def move():
     if not data or not isinstance(data, dict):
         return jsonify({"status_": "e1", "pieces": pieces})
 
-    new_status = data.get("status_", current_player)
     new_pieces = data.get("pieces", pieces)
 
     if not new_pieces or not isinstance(new_pieces, list):
         current_status = "e1"
-    elif current_player not in ["w1", "b1", "w4", "b4"]:
-        current_status = "e1"
     else:
-        captured = len(new_pieces) != len(pieces)
 
-        pieces = new_pieces
+        white_pieces = [p for p in pieces if p["color"] == 1]
+        black_pieces = [p for p in pieces if p["color"] == 0]
 
-        if captured:
-            if current_player in ["w1", "w4"]:
-                current_status = "w4"
-            elif current_player in ["b1", "b4"]:
-                current_status = "b4"
+        if (current_player == "w1" or current_player == "w4") and any(
+                p not in white_pieces for p in new_pieces if p["color"] == 1):
+            current_status = "w2"
+        elif (current_player == "b1" or current_player == "b4") and any(
+                p not in black_pieces for p in new_pieces if p["color"] == 0):
+            current_status = "b2"
         else:
-            current_status = "b1" if current_player in ["w1", "w4"] else "w1"
+            captured = len(new_pieces) != len(pieces)
 
-        current_player = current_status
+            pieces = new_pieces
+
+            if captured:
+                current_status = "w4" if (current_player == "w1" or current_player == "w4") else "b4"
+            else:
+                current_status = "b1" if (current_player == "w1" or current_player == "w4") else "w1"
+
+            current_player = current_status
 
     response = {
         "status_": current_status,
