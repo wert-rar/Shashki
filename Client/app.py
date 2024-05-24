@@ -40,7 +40,8 @@ status_ = {
     "b3": "Победили черные",
     "w4": "Белые продолжают ход",
     "b4": "Черные продолжают ход",
-    "e1": "Ошибка при запросе к серверу"}
+    "e1": "Ошибка при запросе к серверу"
+}
 
 
 @app.route("/")
@@ -60,6 +61,7 @@ def move():
     data = request.get_json()
     if not data or not isinstance(data, dict):
         return jsonify({"status_": "e1", "pieces": pieces})
+
     new_status = data.get("status_", current_player)
     new_pieces = data.get("pieces", pieces)
 
@@ -73,12 +75,12 @@ def move():
         pieces = new_pieces
 
         if captured:
-            if current_player == "w1":
+            if current_player in ["w1", "w4"]:
                 current_status = "w4"
-            elif current_player == "b1":
+            elif current_player in ["b1", "b4"]:
                 current_status = "b4"
         else:
-            current_status = "b1" if current_player == "w1" else "w1"
+            current_status = "b1" if current_player in ["w1", "w4"] else "w1"
 
         current_player = current_status
 
