@@ -54,6 +54,26 @@ def get_board():
     return render_template('board.html')
 
 
+def remove_piece(x, y):
+    global pieces
+    pieces = [p for p in pieces if not (p["x"] == x and p["y"] == y)]
+
+
+def is_valid_move(piece, new_x, new_y):
+    dx = new_x - piece["x"]
+    dy = new_y - piece["y"]
+
+    if abs(dx) == 1 and abs(dy) == 1:
+        return True
+    elif abs(dx) == 2 and abs(dy) == 2:
+        mid_x = (piece["x"] + new_x) // 2
+        mid_y = (piece["y"] + new_y) // 2
+        for p in pieces:
+            if p["x"] == mid_x and p["y"] == mid_y and p["color"] != piece["color"]:
+                remove_piece(mid_x, mid_y)
+                return True
+    return False
+
 @app.route("/move", methods=["POST"])
 def move():
     global current_player, pieces
@@ -69,12 +89,9 @@ def move():
     else:
         white_pieces = [p for p in pieces if p["color"] == 1]
         black_pieces = [p for p in pieces if p["color"] == 0]
-
-        if (current_player == "w1" or current_player == "w4") and any(
-                p not in white_pieces for p in new_pieces if p["color"] == 1):
+        if (current_player == "w1" or current_player == "w4") and any(p not in white_pieces for p in new_pieces if p["color"] == 1):
             current_status = "w2"
-        elif (current_player == "b1" or current_player == "b4") and any(
-                p not in black_pieces for p in new_pieces if p["color"] == 0):
+        elif (current_player == "b1" or current_player == "b4") and any(p not in black_pieces for p in new_pieces if p["color"] == 0):
             current_status = "b2"
         else:
             captured = len(new_pieces) != len(pieces)
