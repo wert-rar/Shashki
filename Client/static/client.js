@@ -1,6 +1,4 @@
 // TODO:
-// Make requests to server
-// Write TT
 
 let CANVAS = null;
 let CTX = null;
@@ -66,11 +64,18 @@ function update_data(data){
 }
 function server_request(status,pieces){
   let body = {status_:status,pieces:pieces}
-  $.post(SERVER_IP, body, (data, status) => {
-  update_data(data)
-}).fail(() => {
-        update_data({status_: "e1", pieces: pieces});
-    });
+  let xhr = new XMLHttpRequest();
+  xhr.open('POST','/move');
+  xhr.addEventListener('load',function(){
+     if(xhr.status === 200 && xhr.readyState ===4){
+      let response = JSON.parse(xhr.responseText);
+    update_data(response);
+    console.log(response);
+     }
+     else throw new Error('bad request');    
+  });
+  xhr.setRequestHeader('Content-type','application/json');
+  xhr.send(JSON.stringify(body));
 }
 //
 //
