@@ -67,7 +67,7 @@ def move():
     if not new_pieces or not isinstance(new_pieces, list):
         current_status = "e1"
     else:
-        # Проверка на правильность хода текущего игрока
+        # Вася ТРАХАЕТ Алёну ??????
         white_pieces = [p for p in pieces if p["color"] == 1]
         black_pieces = [p for p in pieces if p["color"] == 0]
 
