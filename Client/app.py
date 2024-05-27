@@ -59,62 +59,9 @@ def remove_piece(x, y):
     pieces = [p for p in pieces if not (p["x"] == x and p["y"] == y)]
 
 
-def is_valid_move(piece, new_x, new_y):
-    dx = new_x - piece["x"]
-    dy = new_y - piece["y"]
-
-    if abs(dx) == 1 and abs(dy) == 1:
-        return True
-    elif abs(dx) == 2 and abs(dy) == 2:
-        mid_x = (piece["x"] + new_x) // 2
-        mid_y = (piece["y"] + new_y) // 2
-        for p in pieces:
-            if p["x"] == mid_x and p["y"] == mid_y and p["color"] != piece["color"]:
-                remove_piece(mid_x, mid_y)
-                return True
-    return False
-
 @app.route("/move", methods=["POST"])
 def move():
-    global current_player, pieces
-
-    data = request.get_json()
-    if not data or not isinstance(data, dict):
-        return jsonify({"status_": "e1", "pieces": pieces})
-
-    new_pieces = data.get("pieces", pieces)
-
-    if not new_pieces or not isinstance(new_pieces, list):
-        current_status = "e1"
-    else:
-        white_pieces = [p for p in pieces if p["color"] == 1]
-        black_pieces = [p for p in pieces if p["color"] == 0]
-        if (current_player == "w1" or current_player == "w4") and any(p not in white_pieces for p in new_pieces if p["color"] == 1):
-            current_status = "w2"
-        elif (current_player == "b1" or current_player == "b4") and any(p not in black_pieces for p in new_pieces if p["color"] == 0):
-            current_status = "b2"
-        else:
-            captured = len(new_pieces) != len(pieces)
-            pieces = new_pieces
-
-            if all(p["color"] == 1 for p in pieces):
-                current_status = "w3"
-            elif all(p["color"] == 0 for p in pieces):
-                current_status = "b3"
-            else:
-                if captured:
-                    current_status = "w4" if (current_player == "w1" or current_player == "w4") else "b4"
-                else:
-                    current_status = "b1" if (current_player == "w1" or current_player == "w4") else "w1"
-
-                current_player = current_status
-
-    response = {
-        "status_": current_status,
-        "pieces": pieces
-    }
-
-    return jsonify(response)
+    pass
 
 
 if __name__ == "__main__":
