@@ -54,11 +54,6 @@ def get_board():
     return render_template('board.html')
 
 
-def remove_piece(x, y):
-    global pieces
-    pieces = [p for p in pieces if not (p["x"] == x and p["y"] == y)]
-
-
 @app.route("/move", methods=["POST"])
 def move():
     pass
