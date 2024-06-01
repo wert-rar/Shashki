@@ -59,30 +59,33 @@ def validate_move(new_pieces):
 
     moved_piece = None
     new_pos = None
-
-    for new_piece in new_pieces:
-        old_piece = get_piece_at(new_piece['x'], new_piece['y'])
-        if old_piece != new_piece:
-            if moved_piece:
-                return False
-            moved_piece = old_piece
+    print('быстрая проверка на наличие изменений: ', not (new_pieces == pieces))
+    for piece, new_piece in zip(pieces,new_pieces):
+        if(piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']):
+            print(f'сдвинута фигура! c {piece} на {new_piece}')
+            moved_piece = piece
             new_pos = new_piece
+            break
 
-    if not moved_piece:
+    if moved_piece is None:
+        print('Нет двинутых фигур')
         return False
 
-    if (current_player == "w1" and moved_piece['color'] != 1) or (current_player == "b1" and moved_piece['color'] != 0):
+    if (current_player[0] == "w" and moved_piece['color'] == 1) or (current_player[0] == "b" and moved_piece['color'] == 0):
+        print('не тот цвет')
         return False
 
     dx = new_pos['x'] - moved_piece['x']
     dy = new_pos['y'] - moved_piece['y']
 
     if abs(dx) != 1 or abs(dy) != 1:
+        print('ошибка с дистанцией')
         return False
 
     if get_piece_at(new_pos['x'], new_pos['y']):
+        print('поле занято')
         return False
-
+    print('сработало верно')
     return True
 
 
@@ -101,7 +104,7 @@ def move():
     global pieces, current_player
 
     new_pieces = request.json.get("pieces")
-
+    print('validate move :', validate_move(new_pieces))
     if validate_move(new_pieces):
         pieces = new_pieces
         current_player = "w1" if current_player == "w1" else "b1"
