@@ -64,12 +64,15 @@ function update_data(data){
 }
 function server_request(status,pieces){
   let body = {status_:status,pieces:pieces}
+  console.log('post request data');
+  console.log(body);
   let xhr = new XMLHttpRequest();
   xhr.open('POST','/move');
   xhr.addEventListener('load',function(){
      if(xhr.status === 200 && xhr.readyState ===4){
       let response = JSON.parse(xhr.responseText);
     update_data(response);
+    console.log('response data');
     console.log(response);
      }
      else throw new Error('bad request');    
