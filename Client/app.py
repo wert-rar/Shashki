@@ -107,7 +107,7 @@ def move():
     print('validate move :', validate_move(new_pieces))
     if validate_move(new_pieces):
         pieces = new_pieces
-        current_player = "w1" if current_player == "w1" else "b1"
+        current_player = "w1" if current_player not in ["w1","w2"] else "b1"
         return jsonify({"status_": current_player, "pieces": pieces})
     else:
         return jsonify({"status_": f"{current_player[0]}2", "pieces": pieces})
