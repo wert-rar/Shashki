@@ -61,6 +61,12 @@ def validate_move(new_pieces):
     new_pos = None
     print('быстрая проверка на наличие изменений: ', not (new_pieces == pieces))
     for piece, new_piece in zip(pieces, new_pieces):
+    # если положение фигур не изменилось то значит ни одна фигура не сдвинута
+        if new_pieces == pieces:
+            print('Нет двинутых фигур')
+            return False
+    # иначе ищем подвинутую фигуру
+    for piece, new_piece in zip(pieces,new_pieces):
         if piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']:
             print(f'сдвинута фигура! c {piece} на {new_piece}')
             moved_piece = piece
@@ -71,10 +77,10 @@ def validate_move(new_pieces):
         print('Нет двинутых фигур')
         return False
 
-    if (current_player[0] == "w" and moved_piece['color'] == 1) or (
-            current_player[0] == "b" and moved_piece['color'] == 0):
-        print('не тот цвет')
-        return False
+    if (current_player[0] == "w" and moved_piece['color'] == 1) or (current_player[0] == "b" and moved_piece['color'] == 0):
+        if (current_player[0] == "w" and moved_piece['color'] == 1) or (current_player[0] == "b" and moved_piece['color'] == 0):
+            print('не тот цвет')
+            return False
 
     dx = new_pos['x'] - moved_piece['x']
     dy = new_pos['y'] - moved_piece['y']
@@ -108,7 +114,7 @@ def move():
     print('validate move :', validate_move(new_pieces))
     if validate_move(new_pieces):
         pieces = new_pieces
-        current_player = "w1" if current_player == "w1" else "b1"
+        current_player = "w1" if current_player not in ["w1","w2"] else "b1"
         return jsonify({"status_": current_player, "pieces": pieces})
     else:
         return jsonify({"status_": f"{current_player[0]}2", "pieces": pieces})

@@ -75,7 +75,10 @@ function server_request(status,pieces){
     console.log('response data');
     console.log(response);
      }
-     else throw new Error('bad request');    
+     else {
+     update_data({status_:'e1',pieces:pieces})
+     throw new Error('bad request');
+     }
   });
   xhr.setRequestHeader('Content-type','application/json');
   xhr.send(JSON.stringify(body));
