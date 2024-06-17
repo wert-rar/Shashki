@@ -60,13 +60,9 @@ def validate_move(new_pieces):
     moved_piece = None
     new_pos = None
     print('быстрая проверка на наличие изменений: ', not (new_pieces == pieces))
-    for piece, new_piece in zip(pieces, new_pieces):
-    # если положение фигур не изменилось то значит ни одна фигура не сдвинута
-        if new_pieces == pieces:
-            print('Нет двинутых фигур')
-            return False
+
     # иначе ищем подвинутую фигуру
-    for piece, new_piece in zip(pieces,new_pieces):
+    for piece, new_piece in zip(pieces, new_pieces):
         if piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']:
             print(f'сдвинута фигура! c {piece} на {new_piece}')
             moved_piece = piece
@@ -74,25 +70,39 @@ def validate_move(new_pieces):
             break
 
     if moved_piece is None:
-        print('Нет двинутых фигур')
         return False
 
-    if (current_player[0] == "w" and moved_piece['color'] == 1) or (current_player[0] == "b" and moved_piece['color'] == 0):
-        if (current_player[0] == "w" and moved_piece['color'] == 1) or (current_player[0] == "b" and moved_piece['color'] == 0):
-            print('не тот цвет')
-            return False
+    if (current_player == "w" and moved_piece['color'] == 1) or (
+            current_player == "b" and moved_piece['color'] == 0):
+        return False
 
     dx = new_pos['x'] - moved_piece['x']
     dy = new_pos['y'] - moved_piece['y']
+    abs_dx = abs(dx)
+    abs_dy = abs(dy)
 
-    if abs(dx) != 1 or abs(dy) != 1:
-        print('ошибка с дистанцией')
+    if abs_dx == 1 and abs_dy == 1:
+        if get_piece_at(new_pos['x'], new_pos['y']):
+            print('Поле занято')
+            return False
+    elif abs_dx == 2 and abs_dy == 2:
+        mid_x = (moved_piece['x'] + new_pos['x']) // 2
+        mid_y = (moved_piece['y'] + new_pos['y']) // 2
+        captured_piece = get_piece_at(mid_x, mid_y)
+        if not captured_piece or captured_piece['color'] == moved_piece['color']:
+            print('Невозможно съесть фигуру')
+            return False
+        pieces.remove(captured_piece)
+    else:
+        print('Ошибка с дистанцией')
         return False
 
-    if get_piece_at(new_pos['x'], new_pos['y']):
-        print('поле занято')
-        return False
-    print('сработало верно')
+    # Обновляем позицию сдвинутой фигуры
+    moved_piece['x'] = new_pos['x']
+    moved_piece['y'] = new_pos['y']
+
+    # Меняем очередь игрока после успешного хода
+    current_player = 'b' if current_player == 'w' else 'w'
     return True
 
 
@@ -111,13 +121,12 @@ def move():
     global pieces, current_player
 
     new_pieces = request.json.get("pieces")
-    print('validate move :', validate_move(new_pieces))
     if validate_move(new_pieces):
-        pieces = new_pieces
-        current_player = "w1" if current_player not in ["w1","w2"] else "b1"
-        return jsonify({"status_": current_player, "pieces": pieces})
+        current_status = f"{current_player}1"
+        return jsonify({"status_": current_status, "pieces": pieces})
     else:
-        return jsonify({"status_": f"{current_player[0]}2", "pieces": pieces})
+        current_status = f"{current_player}2"
+        return jsonify({"status_": current_status, "pieces": pieces})
 
 
 if __name__ == "__main__":
