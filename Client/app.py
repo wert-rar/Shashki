@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-current_player = "w1"
+current_player = "w"
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
