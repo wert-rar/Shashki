@@ -111,7 +111,8 @@ def validate_move(new_pieces):
 
 @app.route("/")
 def home():
-    return "Hello World!"
+    return render_template('home.html')
+
 
 
 @app.route("/board")
