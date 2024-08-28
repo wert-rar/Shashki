@@ -76,15 +76,18 @@ def validate_move(new_pieces):
             current_player == "b" and moved_piece['color'] == 0):
         return False
 
+    # Проверка на занятость клетки
+    if get_piece_at(new_pos['x'], new_pos['y']):
+        print('Поле занято')
+        return False
+
     dx = new_pos['x'] - moved_piece['x']
     dy = new_pos['y'] - moved_piece['y']
     abs_dx = abs(dx)
     abs_dy = abs(dy)
 
     if abs_dx == 1 and abs_dy == 1:
-        if get_piece_at(new_pos['x'], new_pos['y']):
-            print('Поле занято')
-            return False
+        pass  # Проверка на занятость уже выполнена ранее
     elif abs_dx == 2 and abs_dy == 2:
         mid_x = (moved_piece['x'] + new_pos['x']) // 2
         mid_y = (moved_piece['y'] + new_pos['y']) // 2
