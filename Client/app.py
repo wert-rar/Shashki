@@ -133,5 +133,6 @@ def move():
         return jsonify({"status_": current_status, "pieces": pieces})
 
 
+
 if __name__ == "__main__":
     app.run(debug=True)
