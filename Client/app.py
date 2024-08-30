@@ -114,7 +114,6 @@ def home():
     return render_template('home.html')
 
 
-
 @app.route("/board")
 def get_board():
     return render_template('board.html')
@@ -131,7 +130,6 @@ def move():
     else:
         current_status = f"{current_player}2"
         return jsonify({"status_": current_status, "pieces": pieces})
-
 
 
 if __name__ == "__main__":
