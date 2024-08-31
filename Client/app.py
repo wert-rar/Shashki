@@ -44,9 +44,6 @@ status_ = {
     "e1": "Ошибка при запросе к серверу"
 }
 
-
-
-
 def get_piece_at(x, y):
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
@@ -133,6 +130,51 @@ def move():
     else:
         current_status = f"{current_player}2"
         return jsonify({"status_": current_status, "pieces": pieces})
+
+
+#Создаёт новую игру и добавляет её в список не начатых игр.
+@app.route("/create_game", methods=["POST"])
+def create_game():
+    # Создаем новую игру без пользователей, добавляем в список не начатых игр.
+    new_game = Game()
+    return jsonify({"message": "Game created", "game_id": new_game.game_id})
+
+
+#Пользователь присоединяется к текущей не начатой игре или создаёт новую.
+@app.route("/join_game", methods=["POST"])
+def join_game():
+    user_id = request.json.get("user_id")
+    if not user_id:
+        return jsonify({"error": "User ID is required"}), 400
+
+
+#Конкретная игра завершается и удаляется из текущего списка игр.
+@app.route("/end_game/<int:game_id>", methods=["POST"])
+def end_game(game_id):
+    Game.end_game(game_id)
+    return jsonify({"message": f"Game {game_id} has ended"})
+
+
+#Возвращает информацию о конкретной игре (кто является игроками и статус).
+@app.route("/game_status/<int:game_id>", methods=["GET"])
+def game_status(game_id):
+    game = next((g for g in Game.current_games if g.game_id == game_id), None)
+    if game:
+        return jsonify({"game_id": game.game_id, "f_user": game.f_user, "c_user": game.c_user, "status": "in progress"})
+    else:
+        return jsonify({"error": "Game not found"}), 404
+
+
+#Возвращает состояние доски для указанного игрока в игре.
+@app.route("/display_board/<int:game_id>/<int:player_id>", methods=["GET"])
+def display_board(game_id, player_id):
+    game = next((g for g in Game.current_games if g.game_id == game_id), None)
+    if game:
+        board_state = game.display_board(player_id)
+        return jsonify({"board": board_state})
+    else:
+        return jsonify({"error": "Game not found"}), 404
+
 
 
 if __name__ == "__main__":

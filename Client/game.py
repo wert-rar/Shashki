@@ -65,4 +65,3 @@ class Game:
         elif player_id == self.c_user:
             # Возвращается доска, где чёрные внизу
             pass
-
