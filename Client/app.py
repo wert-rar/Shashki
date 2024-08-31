@@ -121,15 +121,39 @@ def get_board():
 
 @app.route("/move", methods=["POST"])
 def move():
-    global pieces, current_player
+    data = request.json
+    if data is None:
+        return jsonify({"error": "Invalid JSON data"}), 400
+    player_id = data.get("player_id")
+    game_id = data.get("game_id")
+    move = data.get("move")
 
-    new_pieces = request.json.get("pieces")
-    if validate_move(new_pieces):
-        current_status = f"{current_player}1"
-        return jsonify({"status_": current_status, "pieces": pieces})
-    else:
-        current_status = f"{current_player}2"
-        return jsonify({"status_": current_status, "pieces": pieces})
+    # Проверяем, что все необходимые данные переданы
+    if not all([player_id, game_id, move]):
+        return jsonify({"error": "Player ID, Game ID, and Move are required"}), 400
+
+    # Ищем соответствующую игру
+    game = next((g for g in Game.get_current_games() if g.game_id == game_id), None)
+    if not game:
+        return jsonify({"error": "Game not found"}), 404
+
+    # Проверка принадлежности игроку
+    if player_id not in [game.f_user, game.c_user]:
+        return jsonify({"error": "Invalid player"}), 403
+
+    # Обработка хода
+    success, message = game.make_move(player_id, move)
+    if not success:
+        return jsonify({"error": message}), 400
+
+    # Возвращаем обновлённое состояние игры
+    return jsonify({
+        "message": message,
+        "game_id": game.game_id,
+        "player_id": player_id,
+        "move": move,
+        #можно будет возвращать актуальное состояние доски
+    })
 
 
 #Создаёт новую игру и добавляет её в список не начатых игр.
@@ -143,9 +167,16 @@ def create_game():
 #Пользователь присоединяется к текущей не начатой игре или создаёт новую.
 @app.route("/join_game", methods=["POST"])
 def join_game():
-    user_id = request.json.get("user_id")
+    data = request.json
+    if data is None:
+        return jsonify({"error": "Invalid JSON data"}), 400
+
+    user_id = data.get("user_id")
     if not user_id:
         return jsonify({"error": "User ID is required"}), 400
+
+    game = Game.search_game(user_id)
+    return jsonify({"message": "Joined game", "game_id": game.game_id, "f_user": game.f_user, "c_user": game.c_user})
 
 
 #Конкретная игра завершается и удаляется из текущего списка игр.

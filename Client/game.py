@@ -30,16 +30,15 @@ class Game:
                 cls.current_games.append(game)
                 return game
 
-        # создаем новую игру, если нет подходящей
-        white_user = user_id if cls.assign_user_to_white() else None
-        black_user = None if cls.assign_user_to_white() else user_id
+        is_first_user_white = cls.assign_user_to_white()
+        white_user = user_id if is_first_user_white else None
+        black_user = None if is_first_user_white else user_id
         new_game = Game(f_user=white_user, c_user=black_user)
-        cls.unstarted_games.append(new_game)
         return new_game
 
     @staticmethod
     def assign_user_to_white():
-        return len(Game.unstarted_games) % 2 == 0
+        return (len(Game.current_games) + len(Game.unstarted_games)) % 2 == 0
 
     def __repr__(self):
         return f"Game(f_user={self.f_user}, c_user={self.c_user}, game_id={self.game_id})"
@@ -61,7 +60,25 @@ class Game:
     def display_board(self, player_id):
         if player_id == self.f_user:
             # Возвращается доска, где белые внизу
-            pass
+            return "Board with white pieces on the bottom"
         elif player_id == self.c_user:
             # Возвращается доска, где чёрные внизу
-            pass
+            return "Board with black pieces on the bottom"
+        else:
+            return "Invalid player"
+
+    def make_move(self, player_id, move):
+        # Проверяем, валидный ли ход
+        if player_id not in [self.f_user, self.c_user]:
+            return False, "Invalid player"
+
+        # Здесь просто добавим ход в историю игры для примера
+        if not hasattr(self, 'moves'):
+            self.moves = []
+
+        # Применение хода
+        self.moves.append((player_id, move))
+
+        # Добавить логику проверки победных условий
+
+        return True, "Move accepted"
