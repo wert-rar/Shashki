@@ -58,6 +58,11 @@ class Game:
         else:
             print(f"Game {game_id} is not in the list of current games.")
 
-
-#индикатор игры Game.end_game()
+    def display_board(self, player_id):
+        if player_id == self.f_user:
+            # Возвращается доска, где белые внизу
+            pass
+        elif player_id == self.c_user:
+            # Возвращается доска, где чёрные внизу
+            pass
 

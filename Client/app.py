@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from game import Game
 
 app = Flask(__name__)
 
@@ -42,6 +43,8 @@ status_ = {
     "b4": "Черные продолжают ход",
     "e1": "Ошибка при запросе к серверу"
 }
+
+
 
 
 def get_piece_at(x, y):
