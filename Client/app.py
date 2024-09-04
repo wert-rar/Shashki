@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session
 from game import Game
+import sqlite3
 
 app = Flask(__name__)
+app.secret_key = 'superpupersecretkey'
 
 current_player = "w"
 
@@ -109,6 +111,20 @@ def validate_move(new_pieces):
     return True
 
 
+def init_db():
+    con = sqlite3.connect("DataBase.db")
+    cur = con.cursor()
+    cur.execute("""CREATE TABLE IF NOT EXISTS player(
+                    login TEXT PRIMARY KEY, 
+                    password TEXT, 
+                    rang BIGINT)""")
+    con.commit()
+    con.close()
+
+init_db()
+
+
+
 @app.route("/")
 def home():
     return render_template('home.html')
@@ -118,14 +134,55 @@ def home():
 def get_board():
     return render_template('board.html')
 
-@app.route("/register")
+
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        user_login = request.form['login']
+        user_password = request.form['password']
+
+        con = sqlite3.connect("DataBase.db")
+        cur = con.cursor()
+
+        # Проверка, существует ли пользователь
+        cur.execute("SELECT login FROM player WHERE login = ?", (user_login,))
+        if cur.fetchone() is None:
+            # Если пользователя нет, добавляем его в базу данных
+            cur.execute("INSERT INTO player (login, password, rang) VALUES (?, ?, ?)", (user_login, user_password, 0))
+            con.commit()
+            flash('Пользователь успешно зарегистрирован!')
+        else:
+            flash('Такой пользователь уже зарегистрирован!')
+
+        con.close()
+        return redirect(url_for('register'))
+
+    # Если метод GET, то просто отображаем форму
     return render_template('register.html')
 
-@app.route("/login")
-def login():
-    return render_template('login.html')
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user_login = request.form['login']
+        user_password = request.form['password']
+
+        con = sqlite3.connect("DataBase.db")
+        cur = con.cursor()
+
+        cur.execute("SELECT * FROM player WHERE login = ? AND password = ?", (user_login, user_password))
+        user = cur.fetchone()
+
+        if user:
+            flash('Успешный вход!')
+            session['user'] = user_login
+            return redirect(url_for('home'))
+        else:
+            flash('Неправильный логин или пароль!')
+
+        con.close()
+
+    return render_template('login.html')
 
 @app.route("/move", methods=["POST"])
 def move():

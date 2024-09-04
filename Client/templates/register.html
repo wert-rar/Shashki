@@ -22,11 +22,6 @@
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             text-align: center;
-            transition: transform 0.3s ease-in-out;
-        }
-
-        .registration-menu:hover {
-            transform: scale(1.05);
         }
 
         .registration-menu h2 {
@@ -49,12 +44,6 @@
             border-bottom: 2px solid #ccc;
             border-radius: 4px;
             font-size: 16px;
-            transition: border-color 0.3s;
-        }
-
-        .registration-group input:focus {
-            border-color: #3498db;
-            outline: none;
         }
 
         .registration-menu button {
@@ -66,32 +55,40 @@
             border-radius: 4px;
             font-size: 16px;
             cursor: pointer;
-            transition: background 0.3s;
         }
 
         .registration-menu button:hover {
             background: #2980b9;
         }
+
+        .error-message {
+            color: red;
+        }
+
+        .success-message {
+            color: green;
+        }
     </style>
 </head>
 <body>
     <div class="registration-menu">
-        <h2 id="title">Регистрация</h2>
-        <div class="registration-group">
-            <input type="text" placeholder="Имя пользователя">
-            <input type="password" placeholder="Пароль">
-        </div>
-        <button onclick="register()">Зарегистрироваться</button>
+        <h2>Регистрация</h2>
+        <form method="POST">
+            <div class="registration-group">
+                <input type="text" name="login" placeholder="Имя пользователя" required>
+                <input type="password" name="password" placeholder="Пароль" required>
+                <button type="submit">Зарегистрироваться</button>
+            </div>
+        </form>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul>
+              {% for message in messages %}
+                <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
     </div>
-
-    <script>
-        function register() {
-            // Изменение текста заголовка на странице
-            document.getElementById('title').innerText = 'Профиль';
-
-            // Перенаправление на главную страницу
-            window.location.href = '/';
-        }
-    </script>
 </body>
 </html>
