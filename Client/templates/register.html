@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(120deg, #3498db, #8e44ad);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .registration-menu {
+            width: 320px;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .registration-menu:hover {
+            transform: scale(1.05);
+        }
+
+        .registration-menu h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+
+        .registration-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .registration-group input {
+            width: 80%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-bottom: 2px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .registration-group input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .registration-menu button {
+            width: 80%;
+            padding: 15px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .registration-menu button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="registration-menu">
+        <h2 id="title">Регистрация</h2>
+        <div class="registration-group">
+            <input type="text" placeholder="Имя пользователя">
+            <input type="password" placeholder="Пароль">
+        </div>
+        <button onclick="register()">Зарегистрироваться</button>
+    </div>
+
+    <script>
+        function register() {
+            // Изменение текста заголовка на странице
+            document.getElementById('title').innerText = 'Профиль';
+
+            // Перенаправление на главную страницу
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
