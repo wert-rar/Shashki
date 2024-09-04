@@ -156,12 +156,6 @@ def move():
     })
 
 
-#Создаёт новую игру и добавляет её в список не начатых игр.
-@app.route("/create_game", methods=["POST"])
-def create_game():
-    # Создаем новую игру без пользователей, добавляем в список не начатых игр.
-    new_game = Game()
-    return jsonify({"message": "Game created", "game_id": new_game.game_id})
 
 
 #Пользователь присоединяется к текущей не начатой игре или создаёт новую.
