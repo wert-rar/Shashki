@@ -8,11 +8,13 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background: linear-gradient(120deg, #3498db, #8e44ad);
-            height: 100vh;
+            background: url('{{ url_for('static', filename='back_register.jpg') }}') no-repeat center center fixed;
+            background-size: cover;
+            height: 100vh; /* Высота 100vh */
             display: flex;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(5px);
         }
 
         .registration-menu {

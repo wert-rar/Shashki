@@ -89,7 +89,7 @@ def validate_move(new_pieces):
     abs_dy = abs(dy)
 
     if abs_dx == 1 and abs_dy == 1:
-        pass  # Проверка на занятость уже выполнена ранее
+        pass
     elif abs_dx == 2 and abs_dy == 2:
         mid_x = (moved_piece['x'] + new_pos['x']) // 2
         mid_y = (moved_piece['y'] + new_pos['y']) // 2
@@ -102,27 +102,11 @@ def validate_move(new_pieces):
         print('Ошибка с дистанцией')
         return False
 
-    # Обновляем позицию сдвинутой фигуры
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
 
-    # Меняем очередь игрока после успешного хода
     current_player = 'b' if current_player == 'w' else 'w'
     return True
-
-
-def init_db():
-    con = sqlite3.connect("DataBase.db")
-    cur = con.cursor()
-    cur.execute("""CREATE TABLE IF NOT EXISTS player(
-                    login TEXT PRIMARY KEY, 
-                    password TEXT, 
-                    rang BIGINT)""")
-    con.commit()
-    con.close()
-
-init_db()
-
 
 
 @app.route("/")
@@ -144,7 +128,6 @@ def register():
         con = sqlite3.connect("DataBase.db")
         cur = con.cursor()
 
-        # Проверка, существует ли пользователь
         cur.execute("SELECT login FROM player WHERE login = ?", (user_login,))
         if cur.fetchone() is None:
             # Если пользователя нет, добавляем его в базу данных
@@ -157,9 +140,7 @@ def register():
         con.close()
         return redirect(url_for('register'))
 
-    # Если метод GET, то просто отображаем форму
     return render_template('register.html')
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -175,14 +156,40 @@ def login():
 
         if user:
             flash('Успешный вход!')
-            session['user'] = user_login
-            return redirect(url_for('home'))
+            session['user'] = user_login  # Сохраняем информацию о пользователе в сессии
+            return redirect(url_for('profile', username=user_login))  # Перенаправляем на профиль пользователя
         else:
             flash('Неправильный логин или пароль!')
 
         con.close()
 
     return render_template('login.html')
+
+def get_db_connection():
+    conn = sqlite3.connect('DataBase.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.route('/profile/<username>')
+def profile(username):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM player WHERE login = ?", (username,))
+    user = cur.fetchone()
+    conn.close()
+
+    if user:
+        return render_template('profile.html', user_login=user['login'], rang=user['rang'])
+    else:
+        return 'Пользователь не найден', 404
+
+@app.route("/logout")
+def logout():
+    session.pop('user', None)
+    flash('Вы вышли из системы.')
+    return redirect(url_for('home'))
+
 
 @app.route("/move", methods=["POST"])
 def move():
@@ -193,31 +200,25 @@ def move():
     game_id = data.get("game_id")
     move = data.get("move")
 
-    # Проверяем, что все необходимые данные переданы
     if not all([player_id, game_id, move]):
         return jsonify({"error": "Player ID, Game ID, and Move are required"}), 400
 
-    # Ищем соответствующую игру
     game = next((g for g in Game.get_current_games() if g.game_id == game_id), None)
     if not game:
         return jsonify({"error": "Game not found"}), 404
 
-    # Проверка принадлежности игроку
     if player_id not in [game.f_user, game.c_user]:
         return jsonify({"error": "Invalid player"}), 403
 
-    # Обработка хода
     success, message = game.make_move(player_id, move)
     if not success:
         return jsonify({"error": message}), 400
 
-    # Возвращаем обновлённое состояние игры
     return jsonify({
         "message": message,
         "game_id": game.game_id,
         "player_id": player_id,
         "move": move,
-        #можно будет возвращать актуальное состояние доски
     })
 
 
