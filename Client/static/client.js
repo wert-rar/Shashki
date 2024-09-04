@@ -7,7 +7,8 @@ let CELL_SIZE = 0;
 let HEADER_HEIGHT = 0;
 let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
-
+let user_id = 1;
+let game_id = 1;
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -63,21 +64,18 @@ function update_data(data){
   update();
 }
 function server_request(status,pieces){
-  let body = {status_:status,pieces:pieces}
-  console.log('post request data');
-  console.log(body);
+  let body = {status_:status,pieces:pieces,user_id: user_id,game_id:game_id}
   let xhr = new XMLHttpRequest();
   xhr.open('POST','/move');
   xhr.addEventListener('load',function(){
      if(xhr.status === 200 && xhr.readyState ===4){
       let response = JSON.parse(xhr.responseText);
     update_data(response);
-    console.log('response data');
-    console.log(response);
      }
      else {
+     let response = JSON.parse(xhr.responseText);
      update_data({status_:'e1',pieces:pieces})
-     throw new Error('bad request');
+     throw new Error(response.error);
      }
   });
   xhr.setRequestHeader('Content-type','application/json');
