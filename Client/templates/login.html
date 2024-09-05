@@ -10,7 +10,7 @@
             font-family: Arial, sans-serif;
             background: url('{{ url_for('static', filename='back_register.jpg') }}') no-repeat center center fixed;
             background-size: cover;
-            height: 100vh; /* Высота 100vh */
+            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -25,6 +25,7 @@
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             text-align: center;
             transition: transform 0.3s ease-in-out;
+            position: relative;
         }
 
         .registration-menu:hover {
@@ -35,6 +36,24 @@
             margin-bottom: 20px;
             font-size: 24px;
             color: #333;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            background: #c0392b;
         }
 
         .registration-group {
@@ -74,10 +93,33 @@
         .registration-menu button:hover {
             background: #2980b9;
         }
+
+        ul {
+            padding: 0;
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .registration-link {
+            margin-top: 20px;
+
+            font-size: 14px;
+            color: #333;
+        }
+
+        .registration-link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .registration-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="registration-menu">
+        <a href="/" class="back-button">&larr; Назад</a>
         <h2 id="title">Вход</h2>
         <form method="POST">
             <div class="registration-group">
@@ -86,6 +128,9 @@
                 <button type="submit">Войти</button>
             </div>
         </form>
+        <div class="registration-link">
+            Не зарегистрированы? <a href="/register">Зарегистрируйтесь</a>
+        </div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 <ul>

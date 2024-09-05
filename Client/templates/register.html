@@ -26,6 +26,7 @@
             text-align: center;
             transition: transform 0.4s;
             transform-origin: top;
+            position: relative;
         }
 
         .registration-menu:hover {
@@ -36,6 +37,24 @@
             margin-bottom: 20px;
             font-size: 24px;
             color: #333;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            background: #c0392b;
         }
 
         .registration-group {
@@ -63,6 +82,7 @@
             border-radius: 4px;
             font-size: 16px;
             cursor: pointer;
+            margin: 10px 0;
         }
 
         .registration-menu button:hover {
@@ -81,10 +101,26 @@
             padding: 0;
             list-style: none;
         }
+
+        .login-link {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .login-link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="registration-menu">
+        <a href="/" class="back-button">&larr; Назад</a>
         <h2>Регистрация</h2>
         <form method="POST">
             <div class="registration-group">
@@ -93,6 +129,9 @@
                 <button type="submit">Зарегистрироваться</button>
             </div>
         </form>
+        <div class="login-link">
+            Уже зарегистрированы? <a href="/login">Войти</a>
+        </div>
         {% with messages = get_flashed_messages() %}
           {% if messages %}
             <ul>
