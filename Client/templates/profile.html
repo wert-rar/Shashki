@@ -70,7 +70,8 @@
             font-size: 18px;
         }
 
-        .logout-button {
+        .logout-button,
+        .home-button {
             margin-top: 20px;
             background-color: #e74c3c;
             color: white;
@@ -85,6 +86,14 @@
 
         .logout-button:hover {
             background-color: #c0392b;
+        }
+
+        .home-button {
+            background-color: #3498db;
+        }
+
+        .home-button:hover {
+            background-color: #2980b9;
         }
 
         .footer {
@@ -119,6 +128,8 @@
 
         <button class="logout-button" onclick="logout()">Выйти</button>
 
+        <button class="home-button" onclick="goHome()">На главную</button>
+
         <div class="footer">
             <p>© 2024 Шашечный клуб "The БЫК"</p>
         </div>
@@ -126,7 +137,12 @@
 
     <script>
         function logout() {
+
             window.location.href = '/logout';
+        }
+
+        function goHome() {
+            window.location.href = '/';
         }
     </script>
 </body>
