@@ -81,26 +81,6 @@
                 .catch(error => console.error('Error:', error));
         }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-        async function checkGameStatus() {
-            try {
-                const response = await fetch('/check_game_status');
-                const data = await response.json();
-                if (data.status === 'active') {
-                    window.location.href = `/board/${data.game_id}/${data.user_id}`;
-                }
-            } catch (error) {
-                console.error('Error checking game status:', error);
-            }
-        }
-
-        function startPolling() {
-            setInterval(checkGameStatus, 3000);  // Проверка каждые 3 секунды
-        }
-
-        window.onload = startPolling;
-=======
         function checkForGame() {
             fetch('/check_game')
                 .then(response => response.json())
@@ -112,20 +92,6 @@
         }
 
         setInterval(checkForGame, 2000);
->>>>>>> parent of 9016fa1 (now after the waiting room players get to the board)
-=======
-        function checkForGame() {
-            fetch('/check_game')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'found') {
-                        window.location.href = '/game/' + data.game_id;
-                    }
-                });
-        }
-
-        setInterval(checkForGame, 2000);
->>>>>>> parent of 9016fa1 (now after the waiting room players get to the board)
     </script>
 </body>
 </html>
