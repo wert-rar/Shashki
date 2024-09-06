@@ -125,7 +125,7 @@ def register():
         user_login = request.form['login']
         user_password = request.form['password']
 
-        con = sqlite3.connect("DataBase.db")
+        con = sqlite3.connect("../DataBase.db")
         cur = con.cursor()
 
         cur.execute("SELECT login FROM player WHERE login = ?", (user_login,))
@@ -148,7 +148,7 @@ def login():
         user_login = request.form['login']
         user_password = request.form['password']
 
-        con = sqlite3.connect("DataBase.db")
+        con = sqlite3.connect("../DataBase.db")
         cur = con.cursor()
 
         cur.execute("SELECT * FROM player WHERE login = ? AND password = ?", (user_login, user_password))
@@ -156,8 +156,8 @@ def login():
 
         if user:
             flash('Успешный вход!')
-            session['user'] = user_login  # Сохраняем информацию о пользователе в сессии
-            return redirect(url_for('profile', username=user_login))  # Перенаправляем на профиль пользователя
+            session['user'] = user_login
+            return redirect(url_for('profile', username=user_login))
         else:
             flash('Неправильный логин или пароль!')
 
@@ -166,9 +166,10 @@ def login():
     return render_template('login.html')
 
 def get_db_connection():
-    conn = sqlite3.connect('DataBase.db')
+    conn = sqlite3.connect('../DataBase.db')
     conn.row_factory = sqlite3.Row
     return conn
+
 
 @app.route('/profile/<username>')
 def profile(username):
@@ -177,10 +178,18 @@ def profile(username):
 
     cur.execute("SELECT * FROM player WHERE login = ?", (username,))
     user = cur.fetchone()
+
     conn.close()
 
     if user:
-        return render_template('profile.html', user_login=user['login'], rang=user['rang'])
+        total_games = user['wins'] + user['losses']
+        return render_template('profile.html',
+                               user_id=user['id'],
+                               user_login=user['login'],
+                               rang=user['rang'],
+                               total_games=total_games,
+                               wins=user['wins'],
+                               losses=user['losses'])
     else:
         return 'Пользователь не найден', 404
 
@@ -224,7 +233,6 @@ def move():
 
 
 
-#Пользователь присоединяется к текущей не начатой игре или создаёт новую.
 @app.route("/join_game", methods=["POST"])
 def join_game():
     data = request.json
