@@ -229,7 +229,9 @@ def start_game():
     return render_template('waiting.html')
 
 
-
+@app.route('/check_game')
+def check_game():
+    pass
 
 if __name__ == "__main__":
     app.run(debug=True)
