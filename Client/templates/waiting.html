@@ -81,6 +81,7 @@
                 .catch(error => console.error('Error:', error));
         }
 
+<<<<<<< HEAD
         async function checkGameStatus() {
             try {
                 const response = await fetch('/check_game_status');
@@ -98,6 +99,19 @@
         }
 
         window.onload = startPolling;
+=======
+        function checkForGame() {
+            fetch('/check_game')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'found') {
+                        window.location.href = '/game/' + data.game_id;
+                    }
+                });
+        }
+
+        setInterval(checkForGame, 2000);
+>>>>>>> parent of 9016fa1 (now after the waiting room players get to the board)
     </script>
 </body>
 </html>

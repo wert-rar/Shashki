@@ -114,6 +114,11 @@ def home():
     return render_template('home.html')
 
 
+@app.route("/board")
+def get_board():
+    return render_template('board.html')
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -225,6 +230,7 @@ def start_game():
     conn.close()
     return render_template('waiting.html')
 
+<<<<<<< HEAD
 app.route('/check_game_status')
 def check_game_status():
     game_id = session.get('game_id')
@@ -289,6 +295,8 @@ def get_moves():
 
     return jsonify([{"user": move["user_login"], "move": move["move"]} for move in moves])
 
+=======
+>>>>>>> parent of 9016fa1 (now after the waiting room players get to the board)
 
 
 
