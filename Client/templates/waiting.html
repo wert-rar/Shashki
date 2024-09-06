@@ -81,17 +81,23 @@
                 .catch(error => console.error('Error:', error));
         }
 
-        function checkForGame() {
-            fetch('/check_game')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'found') {
-                        window.location.href = '/game/' + data.game_id;
-                    }
-                });
+        async function checkGameStatus() {
+            try {
+                const response = await fetch('/check_game_status');
+                const data = await response.json();
+                if (data.status === 'active') {
+                    window.location.href = '/board';
+                }
+            } catch (error) {
+                console.error('Error checking game status:', error);
+            }
         }
 
-        setInterval(checkForGame, 2000);
+        function startPolling() {
+            setInterval(checkGameStatus, 3000);
+        }
+
+        window.onload = startPolling;
     </script>
 </body>
 </html>

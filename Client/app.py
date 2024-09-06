@@ -114,11 +114,6 @@ def home():
     return render_template('home.html')
 
 
-@app.route("/board")
-def get_board():
-    return render_template('board.html')
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -227,6 +222,30 @@ def start_game():
 
     conn.close()
     return render_template('waiting.html')
+
+@app.route('/check_game_status')
+def check_game_status():
+    game_id = session.get('game_id')
+    if not game_id:
+        return jsonify({"status": "no_game"})
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM game WHERE id = ?", (game_id,))
+    game = cur.fetchone()
+    conn.close()
+
+    if not game:
+        return jsonify({"status": "no_game"})
+
+    return jsonify({"status": game['status']})
+
+
+@app.route('/board')
+def get_board():
+    if not session.get('game_id'):
+        return redirect(url_for('home'))
+    return render_template('board.html')
 
 
 
