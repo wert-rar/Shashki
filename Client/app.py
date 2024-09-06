@@ -133,14 +133,17 @@ def register():
             # Если пользователя нет, добавляем его в базу данных
             cur.execute("INSERT INTO player (login, password, rang) VALUES (?, ?, ?)", (user_login, user_password, 0))
             con.commit()
-            flash('Пользователь успешно зарегистрирован!')
+            session['flash'] = 'Пользователь успешно зарегистрирован!'
+            con.close()
+            # Перенаправляем на страницу входа
+            return redirect(url_for('login'))
         else:
-            flash('Такой пользователь уже зарегистрирован!')
+            session['flash'] = 'Такой пользователь уже зарегистрирован!'
 
         con.close()
-        return redirect(url_for('register'))
 
     return render_template('register.html')
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -155,11 +158,11 @@ def login():
         user = cur.fetchone()
 
         if user:
-            flash('Успешный вход!')
+            session['flash'] = 'Успешный вход!'
             session['user'] = user_login
             return redirect(url_for('profile', username=user_login))
         else:
-            flash('Неправильный логин или пароль!')
+            session['flash'] = 'Неправильное имя пользователя или пароль.'
 
         con.close()
 
@@ -196,83 +199,35 @@ def profile(username):
 @app.route("/logout")
 def logout():
     session.pop('user', None)
-    flash('Вы вышли из системы.')
+    session['flash'] = 'Вы вышли из системы.'
     return redirect(url_for('home'))
 
 
-@app.route("/move", methods=["POST"])
-def move():
-    data = request.json
-    if data is None:
-        return jsonify({"error": "Invalid JSON data"}), 400
-    player_id = data.get("player_id")
-    game_id = data.get("game_id")
-    move = data.get("move")
+@app.route('/start_game')
+def start_game():
+    user_login = session.get('user')
+    if not user_login:
+        return redirect(url_for('login'))
 
-    if not all([player_id, game_id, move]):
-        return jsonify({"error": "Player ID, Game ID, and Move are required"}), 400
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-    game = next((g for g in Game.get_current_games() if g.game_id == game_id), None)
-    if not game:
-        return jsonify({"error": "Game not found"}), 404
+    cur.execute("SELECT * FROM game WHERE status = 'waiting'")
+    game = cur.fetchone()
 
-    if player_id not in [game.f_user, game.c_user]:
-        return jsonify({"error": "Invalid player"}), 403
-
-    success, message = game.make_move(player_id, move)
-    if not success:
-        return jsonify({"error": message}), 400
-
-    return jsonify({
-        "message": message,
-        "game_id": game.game_id,
-        "player_id": player_id,
-        "move": move,
-    })
-
-
-
-
-@app.route("/join_game", methods=["POST"])
-def join_game():
-    data = request.json
-    if data is None:
-        return jsonify({"error": "Invalid JSON data"}), 400
-
-    user_id = data.get("user_id")
-    if not user_id:
-        return jsonify({"error": "User ID is required"}), 400
-
-    game = Game.search_game(user_id)
-    return jsonify({"message": "Joined game", "game_id": game.game_id, "f_user": game.f_user, "c_user": game.c_user})
-
-
-#Конкретная игра завершается и удаляется из текущего списка игр.
-@app.route("/end_game/<int:game_id>", methods=["POST"])
-def end_game(game_id):
-    Game.end_game(game_id)
-    return jsonify({"message": f"Game {game_id} has ended"})
-
-
-#Возвращает информацию о конкретной игре (кто является игроками и статус).
-@app.route("/game_status/<int:game_id>", methods=["GET"])
-def game_status(game_id):
-    game = next((g for g in Game.current_games if g.game_id == game_id), None)
     if game:
-        return jsonify({"game_id": game.game_id, "f_user": game.f_user, "c_user": game.c_user, "status": "in progress"})
+        session['game_id'] = game['id']
+        cur.execute("UPDATE game SET status = 'active' WHERE id = ?", (game['id'],))
+        conn.commit()
     else:
-        return jsonify({"error": "Game not found"}), 404
+        cur.execute("INSERT INTO game (status) VALUES ('waiting')")
+        game_id = cur.lastrowid
+        session['game_id'] = game_id
+        conn.commit()
 
+    conn.close()
+    return render_template('waiting.html')
 
-#Возвращает состояние доски для указанного игрока в игре.
-@app.route("/display_board/<int:game_id>/<int:player_id>", methods=["GET"])
-def display_board(game_id, player_id):
-    game = next((g for g in Game.current_games if g.game_id == game_id), None)
-    if game:
-        board_state = game.display_board(player_id)
-        return jsonify({"board": board_state})
-    else:
-        return jsonify({"error": "Game not found"}), 404
 
 
 

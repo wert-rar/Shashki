@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store" />
     <title>Игра</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
@@ -113,28 +113,28 @@
     {% endwith %}
 </div>
 
-    <div class="container">
-        <h1>Добро пожаловать в игру!</h1>
-        <button class="button" onclick="startSingleGame()">Одиночная игра</button>
-        <button class="button" onclick="startMultiplayerGame()">Сетевая игра</button>
-    </div>
+<div class="container">
+    <h1>Добро пожаловать в игру!</h1>
+    <button class="button" onclick="startSingleGame()">Одиночная игра</button>
+    <button class="button" onclick="startMultiplayerGame()">Сетевая игра</button>
+</div>
 
-    <script>
-        function startSingleGame() {
-            window.location.href = '/board';
-        }
+<script>
+    function startSingleGame() {
+        window.location.href = '/board';
+    }
 
-        function startMultiplayerGame() {
-            window.location.href = '/join';
-        }
+    function startMultiplayerGame() {
+        window.location.href = '/start_game';
+    }
 
-        function register() {
-            window.location.href = '/register';
-        }
+    function register() {
+        window.location.href = '/register';
+    }
 
-        function login() {
-            window.location.href = '/login';
-        }
-    </script>
+    function login() {
+        window.location.href = '/login';
+    }
+</script>
 </body>
 </html>

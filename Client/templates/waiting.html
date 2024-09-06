@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Ожидание игры</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('{{ url_for('static', filename='background_waiting.jpg') }}') no-repeat center center fixed;
+            background-size: cover;
+            color: #333;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inherit;
+            filter: blur(8px);
+            z-index: -1;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .container strong {
+            display: block;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .container p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        #leave-button {
+            background-color: #ff4b5c;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #leave-button:hover {
+            background-color: #e04351;
+        }
+    </style>
+</head>
+<body>
+    <div class="backdrop"></div>
+    <div class="container">
+        <strong>Ожидание начала игры</strong>
+        <p>Пожалуйста, подождите. Мы ищем для вас соперника...</p>
+        <button id="leave-button" onclick="leaveGame()">Покинуть зал ожидания</button>
+    </div>
+
+    <script>
+        function leaveGame() {
+            fetch('/leave_game', { method: 'POST' })
+                .then(response => window.location.href = '/')
+                .catch(error => console.error('Error:', error));
+        }
+
+        function checkForGame() {
+            fetch('/check_game')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'found') {
+                        window.location.href = '/game/' + data.game_id;
+                    }
+                });
+        }
+
+        setInterval(checkForGame, 2000);
+    </script>
+</body>
+</html>
