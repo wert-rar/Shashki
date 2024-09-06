@@ -1,19 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script language="JavaScript" type="text/javascript" src="../static/client.js"></script>
-    <link rel="stylesheet" type="text/css" href="../static/styles.css" />
-    <title>Шашки</title>
-  </head>
-  <body onload="onLoad()">
-    <div class="header">
-      <div class="status" id="status">Сейчас ходят белые</div>
-    </div>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Игровая доска</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
     <div class="board">
-      <canvas id="board" width="1400" height="500"></canvas>
+        <strong>Игровая доска - Игра ID: {{ game_id }} | Пользователь: {{ user_id }}</strong>
+        <div id="moves"></div>
+        <div>
+            <input type="text" id="move-input" placeholder="Ваш ход">
+            <button id="move-button" onclick="makeMove()">Сделать ход</button>
+        </div>
     </div>
-  </body>
+
+    <script>
+        const gameId = {{ game_id }};
+        const userId = "{{ user_id }}";
+
+        async function getMoves() {
+            try {
+                const response = await fetch('/get_moves');
+                const data = await response.json();
+                const movesDiv = document.getElementById('moves');
+                movesDiv.innerHTML = '';
+                data.forEach(move => {
+                    const moveElement = document.createElement('div');
+                    moveElement.innerText = `${move.user}: ${move.move}`;
+                    movesDiv.appendChild(moveElement);
+                });
+            } catch (error) {
+                console.error('Error fetching moves:', error);
+            }
+        }
+
+        async function makeMove() {
+            const moveInput = document.getElementById('move-input').value;
+            if (!moveInput) return;
+
+            try {
+                const response = await fetch('/make_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ move: moveInput })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    getMoves();
+                } else {
+                    console.error('Error making move:', data.message);
+                }
+            } catch (error) {
+                console.error('Error making move:', error);
+            }
+        }
+
+        function startPolling() {
+            setInterval(getMoves, 3000);  // Обновление ходов каждые 3 секунды
+        }
+
+        window.onload = startPolling;
+    </script>
+</body>
 </html>

@@ -86,7 +86,7 @@
                 const response = await fetch('/check_game_status');
                 const data = await response.json();
                 if (data.status === 'active') {
-                    window.location.href = '/board';
+                    window.location.href = `/board/${data.game_id}/${data.user_id}`;
                 }
             } catch (error) {
                 console.error('Error checking game status:', error);
@@ -94,7 +94,7 @@
         }
 
         function startPolling() {
-            setInterval(checkGameStatus, 3000);
+            setInterval(checkGameStatus, 3000);  // Проверка каждые 3 секунды
         }
 
         window.onload = startPolling;

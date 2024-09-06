@@ -213,17 +213,19 @@ def start_game():
     if game:
         session['game_id'] = game['id']
         cur.execute("UPDATE game SET status = 'active' WHERE id = ?", (game['id'],))
+        cur.execute("INSERT INTO game_user (game_id, user_login) VALUES (?, ?)", (game['id'], user_login))
         conn.commit()
     else:
         cur.execute("INSERT INTO game (status) VALUES ('waiting')")
         game_id = cur.lastrowid
         session['game_id'] = game_id
+        cur.execute("INSERT INTO game_user (game_id, user_login) VALUES (?, ?)", (game_id, user_login))
         conn.commit()
 
     conn.close()
     return render_template('waiting.html')
 
-@app.route('/check_game_status')
+app.route('/check_game_status')
 def check_game_status():
     game_id = session.get('game_id')
     if not game_id:
@@ -238,14 +240,54 @@ def check_game_status():
     if not game:
         return jsonify({"status": "no_game"})
 
-    return jsonify({"status": game['status']})
+    return jsonify({"status": game['status'], "game_id": game_id, "user_id": session.get('user')})
 
 
-@app.route('/board')
-def get_board():
-    if not session.get('game_id'):
+@app.route('/board/<int:game_id>/<user_id>')
+def get_board(game_id, user_id):
+    if session.get('game_id') != game_id or session.get('user') != user_id:
         return redirect(url_for('home'))
-    return render_template('board.html')
+    return render_template('board.html', game_id=game_id, user_id=user_id)
+
+
+@app.route('/make_move', methods=['POST'])
+def make_move():
+    user_id = session.get('user')
+    game_id = session.get('game_id')
+
+    if not user_id or not game_id:
+        return jsonify({"status": "error", "message": "Invalid session"})
+
+    data = request.json
+    move = data.get('move')
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM game_user WHERE game_id = ? AND user_login = ?", (game_id, user_id))
+    if not cur.fetchone():
+        conn.close()
+        return jsonify({"status": "error", "message": "User not in game"})
+
+    cur.execute("INSERT INTO moves (game_id, user_login, move) VALUES (?, ?, ?)", (game_id, user_id, move))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success"})
+
+
+@app.route('/get_moves')
+def get_moves():
+    game_id = session.get('game_id')
+    if not game_id:
+        return jsonify({"status": "error", "message": "No game in session"})
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT user_login, move FROM moves WHERE game_id = ?", (game_id,))
+    moves = cur.fetchall()
+    conn.close()
+
+    return jsonify([{"user": move["user_login"], "move": move["move"]} for move in moves])
 
 
 
