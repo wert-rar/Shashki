@@ -231,6 +231,7 @@ def start_game():
     return render_template('waiting.html')
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 app.route('/check_game_status')
 def check_game_status():
     game_id = session.get('game_id')
@@ -255,6 +256,8 @@ def get_board(game_id, user_id):
         return redirect(url_for('home'))
     return render_template('board.html', game_id=game_id, user_id=user_id)
 
+=======
+>>>>>>> parent of 9016fa1 (now after the waiting room players get to the board)
 
 @app.route('/make_move', methods=['POST'])
 def make_move():
