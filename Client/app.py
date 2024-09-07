@@ -104,6 +104,14 @@ def validate_move(new_pieces):
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
 
+    # Проверка на победу
+    if not any(piece['color'] == 0 for piece in pieces):
+        print(status_['b3'])
+        return "b3"
+    if not any(piece['color'] == 1 for piece in pieces):
+        print(status_['w3'])
+        return "w3"
+
     current_player = 'b' if current_player == 'w' else 'w'
     return True
 
@@ -111,12 +119,14 @@ def validate_move(new_pieces):
 def move():
     global pieces, current_player
     new_pieces = request.json.get("pieces")
-    if validate_move(new_pieces):
+    result = validate_move(new_pieces)
+    if result is True:
         current_status = f"{current_player}1"
-        return jsonify({"status_": current_status, "pieces": pieces})
+    elif result == "w3" or result == "b3":
+        current_status = result
     else:
         current_status = f"{current_player}2"
-        return jsonify({"status_": current_status, "pieces": pieces})
+    return jsonify({"status_": current_status, "pieces": pieces})
 
 
 @app.route("/")
