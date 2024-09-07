@@ -251,6 +251,11 @@ def check_game_status():
     if not game:
         return jsonify({"status": "no_game"})
 
+
+    if game['status'] == 'finished':
+        session.pop('game_id', None)
+        return jsonify({"status": "finished"})
+
     return jsonify({"status": game['status']})
 
 if __name__ == "__main__":
