@@ -1,5 +1,4 @@
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session
-from game import Game
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 
 app = Flask(__name__)
@@ -108,6 +107,17 @@ def validate_move(new_pieces):
     current_player = 'b' if current_player == 'w' else 'w'
     return True
 
+@app.route("/move", methods=["POST"])
+def move():
+    global pieces, current_player
+    new_pieces = request.json.get("pieces")
+    if validate_move(new_pieces):
+        current_status = f"{current_player}1"
+        return jsonify({"status_": current_status, "pieces": pieces})
+    else:
+        current_status = f"{current_player}2"
+        return jsonify({"status_": current_status, "pieces": pieces})
+
 
 @app.route("/")
 def home():
@@ -209,29 +219,39 @@ def start_game():
     if not user_login:
         return redirect(url_for('login'))
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        cur = conn.cursor()
 
-    cur.execute("SELECT * FROM game WHERE status = 'waiting'")
-    game = cur.fetchone()
+        cur.execute("SELECT * FROM game WHERE status = 'waiting'")
+        game = cur.fetchone()
 
-    if game:
-        session['game_id'] = game['id']
-        cur.execute("UPDATE game SET status = 'active' WHERE id = ?", (game['id'],))
+        if game:
+            session['game_id'] = game['id']
+            cur.execute("UPDATE game SET status = 'active' WHERE id = ?", (game['id'],))
+        else:
+            cur.execute("INSERT INTO game (status) VALUES ('waiting')")
+            game_id = cur.lastrowid
+            session['game_id'] = game_id
+
         conn.commit()
-    else:
-        cur.execute("INSERT INTO game (status) VALUES ('waiting')")
-        game_id = cur.lastrowid
-        session['game_id'] = game_id
-        conn.commit()
 
-    conn.close()
     return render_template('waiting.html')
 
+@app.route('/check_game_status')
+def check_game_status():
+    game_id = session.get('game_id')
+    if not game_id:
+        return jsonify({"status": "no_game"})
 
-@app.route('/check_game')
-def check_game():
-    pass
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT status FROM game WHERE id = ?", (game_id,))
+        game = cur.fetchone()
+
+    if not game:
+        return jsonify({"status": "no_game"})
+
+    return jsonify({"status": game['status']})
 
 if __name__ == "__main__":
     app.run(debug=True)
