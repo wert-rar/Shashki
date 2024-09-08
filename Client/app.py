@@ -106,10 +106,21 @@ def validate_move(new_pieces, end_turn_flag=False):
         if abs_dx == abs_dy:
             step_x = dx // abs_dx
             step_y = dy // abs_dy
+            captured_pieces = []
             for i in range(1, abs_dx):
-                if get_piece_at(moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y):
-                    print('Путь блокирован')
-                    return False
+                piece_at_pos = get_piece_at(moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y)
+                if piece_at_pos:
+                    if piece_at_pos['color'] == moved_piece['color']:
+                        print('Путь блокирован')
+                        return False
+                    else:
+                        captured_pieces.append(piece_at_pos)
+            if len(captured_pieces) > 1:
+                print('Путь блокирован более чем одной фигурой')
+                return False
+            elif captured_pieces:
+                pieces.remove(captured_pieces[0])
+                captured = True
         else:
             print('Дамка должна двигаться по диагонали')
             return False
@@ -136,7 +147,6 @@ def validate_move(new_pieces, end_turn_flag=False):
 
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
-
     # Проверка на коронацию
     if not moved_piece.get('is_king', False):
         if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
