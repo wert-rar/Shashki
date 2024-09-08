@@ -66,7 +66,7 @@ def can_capture(piece):
     return False
 
 
-def validate_move(new_pieces):
+def validate_move(new_pieces, end_turn_flag=False):
     global pieces, current_player
 
     if len(new_pieces) != len(pieces):
@@ -143,7 +143,7 @@ def validate_move(new_pieces):
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
             moved_piece['is_king'] = True
 
-    if captured and can_capture(moved_piece):
+    if captured and can_capture(moved_piece) and not end_turn_flag:
         print('Дополнительное взятие возможно, ход остается тем же игроком')
         return 'continue'
 
