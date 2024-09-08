@@ -100,7 +100,12 @@ def validate_move(new_pieces):
             return False
     else:
         if abs_dx == 1 and abs_dy == 1:
-            pass
+            if (moved_piece['color'] == 0 and dy == -1) or (moved_piece['color'] == 1 and dy == 1):
+                # Разрешенный ход
+                pass
+            else:
+                print('Обычные пешки не могут ходить назад')
+                return False
         elif abs_dx == 2 and abs_dy == 2:
             mid_x = (moved_piece['x'] + new_pos['x']) // 2
             mid_y = (moved_piece['y'] + new_pos['y']) // 2
