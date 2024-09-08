@@ -52,6 +52,20 @@ def get_piece_at(x, y):
     return None
 
 
+def can_capture(piece):
+    x, y = piece['x'], piece['y']
+    possible_directions = [(2, 2), (2, -2), (-2, 2), (-2, -2)]
+    for dx, dy in possible_directions:
+        mid_x, mid_y = x + dx // 2, y + dy // 2
+        end_x, end_y = x + dx, y + dy
+        captured_piece = get_piece_at(mid_x, mid_y)
+        target_pos = get_piece_at(end_x, end_y)
+        if (0 <= end_x < 8 and 0 <= end_y < 8 and
+            captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
+            return True
+    return False
+
+
 def validate_move(new_pieces):
     global pieces, current_player
 
@@ -86,6 +100,7 @@ def validate_move(new_pieces):
     dy = new_pos['y'] - moved_piece['y']
     abs_dx = abs(dx)
     abs_dy = abs(dy)
+    captured = False
 
     if moved_piece.get('is_king', False):
         if abs_dx == abs_dy:
@@ -114,6 +129,7 @@ def validate_move(new_pieces):
                 print('Невозможно съесть фигуру')
                 return False
             pieces.remove(captured_piece)
+            captured = True
         else:
             print('Ошибка с дистанцией')
             return False
@@ -126,6 +142,10 @@ def validate_move(new_pieces):
         if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
             moved_piece['is_king'] = True
+
+    if captured and can_capture(moved_piece):
+        print('Дополнительное взятие возможно, ход остается тем же игроком')
+        return 'continue'
 
     # Проверка на победу
     if not any(piece['color'] == 0 for piece in pieces):
