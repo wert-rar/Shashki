@@ -87,22 +87,40 @@ def validate_move(new_pieces):
     abs_dx = abs(dx)
     abs_dy = abs(dy)
 
-    if abs_dx == 1 and abs_dy == 1:
-        pass
-    elif abs_dx == 2 and abs_dy == 2:
-        mid_x = (moved_piece['x'] + new_pos['x']) // 2
-        mid_y = (moved_piece['y'] + new_pos['y']) // 2
-        captured_piece = get_piece_at(mid_x, mid_y)
-        if not captured_piece or captured_piece['color'] == moved_piece['color']:
-            print('Невозможно съесть фигуру')
+    if moved_piece.get('is_king', False):
+        if abs_dx == abs_dy:
+            step_x = dx // abs_dx
+            step_y = dy // abs_dy
+            for i in range(1, abs_dx):
+                if get_piece_at(moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y):
+                    print('Путь блокирован')
+                    return False
+        else:
+            print('Дамка должна двигаться по диагонали')
             return False
-        pieces.remove(captured_piece)
     else:
-        print('Ошибка с дистанцией')
-        return False
+        if abs_dx == 1 and abs_dy == 1:
+            pass
+        elif abs_dx == 2 and abs_dy == 2:
+            mid_x = (moved_piece['x'] + new_pos['x']) // 2
+            mid_y = (moved_piece['y'] + new_pos['y']) // 2
+            captured_piece = get_piece_at(mid_x, mid_y)
+            if not captured_piece or captured_piece['color'] == moved_piece['color']:
+                print('Невозможно съесть фигуру')
+                return False
+            pieces.remove(captured_piece)
+        else:
+            print('Ошибка с дистанцией')
+            return False
 
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
+
+    # Проверка на коронацию
+    if not moved_piece.get('is_king', False):
+        if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
+                moved_piece['color'] == 1 and moved_piece['y'] == 7):
+            moved_piece['is_king'] = True
 
     # Проверка на победу
     if not any(piece['color'] == 0 for piece in pieces):
