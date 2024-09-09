@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
+import random
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
@@ -283,22 +284,35 @@ def start_game():
         return redirect(url_for('login'))
 
     with get_db_connection() as conn:
+        conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-
-        cur.execute("SELECT * FROM game WHERE status = 'waiting'")
+        cur.execute("SELECT * FROM game WHERE status = 'waiting' AND (white_user IS NULL OR black_user IS NULL)")
         game = cur.fetchone()
 
         if game:
             session['game_id'] = game['id']
-            cur.execute("UPDATE game SET status = 'active' WHERE id = ?", (game['id'],))
+            if not game['white_user'] and not game['black_user']:
+                if random.choice([True, False]):
+                    cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                    session['color'] = 'white'
+                else:
+                    cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                    session['color'] = 'black'
+            elif not game['white_user']:
+                cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                session['color'] = 'white'
+            elif not game['black_user']:
+                cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                session['color'] = 'black'
         else:
-            cur.execute("INSERT INTO game (status) VALUES ('waiting')")
+            cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', ?, NULL)", (user_login,))
             game_id = cur.lastrowid
             session['game_id'] = game_id
+            session['color'] = 'white'
 
         conn.commit()
 
-    return render_template('waiting.html')
+        return render_template('waiting.html')
 
 @app.route('/check_game_status')
 def check_game_status():
@@ -313,7 +327,6 @@ def check_game_status():
 
     if not game:
         return jsonify({"status": "no_game"})
-
 
     if game['status'] == 'finished':
         session.pop('game_id', None)

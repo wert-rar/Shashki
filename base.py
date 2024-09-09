@@ -18,17 +18,11 @@ def create_tables():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS game(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            status TEXT
-        )
-    """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS game_user(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            game_id INTEGER,
-            user_login TEXT,
-            FOREIGN KEY (game_id) REFERENCES game(id),
-            FOREIGN KEY (user_login) REFERENCES player(login)
+            status TEXT,
+            white_user TEXT,
+            black_user TEXT,
+            FOREIGN KEY (white_user) REFERENCES player(login),
+            FOREIGN KEY (black_user) REFERENCES player(login)
         )
     """)
 
@@ -45,7 +39,7 @@ def create_tables():
 
     cur.execute("SELECT COUNT(*) FROM game")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO game (status) VALUES ('waiting')")
+        cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")
         con.commit()
 
     con.close()
