@@ -4,6 +4,7 @@ def create_tables():
     con = sqlite3.connect("DataBase.db")
     cur = con.cursor()
 
+    # Создаем таблицу player, если она не существует
     cur.execute("""
         CREATE TABLE IF NOT EXISTS player(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,17 +16,26 @@ def create_tables():
         )
     """)
 
+    # Создаем таблицу game, если она не существует, с новой колонкой start_time
     cur.execute("""
         CREATE TABLE IF NOT EXISTS game(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             status TEXT,
             white_user TEXT,
             black_user TEXT,
+            start_time TIMESTAMP,
             FOREIGN KEY (white_user) REFERENCES player(login),
             FOREIGN KEY (black_user) REFERENCES player(login)
         )
     """)
 
+    # Проверка на наличие колонки start_time и добавление, если её нет
+    cur.execute("PRAGMA table_info(game)")
+    columns = [column[1] for column in cur.fetchall()]
+    if 'start_time' not in columns:
+        cur.execute("ALTER TABLE game ADD COLUMN start_time TIMESTAMP")
+
+    # Создаем таблицу moves, если она не существует
     cur.execute("""
         CREATE TABLE IF NOT EXISTS moves(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,6 +47,7 @@ def create_tables():
         )
     """)
 
+    # Вставляем начальную игру, если таблица game пуста
     cur.execute("SELECT COUNT(*) FROM game")
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")
