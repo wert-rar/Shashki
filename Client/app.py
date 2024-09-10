@@ -196,7 +196,7 @@ def home():
 
 @app.route("/board")
 def get_board():
-    return render_template('board.html')
+    return render_template('board.html',user_id=1,game_id=1,user_color="b")
 
 
 @app.route("/register", methods=["GET", "POST"])
