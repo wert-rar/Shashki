@@ -1,4 +1,3 @@
-// TODO:
 
 let CANVAS = null;
 let CTX = null;
@@ -7,8 +6,9 @@ let CELL_SIZE = 0;
 let HEADER_HEIGHT = 0;
 let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
-let user_id = 1;
-let game_id = 1;
+const user_id = 1;
+const game_id = 1;
+const user_color = "b"
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -18,6 +18,7 @@ let status = {
   b3: "Победили черные",
   w4:"Белые продолжают ход",
   b4:"Черные продолжают ход",
+  n: "Ничья!",
   e1:"Ошибка при запросе к серверу"
 };
 let colors = {
@@ -56,14 +57,40 @@ let pieces = [
   { color: 0, x: 6, y: 5, mode: "p" },
 ];
 
+if(user_color == "b"){
+pieces = translate_to_black(pieces)
+}
+
+function translate_to_white(pieces_data){
+ for (let i = 0; i < pieces_data.length; i++) {
+    pieces_data[i].x = 7 - pieces_data[i].x;
+    pieces_data[i].y = 7 - pieces_data[i].y;
+  }
+  return pieces;
+}
+
+function translate_to_black(){
+ for (let i = 0; i < pieces_data.length; i++) {
+    pieces_data[i].x = 7 - pieces_data[i].x;
+    pieces_data[i].y = 7 - pieces_data[i].y;
+  }
+ return pieces;
+}
 // GAMEPLAY CODE
 function update_data(data){
   CURRENT_STATUS = data.status_;
   pieces = data.pieces;
+  if(user_color=="b"){
+  pieces = translate_to_black(pieces);
+  }
+
   document.getElementById("status").innerHTML = status[CURRENT_STATUS];
   update();
 }
 function server_request(status,pieces){
+  if(user_color == "b"){
+   pieces = translate_to_white(pieces);
+  }
   let body = {status_:status,pieces:pieces,user_id: user_id,game_id:game_id}
   let xhr = new XMLHttpRequest();
   xhr.open('POST','/move');
@@ -100,6 +127,7 @@ function onLoad() {
   adjustScreen();
   update();
   addEventListeners();
+  startPolling();
 }
 
 // DRAG AND DROP CODE
@@ -181,7 +209,7 @@ function getCoordinates(loc) {
 function getPressedPiece(loc) {
   let coords = getCoordinates(loc);
   for (let i = 0; i < pieces.length; i++) {
-    if (pieces[i].x == coords.x && pieces[i].y == coords.y)
+     if (pieces[i].x == coords.x && pieces[i].y == coords.y)
       return { piece: pieces[i], x: loc.x, y: loc.y };
   }
 
@@ -212,11 +240,11 @@ function draw_circle(x, y, r, width, strokeColor, fillColor) {
   }
 }
 
-function draw_piece(piece) {
+function draw_piece(piece,user_color) {
   let fillStyle = colors[piece.color];
   let strokeStyle = colors[piece.color ? 0 : 1];
   const X = CELL_SIZE * (piece.x + 1.5);
-  const Y = CELL_SIZE * (piece.y + 1.5);
+  const Y = CELL_SIZE * (piece.y + 1.5);;
   const radius = (CELL_SIZE / 2) * 0.8;
   draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
   draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
@@ -244,9 +272,7 @@ function render_Board() {
   CTX.fillStyle = "white";
   CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
-  
-
-  let step = 0;
+  let step = user_color== "b" ? 1 : 0;
   for (let i = 0; i < 8; i++) {
     for (let j = 0; j < 8; j++) {
       CTX.fillStyle = b_colors[step % 2];
@@ -263,14 +289,22 @@ function render_Board() {
 }
 
 function render_Pieces() {
+
   for (let i = 0; i < pieces.length; i++) {
     if (SELECTED_PIECE?.piece == pieces[i]) {
       continue;
     }
-    draw_piece(pieces[i]);
+    draw_piece(pieces[i],user_color);
   }
   if (SELECTED_PIECE) draw_SELECTED_PIECE();
 }
+
+function pieces_update(){
+server_request(CURRENT_STATUS,pieces);
+}
+function startPolling() {
+            setInterval(pieces_update, 100);
+        }
 
 function update() {
   render_Board();
