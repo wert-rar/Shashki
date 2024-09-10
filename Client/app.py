@@ -1,12 +1,12 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import sqlite3
 import random
+import  Client.game as game
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
 current_player = "w"
-
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
     {"color": 1, "x": 3, "y": 0, "mode": "p"},
@@ -43,6 +43,7 @@ status_ = {
     "b3": "Победили черные",
     "w4": "Белые продолжают ход",
     "b4": "Черные продолжают ход",
+    "n" : "Ничья1",
     "e1": "Ошибка при запросе к серверу"
 }
 
@@ -67,15 +68,14 @@ def can_capture(piece):
     return False
 
 
-def validate_move(new_pieces, end_turn_flag=False):
-    global pieces, current_player
+def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
 
     if len(new_pieces) != len(pieces):
         return False
 
     moved_piece = None
     new_pos = None
-    print('быстрая проверка на наличие изменений: ', not (new_pieces == pieces))
+    print('быстрая проверка на наличие изменений: ', new_pieces != pieces)
 
     # иначе ищем подвинутую фигуру
     for piece, new_piece in zip(pieces, new_pieces):
@@ -167,13 +167,19 @@ def validate_move(new_pieces, end_turn_flag=False):
         return "w3"
 
     current_player = 'b' if current_player == 'w' else 'w'
-    return True
+    return True,pieces,current_player
 
 @app.route("/move", methods=["POST"])
 def move():
     global pieces, current_player
     new_pieces = request.json.get("pieces")
-    result = validate_move(new_pieces)
+    game_id = request.json.get("game_id")
+    user_id = request.json.get("user_id")
+
+    pieces,current_player = game.pieces_and_current_player(game_id)
+
+    result,pieces,current_player = validate_move(new_pieces,current_player,pieces)
+
     if result is True:
         current_status = f"{current_player}1"
     elif result == "w3" or result == "b3":
@@ -313,6 +319,8 @@ def start_game():
         conn.commit()
 
         return render_template('waiting.html')
+
+
 
 @app.route('/check_game_status')
 def check_game_status():
