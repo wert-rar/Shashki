@@ -354,5 +354,28 @@ def check_game_status():
 
     return jsonify({"status": game['status']})
 
+
+@app.route('/update_board')
+def update_board():
+    user_id = request.args.get('user_id')
+    game_id = request.args.get('game_id')
+
+    if not user_id or not game_id:
+        return jsonify({"status": "error", "message": "Missing user_id or game_id"}), 400
+
+    with get_db_connection() as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
+        game = cur.fetchone()
+        if not game:
+            return jsonify({"status": "error", "message": "Game not found"}), 404
+        cur.execute("SELECT position FROM board WHERE game_id = ?", (game_id,))
+        board = cur.fetchone()
+        if not board:
+            return jsonify({"status": "error", "message": "Board position not found"}), 404
+
+        return jsonify({"status": game['status'], "position": board['position']})
+
 if __name__ == "__main__":
     app.run(debug=True)
