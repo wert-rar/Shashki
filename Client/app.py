@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import sqlite3
 import random
 import  Client.game as game
+from base import get_pieces_and_current_player, get_user_color as imported_get_user_color
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
@@ -171,21 +172,21 @@ def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
 
 @app.route("/move", methods=["POST"])
 def move():
-    global pieces, current_player
     new_pieces = request.json.get("pieces")
     game_id = request.json.get("game_id")
     user_id = request.json.get("user_id")
 
-    pieces,current_player = game.pieces_and_current_player(game_id)
+    pieces, current_player = game.pieces_and_current_player(game_id)
 
-    result,pieces,current_player = validate_move(new_pieces,current_player,pieces)
+    result, pieces, current_player = validate_move(new_pieces, current_player, pieces)
 
     if result is True:
         current_status = f"{current_player}1"
-    elif result == "w3" or result == "b3":
+    elif result in ["w3", "b3"]:
         current_status = result
     else:
         current_status = f"{current_player}2"
+
     return jsonify({"status_": current_status, "pieces": pieces})
 
 
@@ -354,29 +355,26 @@ def check_game_status():
 
     return jsonify({"status": game['status']})
 
-@app.route('/update_board', methods = ['POST'])
+
+@app.route("/update_board", methods=["POST"])
 def update_board():
-    data = request.get_json()
-    user_id = data.get('user_id')
-    game_id = data.get('game_id')
+    data = request.json
+    status = data.get("status_")
+    new_pieces = data.get("pieces")
+    game_id = data.get("game_id")
+    user_id = data.get("user_id")
 
-    if not user_id or not game_id:
-        return jsonify({"status": "error", "message": "Missing user_id or game_id"}), 400
+    try:
+        valid_update = check_game_status(game_id, user_id, new_pieces, status)
 
+        if valid_update:
+            pieces, current_player = game.pieces_and_current_player(game_id)
+            return jsonify({"status_": status, "pieces": pieces})
+        else:
+            return jsonify({"error": "Invalid update"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    with get_db_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
-        game = cur.fetchone()
-        if not game:
-            return jsonify({"status": "error", "message": "Game not found"}), 404
-        cur.execute("SELECT position FROM game WHERE game_id = ?", (game_id,))
-        board = cur.fetchone()
-        if not board:
-            return jsonify({"status": "error", "message": "Board position not found"}), 404
-
-        return jsonify({"status": game['status'], "position": board['position']})
 
 if __name__ == "__main__":
     app.run(debug=True)
