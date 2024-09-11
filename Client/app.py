@@ -71,8 +71,34 @@ def can_capture(piece):
     return False
 
 
-def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
+def check_draw():
+    for piece in pieces:
+        x, y, color = piece['x'], piece['y'], piece['color']
+        possible_moves = []
 
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 1]:
+                if abs(dx) == abs(dy) and (dx != 0 and dy != 0):
+                    new_x, new_y = x + dx, y + dy
+                    if 0 <= new_x < 8 and 0 <= new_y < 8:
+                        if not get_piece_at(new_x, new_y):
+                            possible_moves.append((new_x, new_y))
+
+        if not piece.get('is_king', False):
+            for dx in [-2, 0, 2]:
+                for dy in [-2, 2]:
+                    if abs(dx) == abs(dy) and (dx != 0 and dy != 0):
+                        mid_x, mid_y = x + dx // 2, y + dy // 2
+                        new_x, new_y = x + dx, y + dy
+                        if 0 <= new_x < 8 and 0 <= new_y < 8:
+                            middle_piece = get_piece_at(mid_x, mid_y)
+                            if middle_piece and middle_piece['color'] != color and not get_piece_at(new_x, new_y):
+                                possible_moves.append((new_x, new_y))
+        if possible_moves:
+            return False
+    return True
+
+def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
     if len(new_pieces) != len(pieces):
         return False
 
@@ -80,7 +106,6 @@ def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
     new_pos = None
     print('быстрая проверка на наличие изменений: ', new_pieces != pieces)
 
-    # иначе ищем подвинутую фигуру
     for piece, new_piece in zip(pieces, new_pieces):
         if piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']:
             print(f'сдвинута фигура! c {piece} на {new_piece}')
@@ -95,7 +120,6 @@ def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
             current_player == "b" and moved_piece['color'] == 0):
         return False
 
-    # Проверка на занятость клетки
     if get_piece_at(new_pos['x'], new_pos['y']):
         print('Поле занято')
         return False
@@ -131,7 +155,6 @@ def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
     else:
         if abs_dx == 1 and abs_dy == 1:
             if (moved_piece['color'] == 0 and dy == -1) or (moved_piece['color'] == 1 and dy == 1):
-                # Разрешенный ход
                 pass
             else:
                 print('Обычные пешки не могут ходить назад')
@@ -151,7 +174,6 @@ def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
 
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
-    # Проверка на коронацию
     if not moved_piece.get('is_king', False):
         if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
@@ -161,13 +183,16 @@ def validate_move(new_pieces,current_player,pieces, end_turn_flag=False):
         print('Дополнительное взятие возможно, ход остается тем же игроком')
         return 'continue'
 
-    # Проверка на победу
     if not any(piece['color'] == 0 for piece in pieces):
         print(status_['b3'])
         return "b3"
     if not any(piece['color'] == 1 for piece in pieces):
         print(status_['w3'])
         return "w3"
+
+    if check_draw():
+        print(status_['n'])
+        return "n"
 
     current_player = 'b' if current_player == 'w' else 'w'
     return True,pieces,current_player
@@ -271,12 +296,11 @@ def start_game():
     if not user_login:
         return redirect(url_for('login'))
 
-    game = find_waiting_game()  # Находим ожидающую игру
+    game = find_waiting_game()
 
     if game:
         session['game_id'] = game['game_id']
         if not game['white_user'] and not game['black_user']:
-            # Если оба игрока пусты, выбираем случайно
             if random.choice([True, False]):
                 update_game_with_user(game['game_id'], user_login, 'white')
                 session['color'] = 'white'
@@ -290,7 +314,7 @@ def start_game():
             update_game_with_user(game['game_id'], user_login, 'black')
             session['color'] = 'black'
     else:
-        game_id = create_new_game(user_login)  # Создаем новую игру
+        game_id = create_new_game(user_login)
         session['game_id'] = game_id
         session['color'] = 'white'
 
