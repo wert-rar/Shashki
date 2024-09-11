@@ -365,6 +365,7 @@ def update_board():
     if not user_id or not game_id:
         return jsonify({"status": "error", "message": "Missing user_id or game_id"}), 400
 
+
     with get_db_connection() as conn:
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
