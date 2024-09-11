@@ -354,6 +354,7 @@ def check_game_status():
 
     return jsonify({"status": game['status']})
 
+<<<<<<< HEAD
 
 @app.route('/update_board', methods = ['POST'])
 def update_board():
@@ -378,5 +379,7 @@ def update_board():
 
         return jsonify({"status": game['status'], "position": board['position']})
 
+=======
+>>>>>>> parent of a4c3331 (Add /update_board to app.py)
 if __name__ == "__main__":
     app.run(debug=True)
