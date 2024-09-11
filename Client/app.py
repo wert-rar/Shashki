@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import sqlite3
 import random
 import  Client.game as game
-from base import get_pieces_and_current_player, get_user_color as imported_get_user_color, check_user_exists, \
+from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login, find_waiting_game, update_game_with_user, create_new_game, \
     get_game_status
 

@@ -1,5 +1,4 @@
 import sqlite3
-from flask import Flask, redirect, url_for, request, jsonify, session
 
 def create_tables():
     con = sqlite3.connect("DataBase.db")
@@ -145,4 +144,6 @@ def get_user_color(game_id, user_id):
 
 if __name__ == "__main__":
     create_tables()
-    register_user()
+    input_login = input("Введите логин пользователя: ")
+    input_password = input("Введите пароль пользователя: ")
+    register_user(input_login, input_password)
