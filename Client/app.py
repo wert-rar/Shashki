@@ -257,6 +257,7 @@ def get_db_connection():
 @app.route('/profile/<username>')
 def profile(username):
     conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     cur.execute("SELECT * FROM player WHERE login = ?", (username,))
@@ -267,7 +268,7 @@ def profile(username):
     if user:
         total_games = user['wins'] + user['losses']
         return render_template('profile.html',
-                               user_id=user['id'],
+                               user_id=user['user_id'],
                                user_login=user['login'],
                                rang=user['rang'],
                                total_games=total_games,
@@ -275,6 +276,7 @@ def profile(username):
                                losses=user['losses'])
     else:
         return 'Пользователь не найден', 404
+
 
 @app.route("/logout")
 def logout():
@@ -292,31 +294,40 @@ def start_game():
     with get_db_connection() as conn:
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
+
+        # Находим игру, которая в ожидании и не заполнена
         cur.execute("SELECT * FROM game WHERE status = 'waiting' AND (white_user IS NULL OR black_user IS NULL)")
         game = cur.fetchone()
 
         if game:
-            session['game_id'] = game['id']
+            session['game_id'] = game['game_id']
+            # Если оба игрока пусты, выбираем случайно
             if not game['white_user'] and not game['black_user']:
                 if random.choice([True, False]):
-                    cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                    cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE game_id = ?",
+                                (user_login, game['game_id']))
                     session['color'] = 'white'
                 else:
-                    cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                    cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?",
+                                (user_login, game['game_id']))
                     session['color'] = 'black'
             elif not game['white_user']:
-                cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE game_id = ?",
+                            (user_login, game['game_id']))
                 session['color'] = 'white'
             elif not game['black_user']:
-                cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE id = ?", (user_login, game['id']))
+                cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?",
+                            (user_login, game['game_id']))
                 session['color'] = 'black'
         else:
-            cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', ?, NULL)", (user_login,))
+            cur.execute(
+                "INSERT INTO game (status, white_user, black_user, start_time) VALUES ('waiting', ?, NULL, CURRENT_TIMESTAMP)",
+                (user_login,))
             game_id = cur.lastrowid
             session['game_id'] = game_id
             session['color'] = 'white'
 
-        conn.commit()
+            conn.commit()
 
         return render_template('waiting.html')
 
@@ -329,8 +340,9 @@ def check_game_status():
         return jsonify({"status": "no_game"})
 
     with get_db_connection() as conn:
+        conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        cur.execute("SELECT status FROM game WHERE id = ?", (game_id,))
+        cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
         game = cur.fetchone()
 
     if not game:
