@@ -355,10 +355,11 @@ def check_game_status():
     return jsonify({"status": game['status']})
 
 
-@app.route('/update_board')
+@app.route('/update_board', methods = ['POST'])
 def update_board():
-    user_id = request.args.get('user_id')
-    game_id = request.args.get('game_id')
+    data = request.get_json()
+    user_id = data.get('user_id')
+    game_id = data.get('game_id')
 
     if not user_id or not game_id:
         return jsonify({"status": "error", "message": "Missing user_id or game_id"}), 400
@@ -370,7 +371,7 @@ def update_board():
         game = cur.fetchone()
         if not game:
             return jsonify({"status": "error", "message": "Game not found"}), 404
-        cur.execute("SELECT position FROM board WHERE game_id = ?", (game_id,))
+        cur.execute("SELECT position FROM game WHERE game_id = ?", (game_id,))
         board = cur.fetchone()
         if not board:
             return jsonify({"status": "error", "message": "Board position not found"}), 404
