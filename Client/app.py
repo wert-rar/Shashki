@@ -2,7 +2,9 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import sqlite3
 import random
 import  Client.game as game
-from base import get_pieces_and_current_player, get_user_color as imported_get_user_color
+from base import get_pieces_and_current_player, get_user_color as imported_get_user_color, check_user_exists, \
+    register_user, authenticate_user, get_user_by_login, find_waiting_game, update_game_with_user, create_new_game, \
+    get_game_status
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
@@ -206,22 +208,12 @@ def register():
         user_login = request.form['login']
         user_password = request.form['password']
 
-        con = sqlite3.connect("../DataBase.db")
-        cur = con.cursor()
-
-        cur.execute("SELECT login FROM player WHERE login = ?", (user_login,))
-        if cur.fetchone() is None:
-            # Если пользователя нет, добавляем его в базу данных
-            cur.execute("INSERT INTO player (login, password, rang) VALUES (?, ?, ?)", (user_login, user_password, 0))
-            con.commit()
+        if not check_user_exists(user_login):
+            register_user(user_login, user_password)
             session['flash'] = 'Пользователь успешно зарегистрирован!'
-            con.close()
-            # Перенаправляем на страницу входа
             return redirect(url_for('login'))
         else:
             session['flash'] = 'Такой пользователь уже зарегистрирован!'
-
-        con.close()
 
     return render_template('register.html')
 
@@ -232,11 +224,7 @@ def login():
         user_login = request.form['login']
         user_password = request.form['password']
 
-        con = sqlite3.connect("../DataBase.db")
-        cur = con.cursor()
-
-        cur.execute("SELECT * FROM player WHERE login = ? AND password = ?", (user_login, user_password))
-        user = cur.fetchone()
+        user = authenticate_user(user_login, user_password)
 
         if user:
             session['flash'] = 'Успешный вход!'
@@ -244,8 +232,6 @@ def login():
             return redirect(url_for('profile', username=user_login))
         else:
             session['flash'] = 'Неправильное имя пользователя или пароль.'
-
-        con.close()
 
     return render_template('login.html')
 
@@ -257,14 +243,7 @@ def get_db_connection():
 
 @app.route('/profile/<username>')
 def profile(username):
-    conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    cur.execute("SELECT * FROM player WHERE login = ?", (username,))
-    user = cur.fetchone()
-
-    conn.close()
+    user = get_user_by_login(username)
 
     if user:
         total_games = user['wins'] + user['losses']
@@ -292,47 +271,30 @@ def start_game():
     if not user_login:
         return redirect(url_for('login'))
 
-    with get_db_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
+    game = find_waiting_game()  # Находим ожидающую игру
 
-        # Находим игру, которая в ожидании и не заполнена
-        cur.execute("SELECT * FROM game WHERE status = 'waiting' AND (white_user IS NULL OR black_user IS NULL)")
-        game = cur.fetchone()
-
-        if game:
-            session['game_id'] = game['game_id']
+    if game:
+        session['game_id'] = game['game_id']
+        if not game['white_user'] and not game['black_user']:
             # Если оба игрока пусты, выбираем случайно
-            if not game['white_user'] and not game['black_user']:
-                if random.choice([True, False]):
-                    cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE game_id = ?",
-                                (user_login, game['game_id']))
-                    session['color'] = 'white'
-                else:
-                    cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?",
-                                (user_login, game['game_id']))
-                    session['color'] = 'black'
-            elif not game['white_user']:
-                cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE game_id = ?",
-                            (user_login, game['game_id']))
+            if random.choice([True, False]):
+                update_game_with_user(game['game_id'], user_login, 'white')
                 session['color'] = 'white'
-            elif not game['black_user']:
-                cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?",
-                            (user_login, game['game_id']))
+            else:
+                update_game_with_user(game['game_id'], user_login, 'black')
                 session['color'] = 'black'
-        else:
-            cur.execute(
-                "INSERT INTO game (status, white_user, black_user, start_time) VALUES ('waiting', ?, NULL, CURRENT_TIMESTAMP)",
-                (user_login,))
-            game_id = cur.lastrowid
-            session['game_id'] = game_id
+        elif not game['white_user']:
+            update_game_with_user(game['game_id'], user_login, 'white')
             session['color'] = 'white'
+        elif not game['black_user']:
+            update_game_with_user(game['game_id'], user_login, 'black')
+            session['color'] = 'black'
+    else:
+        game_id = create_new_game(user_login)  # Создаем новую игру
+        session['game_id'] = game_id
+        session['color'] = 'white'
 
-            conn.commit()
-
-        return render_template('waiting.html')
-
-
+    return render_template('waiting.html')
 
 @app.route('/check_game_status')
 def check_game_status():
@@ -340,20 +302,12 @@ def check_game_status():
     if not game_id:
         return jsonify({"status": "no_game"})
 
-    with get_db_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
-        game = cur.fetchone()
+    game = get_game_status(game_id)
 
-    if not game:
-        return jsonify({"status": "no_game"})
-
-    if game['status'] == 'finished':
-        session.pop('game_id', None)
-        return jsonify({"status": "finished"})
-
-    return jsonify({"status": game['status']})
+    if game:
+        return jsonify({"status": game['status']})
+    else:
+        return jsonify({"status": "game_not_found"})
 
 
 @app.route("/update_board", methods=["POST"])
