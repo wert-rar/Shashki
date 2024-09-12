@@ -1,5 +1,6 @@
 from base import get_pieces_and_current_player, get_user_color as imported_get_user_color
 
+
 def pieces_and_current_player(game_id):
     return get_pieces_and_current_player(game_id)
 

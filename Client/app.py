@@ -50,6 +50,15 @@ status_ = {
     "e1": "Ошибка при запросе к серверу"
 }
 
+current_games = {
+1: [pieces,current_player],
+2: [pieces,current_player],
+3: [pieces,current_player],
+4: [pieces,current_player],
+}
+
+unstarted_games = {}
+
 def get_piece_at(x, y):
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
@@ -97,6 +106,7 @@ def check_draw():
         if possible_moves:
             return False
     return True
+
 
 def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
     if len(new_pieces) != len(pieces):
@@ -222,7 +232,7 @@ def home():
     return render_template('home.html')
 
 
-@app.route("/board")
+@app.route("/board/")
 def get_board():
     return render_template('board.html',user_id=1,game_id=1,user_color="b")
 
@@ -259,11 +269,6 @@ def login():
             session['flash'] = 'Неправильное имя пользователя или пароль.'
 
     return render_template('login.html')
-
-def get_db_connection():
-    conn = sqlite3.connect('../DataBase.db')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 @app.route('/profile/<username>')
@@ -320,9 +325,8 @@ def start_game():
 
     return render_template('waiting.html')
 
-@app.route('/check_game_status')
-def check_game_status():
-    game_id = session.get('game_id')
+
+def check_game_status(game_id):
     if not game_id:
         return jsonify({"status": "no_game"})
 
@@ -343,7 +347,7 @@ def update_board():
     user_id = data.get("user_id")
 
     try:
-        valid_update = check_game_status(game_id, user_id, new_pieces, status)
+        valid_update = check_game_status(game_id)
 
         if valid_update:
             pieces, current_player = game.pieces_and_current_player(game_id)
