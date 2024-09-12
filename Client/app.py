@@ -1,41 +1,13 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import random
 from base import check_user_exists, \
-    register_user, authenticate_user, get_user_by_login, find_waiting_game, update_game_with_user, create_new_game, \
-    get_game_status
+    register_user, authenticate_user, get_user_by_login
 import uuid
+from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
-current_player = "w"
-
-pieces = [
-    {"color": 1, "x": 1, "y": 0, "mode": "p"},
-    {"color": 1, "x": 3, "y": 0, "mode": "p"},
-    {"color": 1, "x": 5, "y": 0, "mode": "p"},
-    {"color": 1, "x": 7, "y": 0, "mode": "p"},
-    {"color": 1, "x": 0, "y": 1, "mode": "p"},
-    {"color": 1, "x": 2, "y": 1, "mode": "p"},
-    {"color": 1, "x": 4, "y": 1, "mode": "p"},
-    {"color": 1, "x": 6, "y": 1, "mode": "p"},
-    {"color": 1, "x": 1, "y": 2, "mode": "p"},
-    {"color": 1, "x": 3, "y": 2, "mode": "p"},
-    {"color": 1, "x": 5, "y": 2, "mode": "p"},
-    {"color": 1, "x": 7, "y": 2, "mode": "p"},
-    {"color": 0, "x": 0, "y": 7, "mode": "p"},
-    {"color": 0, "x": 2, "y": 7, "mode": "p"},
-    {"color": 0, "x": 4, "y": 7, "mode": "p"},
-    {"color": 0, "x": 6, "y": 7, "mode": "p"},
-    {"color": 0, "x": 1, "y": 6, "mode": "p"},
-    {"color": 0, "x": 3, "y": 6, "mode": "p"},
-    {"color": 0, "x": 5, "y": 6, "mode": "p"},
-    {"color": 0, "x": 7, "y": 6, "mode": "p"},
-    {"color": 0, "x": 0, "y": 5, "mode": "p"},
-    {"color": 0, "x": 2, "y": 5, "mode": "p"},
-    {"color": 0, "x": 4, "y": 5, "mode": "p"},
-    {"color": 0, "x": 6, "y": 5, "mode": "p"}
-]
 
 status_ = {
     "w1": "Ход белых",
@@ -46,17 +18,19 @@ status_ = {
     "b3": "Победили черные",
     "w4": "Белые продолжают ход",
     "b4": "Черные продолжают ход",
-    "n" : "Ничья1",
+    "n": "Ничья1",
     "e1": "Ошибка при запросе к серверу"
 }
 
 current_games = {
-    str(uuid.uuid4()): ['pieces', 'current_player'],
+    1: Game(1, 0, 1),
+    # str(uuid.uuid4()): ['pieces', 'current_player'],
 }
 
 unstarted_games = {}
 
-def get_piece_at(x, y):
+
+def get_piece_at(pieces,x, y):
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
             return piece
@@ -72,12 +46,12 @@ def can_capture(piece):
         captured_piece = get_piece_at(mid_x, mid_y)
         target_pos = get_piece_at(end_x, end_y)
         if (0 <= end_x < 8 and 0 <= end_y < 8 and
-            captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
+                captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
             return True
     return False
 
 
-def check_draw():
+def check_draw(pieces):
     for piece in pieces:
         x, y, color = piece['x'], piece['y'], piece['color']
         possible_moves = []
@@ -87,7 +61,7 @@ def check_draw():
                 if abs(dx) == abs(dy) and (dx != 0 and dy != 0):
                     new_x, new_y = x + dx, y + dy
                     if 0 <= new_x < 8 and 0 <= new_y < 8:
-                        if not get_piece_at(new_x, new_y):
+                        if not get_piece_at(pieces,new_x, new_y):
                             possible_moves.append((new_x, new_y))
 
         if not piece.get('is_king', False):
@@ -197,12 +171,13 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
         print(status_['w3'])
         return "w3"
 
-    if check_draw():
+    if check_draw(pieces):
         print(status_['n'])
         return "n"
 
     current_player = 'b' if current_player == 'w' else 'w'
-    return True,pieces,current_player
+    return True, pieces, current_player
+
 
 @app.route("/move", methods=["POST"])
 def move():
@@ -238,9 +213,9 @@ def home():
     return render_template('home.html')
 
 
-@app.route("/board/")
+@app.route("/board")
 def get_board():
-    return render_template('board.html',user_id=1,game_id=1,user_color="b")
+    return render_template('board.html', user_id=1, game_id=1, user_color="b")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -350,7 +325,7 @@ def update_board():
     status = data.get("status_")
     new_pieces = data.get("pieces")
     game_id = data.get("game_id")
-
+    print(game_id)
     game = current_games.get(game_id)
 
     if game is None:
