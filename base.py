@@ -1,5 +1,6 @@
 import sqlite3
 
+
 def create_tables():
     con = sqlite3.connect("DataBase.db")
     cur = con.cursor()
@@ -34,13 +35,13 @@ def create_tables():
     if 'start_time' not in columns:
         cur.execute("ALTER TABLE game ADD COLUMN start_time TIMESTAMP")
 
-
     cur.execute("SELECT COUNT(*) FROM game")
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")
         con.commit()
 
     con.close()
+
 
 def connect_db():
     con = sqlite3.connect('../DataBase.db')
@@ -51,10 +52,11 @@ def connect_db():
 def check_user_exists(user_login):
     con = connect_db()
     cur = con.cursor()
-    cur.execute("SELECT login FROM player WHERE login = ?", (user_login,))
+    cur.execute('SELECT login FROM player WHERE login = "?"', (user_login,))
     exists = cur.fetchone() is not None
     con.close()
     return exists
+
 
 def register_user(user_login, user_password):
     con = connect_db()
@@ -62,6 +64,7 @@ def register_user(user_login, user_password):
     cur.execute("INSERT INTO player (login, password, rang) VALUES (?, ?, ?)", (user_login, user_password, 0))
     con.commit()
     con.close()
+
 
 def authenticate_user(user_login, user_password):
     con = connect_db()
@@ -71,6 +74,7 @@ def authenticate_user(user_login, user_password):
     con.close()
     return user
 
+
 def get_user_by_login(username):
     con = connect_db()
     cur = con.cursor()
@@ -79,12 +83,14 @@ def get_user_by_login(username):
     con.close()
     return user
 
+
 def find_waiting_game():
     with connect_db() as con:
         con.row_factory = sqlite3.Row
         cur = con.cursor()
         cur.execute("SELECT * FROM game WHERE status = 'waiting' AND (white_user IS NULL OR black_user IS NULL)")
         return cur.fetchone()
+
 
 def update_game_with_user(game_id, user_login, color):
     with connect_db() as con:
@@ -96,12 +102,16 @@ def update_game_with_user(game_id, user_login, color):
             cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?", (user_login, game_id))
         con.commit()
 
+
 def create_new_game(user_login):
     with connect_db() as con:
         cur = con.cursor()
-        cur.execute("INSERT INTO game (status, white_user, black_user, start_time) VALUES ('waiting', ?, NULL, CURRENT_TIMESTAMP)", (user_login,))
+        cur.execute(
+            "INSERT INTO game (status, white_user, black_user, start_time) VALUES ('waiting', ?, NULL, CURRENT_TIMESTAMP)",
+            (user_login,))
         con.commit()
         return cur.lastrowid
+
 
 def get_game_status(game_id):
     with connect_db() as con:
@@ -109,6 +119,7 @@ def get_game_status(game_id):
         cur = con.cursor()
         cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
         return cur.fetchone()
+
 
 def get_pieces_and_current_player(game_id):
     con = sqlite3.connect("DataBase.db")
@@ -120,6 +131,7 @@ def get_pieces_and_current_player(game_id):
         white_user, black_user = game
         return white_user, black_user
     return None
+
 
 def get_user_color(game_id, user_id):
     con = sqlite3.connect("DataBase.db")
