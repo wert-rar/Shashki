@@ -177,3 +177,4 @@ fabric.properties
 .idea/misc.xml
 .idea/modules.xml
 /.idea
+__pycache__/base.cpython-312.pyc
