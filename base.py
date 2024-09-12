@@ -84,74 +84,76 @@ def get_user_by_login(username):
     return user
 
 
-def find_waiting_game():
-    with connect_db() as con:
-        con.row_factory = sqlite3.Row
-        cur = con.cursor()
-        cur.execute("SELECT * FROM game WHERE status = 'waiting' AND (white_user IS NULL OR black_user IS NULL)")
-        return cur.fetchone()
+'''DELETE AND REMADE THIS IN GAME.PY WITHOUT FUCKING TABLES'''
 
-
-def update_game_with_user(game_id, user_login, color):
-    with connect_db() as con:
-        con.row_factory = sqlite3.Row
-        cur = con.cursor()
-        if color == 'white':
-            cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE game_id = ?", (user_login, game_id))
-        else:
-            cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?", (user_login, game_id))
-        con.commit()
-
-
-def create_new_game(user_login):
-    with connect_db() as con:
-        cur = con.cursor()
-        cur.execute(
-            "INSERT INTO game (status, white_user, black_user, start_time) VALUES ('waiting', ?, NULL, CURRENT_TIMESTAMP)",
-            (user_login,))
-        con.commit()
-        return cur.lastrowid
-
-
-def get_game_status(game_id):
-    with connect_db() as con:
-        con.row_factory = sqlite3.Row
-        cur = con.cursor()
-        cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
-        return cur.fetchone()
-
-
-def get_pieces_and_current_player(game_id):
-    con = sqlite3.connect("DataBase.db")
-    cur = con.cursor()
-
-    cur.execute("SELECT white_user, black_user FROM game WHERE game_id = ?", (game_id,))
-    game = cur.fetchone()
-    if game:
-        white_user, black_user = game
-        return white_user, black_user
-    return None
-
-
-def get_user_color(game_id, user_id):
-    con = sqlite3.connect("DataBase.db")
-    cur = con.cursor()
-
-    cur.execute("SELECT id FROM player WHERE user_id = ?", (user_id,))
-    user_login = cur.fetchone()
-    if user_login:
-        user_login = user_login[0]
-
-        cur.execute("SELECT white_user, black_user FROM game WHERE game_id = ?", (game_id,))
-        game = cur.fetchone()
-
-        if game:
-            white_user, black_user = game
-            if white_user == user_login:
-                return 'white'
-            elif black_user == user_login:
-                return 'black'
-    return None
+# def find_waiting_game():
+#     with connect_db() as con:
+#         con.row_factory = sqlite3.Row
+#         cur = con.cursor()
+#         cur.execute("SELECT * FROM game WHERE status = 'waiting' AND (white_user IS NULL OR black_user IS NULL)")
+#         return cur.fetchone()
+#
+#
+# def update_game_with_user(game_id, user_login, color):
+#     with connect_db() as con:
+#         con.row_factory = sqlite3.Row
+#         cur = con.cursor()
+#         if color == 'white':
+#             cur.execute("UPDATE game SET white_user = ?, status = 'active' WHERE game_id = ?", (user_login, game_id))
+#         else:
+#             cur.execute("UPDATE game SET black_user = ?, status = 'active' WHERE game_id = ?", (user_login, game_id))
+#         con.commit()
+#
+#
+# def create_new_game(user_login):
+#     with connect_db() as con:
+#         cur = con.cursor()
+#         cur.execute(
+#             "INSERT INTO game (status, white_user, black_user, start_time) VALUES ('waiting', ?, NULL, CURRENT_TIMESTAMP)",
+#             (user_login,))
+#         con.commit()
+#         return cur.lastrowid
+#
+#
+# def get_game_status(game_id):
+#     with connect_db() as con:
+#         con.row_factory = sqlite3.Row
+#         cur = con.cursor()
+#         cur.execute("SELECT status FROM game WHERE game_id = ?", (game_id,))
+#         return cur.fetchone()
+#
+#
+# def get_pieces_and_current_player(game_id):
+#     con = sqlite3.connect("DataBase.db")
+#     cur = con.cursor()
+#
+#     cur.execute("SELECT white_user, black_user FROM game WHERE game_id = ?", (game_id,))
+#     game = cur.fetchone()
+#     if game:
+#         white_user, black_user = game
+#         return white_user, black_user
+#     return None
+#
+#
+# def get_user_color(game_id, user_id):
+#     con = sqlite3.connect("DataBase.db")
+#     cur = con.cursor()
+#
+#     cur.execute("SELECT id FROM player WHERE user_id = ?", (user_id,))
+#     user_login = cur.fetchone()
+#     if user_login:
+#         user_login = user_login[0]
+#
+#         cur.execute("SELECT white_user, black_user FROM game WHERE game_id = ?", (game_id,))
+#         game = cur.fetchone()
+#
+#         if game:
+#             white_user, black_user = game
+#             if white_user == user_login:
+#                 return 'white'
+#             elif black_user == user_login:
+#                 return 'black'
+#     return None
 
 
 if __name__ == "__main__":
