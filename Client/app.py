@@ -1,15 +1,15 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-import sqlite3
 import random
-import  Client.game as game
 from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login, find_waiting_game, update_game_with_user, create_new_game, \
     get_game_status
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
 current_player = "w"
+
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
     {"color": 1, "x": 3, "y": 0, "mode": "p"},
@@ -51,10 +51,7 @@ status_ = {
 }
 
 current_games = {
-1: [pieces,current_player],
-2: [pieces,current_player],
-3: [pieces,current_player],
-4: [pieces,current_player],
+    str(uuid.uuid4()): ['pieces', 'current_player'],
 }
 
 unstarted_games = {}
@@ -209,22 +206,31 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
 @app.route("/move", methods=["POST"])
 def move():
-    new_pieces = request.json.get("pieces")
-    game_id = request.json.get("game_id")
-    user_id = request.json.get("user_id")
+    data = request.json
+    new_pieces = data.get("pieces")
+    game_id = data.get("game_id")
+    user_id = data.get("user_id")
 
-    pieces, current_player = game.pieces_and_current_player(game_id)
+    game = current_games.get(game_id)
 
-    result, pieces, current_player = validate_move(new_pieces, current_player, pieces)
+    if game is None:
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    current_player, current_pieces = game.pieces_and_current_player()
+
+    result, updated_pieces = validate_move(new_pieces, current_player, current_pieces)
 
     if result is True:
+        # Обновляем фигуры
+        game.pieces['white' if current_player == game.f_user else 'black'] = updated_pieces
+        game.moves_count += 1
         current_status = f"{current_player}1"
     elif result in ["w3", "b3"]:
         current_status = result
     else:
         current_status = f"{current_player}2"
 
-    return jsonify({"status_": current_status, "pieces": pieces})
+    return jsonify({"status_": current_status, "pieces": updated_pieces})
 
 
 @app.route("/")
@@ -344,13 +350,17 @@ def update_board():
     status = data.get("status_")
     new_pieces = data.get("pieces")
     game_id = data.get("game_id")
-    user_id = data.get("user_id")
+
+    game = current_games.get(game_id)
+
+    if game is None:
+        return jsonify({"error": "Invalid game ID"}), 400
 
     try:
         valid_update = check_game_status(game_id)
 
         if valid_update:
-            pieces, current_player = game.pieces_and_current_player(game_id)
+            current_player, pieces = game.pieces_and_current_player()
             return jsonify({"status_": status, "pieces": pieces})
         else:
             return jsonify({"error": "Invalid update"}), 400
