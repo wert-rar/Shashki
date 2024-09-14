@@ -1,3 +1,4 @@
+import uuid
 current_player = "w"
 
 pieces = [
@@ -55,13 +56,49 @@ class Game:
 
 
 def find_waiting_game(game_id):
-    pass
+    if game_id in unstarted_games:
+        game = unstarted_games[game_id]
+        if not game.f_user or not game.c_user:
+            return game
+    return None
 
 
-def update_game_with_user(game_id, user_login, color): pass
+def update_game_with_user(game_id, user_login, color):
+    if game_id in unstarted_games:
+        game = unstarted_games[game_id]
+        if color == 'white':
+            if game.f_user is None:
+                game.f_user = user_login
+                return True
+            else:
+                raise ValueError(f"В игре {game_id} уже есть белый игрок.")
+        elif color == 'black':
+            if game.c_user is None:
+                game.c_user = user_login
+                return True
+            else:
+                raise ValueError(f"В игре {game_id} уже есть черный игрок.")
+        else:
+             raise ValueError("Цвет должен быть либо «белым», либо «черным».")
+    else:
+        raise ValueError(f"Игра {game_id} не существует.")
 
 
-def create_new_game(user_login): pass
+def create_new_game(user_login):
+    game_id = str(uuid.uuid4())
+    new_game = Game(f_user=user_login, c_user=None, game_id=game_id)
+    unstarted_games[game_id] = new_game
+    return game_id
 
 
-def get_game_status(game_id): pass
+def get_game_status(game_id):
+    if game_id in current_games:
+        game = current_games[game_id]
+    elif game_id in unstarted_games:
+        game = unstarted_games[game_id]
+    else:
+        return None
+    status_prefix = game.current_player
+    status_key = f"{status_prefix}1" if game.moves_count % 2 == 0 else f"{status_prefix}2"
+
+    return {"status": status_key}
