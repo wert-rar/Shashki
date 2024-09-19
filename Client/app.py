@@ -285,19 +285,19 @@ def start_game():
     game = find_waiting_game()
 
     if game:
-        session['game_id'] = game['game_id']
-        if not game['white_user'] and not game['black_user']:
+        session['game_id'] = game.game_id
+        if not game.f_user and not game.c_user:
             if random.choice([True, False]):
-                update_game_with_user(game['game_id'], user_login, 'white')
+                update_game_with_user(game.game_id, user_login, 'white')
                 session['color'] = 'white'
             else:
-                update_game_with_user(game['game_id'], user_login, 'black')
+                update_game_with_user(game.game_id, user_login, 'black')
                 session['color'] = 'black'
-        elif not game['white_user']:
-            update_game_with_user(game['game_id'], user_login, 'white')
+        elif not game.c_user:
+            update_game_with_user(game.game_id, user_login, 'white')
             session['color'] = 'white'
-        elif not game['black_user']:
-            update_game_with_user(game['game_id'], user_login, 'black')
+        elif not game.f_user:
+            update_game_with_user(game.game_id, user_login, 'black')
             session['color'] = 'black'
     else:
         game_id = create_new_game(user_login)

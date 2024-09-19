@@ -1,5 +1,6 @@
 import uuid
 current_player = "w"
+unstarted_games = {}
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -55,9 +56,8 @@ class Game:
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
 
-def find_waiting_game(game_id):
-    if game_id in unstarted_games:
-        game = unstarted_games[game_id]
+def find_waiting_game():
+    for game_id, game in unstarted_games.items():
         if not game.f_user or not game.c_user:
             return game
     return None
