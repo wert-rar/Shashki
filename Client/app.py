@@ -293,10 +293,10 @@ def start_game():
             else:
                 update_game_with_user(game.game_id, user_login, 'black')
                 session['color'] = 'black'
-        elif not game.c_user:
+        elif not game.f_user:
             update_game_with_user(game.game_id, user_login, 'white')
             session['color'] = 'white'
-        elif not game.f_user:
+        elif not game.c_user:
             update_game_with_user(game.game_id, user_login, 'black')
             session['color'] = 'black'
     else:
