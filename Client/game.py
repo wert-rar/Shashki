@@ -1,6 +1,9 @@
 import uuid
 current_player = "w"
 unstarted_games = {}
+current_games = {
+    str(uuid.uuid4()): ['pieces', 'current_player'],
+}
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -98,7 +101,8 @@ def get_game_status(game_id):
         game = unstarted_games[game_id]
     else:
         return None
-    status_prefix = game.current_player
-    status_key = f"{status_prefix}1" if game.moves_count % 2 == 0 else f"{status_prefix}2"
 
-    return {"status": status_key}
+    if game.f_user and game.c_user:
+        return {'status': 'ready'}
+    else:
+        return {'status': 'waiting'}

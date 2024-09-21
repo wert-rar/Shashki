@@ -23,8 +23,7 @@ status_ = {
 }
 
 current_games = {
-    1: Game(1, 0, 1),
-    # str(uuid.uuid4()): ['pieces', 'current_player'],
+    str(uuid.uuid4()): ['pieces', 'current_player'],
 }
 
 unstarted_games = {}
@@ -307,16 +306,16 @@ def start_game():
     return render_template('waiting.html')
 
 
-def check_game_status(game_id):
+@app.route("/check_game_status", methods=["GET"])
+def check_game_status_route():
+    game_id = session.get('game_id')
     if not game_id:
-        return jsonify({"status": "no_game"})
-
-    game = get_game_status(game_id)
-
-    if game:
-        return jsonify({"status": game['status']})
+        return jsonify({"status": "no_game"}), 404
+    game_status = get_game_status(game_id)
+    if game_status:
+        return jsonify(game_status)
     else:
-        return jsonify({"status": "game_not_found"})
+        return jsonify({"status": "game_not_found"}), 404
 
 
 @app.route("/update_board", methods=["POST"])
@@ -325,16 +324,14 @@ def update_board():
     status = data.get("status_")
     new_pieces = data.get("pieces")
     game_id = data.get("game_id")
-    print(game_id)
     game = current_games.get(game_id)
 
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
 
     try:
-        valid_update = check_game_status(game_id)
-
-        if valid_update:
+        if new_pieces:
+            game.pieces = new_pieces
             current_player, pieces = game.pieces_and_current_player()
             return jsonify({"status_": status, "pieces": pieces})
         else:
