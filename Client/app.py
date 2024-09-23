@@ -212,9 +212,22 @@ def home():
     return render_template('home.html')
 
 
-@app.route("/board")
-def get_board():
-    return render_template('board.html', user_id=1, game_id=1, user_color="b")
+@app.route("/board/<int:game_id>/<int:user_id>")
+def get_board(game_id, user_id):
+    game = current_games.get(game_id)
+    if not game:
+        return jsonify({"error": "Invalid game ID"}), 404
+
+    user_color = 'white' if user_id == game.f_user else 'black'
+
+    return render_template(
+        'board.html',
+        user_id=user_id,
+        game_id=game_id,
+        user_color=user_color,
+        f_user=game.f_user,
+        c_user=game.c_user
+    )
 
 
 @app.route("/register", methods=["GET", "POST"])
