@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 import random
 from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login
-import uuid
 from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
 
 app = Flask(__name__)
@@ -23,7 +22,7 @@ status_ = {
 }
 
 current_games = {
-    str(uuid.uuid4()): ['pieces', 'current_player'],
+    1: Game(1, 0, 1),
 }
 
 unstarted_games = {}

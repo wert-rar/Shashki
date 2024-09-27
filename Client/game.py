@@ -1,9 +1,7 @@
 import uuid
 current_player = "w"
 unstarted_games = {}
-current_games = {
-    str(uuid.uuid4()): ['pieces', 'current_player'],
-}
+current_games = (1, 0, 1)
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -88,7 +86,7 @@ def update_game_with_user(game_id, user_login, color):
 
 
 def create_new_game(user_login):
-    game_id = str(uuid.uuid4())
+    game_id = current_games
     new_game = Game(f_user=user_login, c_user=None, game_id=game_id)
     unstarted_games[game_id] = new_game
     return game_id
