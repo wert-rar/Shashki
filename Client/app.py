@@ -3,7 +3,9 @@ import random
 from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login
 from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
@@ -20,29 +22,27 @@ status_ = {
     "n": "Ничья1",
     "e1": "Ошибка при запросе к серверу"
 }
-
 current_games = {
     1: Game(1, 0, 1),
 }
-
 unstarted_games = {}
 
 
-def get_piece_at(pieces,x, y):
+def get_piece_at(pieces, x, y):
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
             return piece
     return None
 
 
-def can_capture(piece):
+def can_capture(piece, pieces):
     x, y = piece['x'], piece['y']
     possible_directions = [(2, 2), (2, -2), (-2, 2), (-2, -2)]
     for dx, dy in possible_directions:
         mid_x, mid_y = x + dx // 2, y + dy // 2
         end_x, end_y = x + dx, y + dy
-        captured_piece = get_piece_at(mid_x, mid_y)
-        target_pos = get_piece_at(end_x, end_y)
+        captured_piece = get_piece_at(pieces, mid_x, mid_y)
+        target_pos = get_piece_at(pieces, end_x, end_y)
         if (0 <= end_x < 8 and 0 <= end_y < 8 and
                 captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
             return True
@@ -59,7 +59,7 @@ def check_draw(pieces):
                 if abs(dx) == abs(dy) and (dx != 0 and dy != 0):
                     new_x, new_y = x + dx, y + dy
                     if 0 <= new_x < 8 and 0 <= new_y < 8:
-                        if not get_piece_at(pieces,new_x, new_y):
+                        if not get_piece_at(pieces, new_x, new_y):
                             possible_moves.append((new_x, new_y))
 
         if not piece.get('is_king', False):
@@ -69,8 +69,9 @@ def check_draw(pieces):
                         mid_x, mid_y = x + dx // 2, y + dy // 2
                         new_x, new_y = x + dx, y + dy
                         if 0 <= new_x < 8 and 0 <= new_y < 8:
-                            middle_piece = get_piece_at(mid_x, mid_y)
-                            if middle_piece and middle_piece['color'] != color and not get_piece_at(new_x, new_y):
+                            middle_piece = get_piece_at(pieces, mid_x, mid_y)
+                            if middle_piece and middle_piece['color'] != color and not get_piece_at(pieces, new_x,
+                                                                                                    new_y):
                                 possible_moves.append((new_x, new_y))
         if possible_moves:
             return False
@@ -99,7 +100,7 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
             current_player == "b" and moved_piece['color'] == 0):
         return False
 
-    if get_piece_at(new_pos['x'], new_pos['y']):
+    if get_piece_at(pieces, new_pos['x'], new_pos['y']):
         print('Поле занято')
         return False
 
@@ -115,7 +116,7 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
             step_y = dy // abs_dy
             captured_pieces = []
             for i in range(1, abs_dx):
-                piece_at_pos = get_piece_at(moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y)
+                piece_at_pos = get_piece_at(pieces, moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y)
                 if piece_at_pos:
                     if piece_at_pos['color'] == moved_piece['color']:
                         print('Путь блокирован')
@@ -141,7 +142,7 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
         elif abs_dx == 2 and abs_dy == 2:
             mid_x = (moved_piece['x'] + new_pos['x']) // 2
             mid_y = (moved_piece['y'] + new_pos['y']) // 2
-            captured_piece = get_piece_at(mid_x, mid_y)
+            captured_piece = get_piece_at(pieces, mid_x, mid_y)
             if not captured_piece or captured_piece['color'] == moved_piece['color']:
                 print('Невозможно съесть фигуру')
                 return False
@@ -158,7 +159,7 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
             moved_piece['is_king'] = True
 
-    if captured and can_capture(moved_piece) and not end_turn_flag:
+    if captured and can_capture(pieces, moved_piece) and not end_turn_flag:
         print('Дополнительное взятие возможно, ход остается тем же игроком')
         return 'continue'
 
@@ -188,13 +189,17 @@ def move():
 
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
+    if user_id not in [game.f_user, game.c_user]:
+        return jsonify({"error": "Invalid user ID"}), 403
 
     current_player, current_pieces = game.pieces_and_current_player()
+    if (current_player == game.f_user and user_id != game.f_user) or \
+            (current_player == game.c_user and user_id != game.c_user):
+        return jsonify({"error": "Not your turn"}), 403
 
     result, updated_pieces = validate_move(new_pieces, current_player, current_pieces)
 
     if result is True:
-        # Обновляем фигуры
         game.pieces['white' if current_player == game.f_user else 'black'] = updated_pieces
         game.moves_count += 1
         current_status = f"{current_player}1"
@@ -321,8 +326,12 @@ def start_game():
 @app.route("/check_game_status", methods=["GET"])
 def check_game_status_route():
     game_id = session.get('game_id')
+    user_id = session.get('user_id')
+    print(f"Checking game status, game_id: {game_id}, user: {user_id}")
+
     if not game_id:
         return jsonify({"status": "no_game"}), 404
+
     game_status = get_game_status(game_id)
     if game_status:
         return jsonify(game_status)
@@ -337,7 +346,6 @@ def update_board():
     new_pieces = data.get("pieces")
     game_id = data.get("game_id")
     game = current_games.get(game_id)
-
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
 

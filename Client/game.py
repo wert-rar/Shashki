@@ -1,4 +1,3 @@
-import uuid
 current_player = "w"
 unstarted_games = {}
 current_games = (1, 0, 1)
@@ -48,9 +47,9 @@ class Game:
         return None
 
     def pieces_and_current_player(self):
-        self.current_player = self.f_user if self.moves_count % 2 == 0 else self.c_user
-        current_color = 'white' if current_player == self.f_user else 'black'
-        current_pieces = self.pieces[current_color]
+        current_player = self.f_user if self.moves_count % 2 == 0 else self.c_user
+        current_color = 1 if current_player == self.f_user else 0
+        current_pieces = [piece for piece in self.pieces if piece["color"] == current_color]
         return current_player, current_pieces
 
     def __str__(self):
@@ -80,7 +79,7 @@ def update_game_with_user(game_id, user_login, color):
             else:
                 raise ValueError(f"В игре {game_id} уже есть черный игрок.")
         else:
-             raise ValueError("Цвет должен быть либо «белым», либо «черным».")
+            raise ValueError("Цвет должен быть либо «белым», либо «черным».")
     else:
         raise ValueError(f"Игра {game_id} не существует.")
 
