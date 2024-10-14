@@ -177,39 +177,6 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
     return True, pieces, current_player
 
 
-@app.route("/move", methods=["POST"])
-def move():
-    data = request.json
-    new_pieces = data.get("pieces")
-    game_id = data.get("game_id")
-    user_id = data.get("user_id")
-
-    game = current_games.get(game_id)
-
-    if game is None:
-        return jsonify({"error": "Invalid game ID"}), 400
-    if user_id not in [game.f_user, game.c_user]:
-        return jsonify({"error": "Invalid user ID"}), 403
-
-    current_player, current_pieces = game.pieces_and_current_player()
-    if (current_player == game.f_user and user_id != game.f_user) or \
-            (current_player == game.c_user and user_id != game.c_user):
-        return jsonify({"error": "Not your turn"}), 403
-
-    result, updated_pieces = validate_move(new_pieces, current_player, current_pieces)
-
-    if result is True:
-        game.pieces['white' if current_player == game.f_user else 'black'] = updated_pieces
-        game.moves_count += 1
-        current_status = f"{current_player}1"
-    elif result in ["w3", "b3"]:
-        current_status = result
-    else:
-        current_status = f"{current_player}2"
-
-    return jsonify({"status_": current_status, "pieces": updated_pieces})
-
-
 @app.route("/")
 def home():
     return render_template('home.html')
@@ -338,6 +305,44 @@ def check_game_status_route():
         return jsonify({"status": "game_not_found"}), 404
 
 
+@app.route("/move", methods=["POST"])
+def move():
+    data = request.json
+    new_pieces = data.get("pieces")
+    game_id = data.get("game_id")
+    user_id = data.get("user_id")
+
+    game = current_games.get(game_id)
+
+    if game is None:
+        return jsonify({"error": "Invalid game ID"}), 400
+    if user_id not in [game.f_user, game.c_user]:
+        return jsonify({"error": "Invalid user ID"}), 403
+
+    current_player, current_pieces = game.pieces_and_current_player()
+
+    if (current_player == game.f_user and user_id != game.f_user) or \
+            (current_player == game.c_user and user_id != game.c_user):
+        return jsonify({"error": "Not your turn"}), 403
+
+    result = validate_move(new_pieces, current_player, current_pieces)
+
+    if result is True:
+        game.pieces = new_pieces
+        game.moves_count += 1
+        current_status = f"{current_player}1"
+    elif result in ["w3", "b3"]:
+        current_status = result
+    elif result == 'continue':
+        current_status = f"{current_player}1"
+    else:
+        current_status = f"{current_player}2"
+
+    logging.debug(f"Текущее состояние шашек после хода: {game.pieces}")  # Для отладки
+
+    return jsonify({"status_": current_status, "pieces": game.pieces})
+
+
 @app.route("/update_board", methods=["POST"])
 def update_board():
     data = request.json
@@ -351,8 +356,7 @@ def update_board():
     try:
         if new_pieces:
             game.pieces = new_pieces
-            current_player, pieces = game.pieces_and_current_player()
-            return jsonify({"status_": status, "pieces": pieces})
+            return jsonify({"status_": status, "pieces": game.pieces})
         else:
             return jsonify({"error": "Invalid update"}), 400
     except Exception as e:
