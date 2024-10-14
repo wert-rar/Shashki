@@ -1,124 +1,78 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ожидание игры</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Waiting for Opponent</title>
     <style>
+        /* Basic styling for better user experience */
         body {
             font-family: Arial, sans-serif;
-            background: url('{{ url_for('static', filename='background_waiting.jpg') }}') no-repeat center center fixed;
-            background-size: cover;
-            color: #333;
-            margin: 0;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: inherit;
-            filter: blur(8px);
-            z-index: -1;
-        }
-
-        .container {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(8px);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             text-align: center;
-            max-width: 400px;
-            width: 100%;
-            position: relative;
-            z-index: 1;
+            padding-top: 50px;
         }
-
-        .container strong {
-            display: block;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .container p {
-            font-size: 18px;
+        #status {
+            font-size: 1.5em;
             margin-bottom: 20px;
         }
-
         #leave-button {
-            background-color: #ff4b5c;
-            border: none;
             padding: 10px 20px;
-            border-radius: 5px;
-            color: #fff;
-            font-size: 16px;
+            font-size: 1em;
             cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        #leave-button:hover {
-            background-color: #e04351;
         }
     </style>
 </head>
 <body>
-    <div class="backdrop"></div>
-    <div class="container">
-        <strong>Ожидание начала игры</strong>
-        <p>Пожалуйста, подождите. Мы ищем для вас соперника...</p>
-        <button id="leave-button" onclick="leaveGame()">Покинуть зал ожидания</button>
-    </div>
+    <div id="status">Waiting for an opponent...</div>
+    <button id="leave-button" onclick="leaveGame()">Leave Game</button>
 
     <script>
+        const gameId = "{{ game_id }}";
+        const userId = "{{ user_id }}";
+
         function leaveGame() {
             fetch('/leave_game', { method: 'POST' })
-                .then(response => window.location.href = '/')
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        console.error('Failed to leave the game.');
+                    }
+                })
                 .catch(error => console.error('Error:', error));
         }
 
-<<<<<<< HEAD
-async function checkGameStatus() {
-    try {
-        const response = await fetch('/check_game_status');
-        const data = await response.json();
-        console.log('Game status:', data.status);
-=======
         async function checkGameStatus() {
             try {
                 const response = await fetch('/check_game_status');
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        document.getElementById('status').innerText = 'No game found.';
+                    }
+                    throw new Error('Network response was not ok');
+                }
                 const data = await response.json();
                 console.log('Game status:', data.status);
+
                 if (data.status === 'active') {
-                    window.location.href = '/board';
+                    window.location.href = `/board/${gameId}/${userId}`;
+                } else if (data.status === 'waiting') {
+                    document.getElementById('status').innerText = 'Waiting for an opponent...';
+                } else if (data.status === 'no_game') {
+                    document.getElementById('status').innerText = 'No game assigned.';
+                } else {
+                    document.getElementById('status').innerText = 'Unknown status.';
                 }
             } catch (error) {
                 console.error('Error checking game status:', error);
             }
         }
->>>>>>> parent of 43017b1 (now transferred to the board)
 
-        if (data.status === 'ready') {
-            const gameId = data.game_id;
-            const UserId = data.user_id;
-
-
-            window.location.href = `/board/${gameId}/${UserId}`;
+        function startPolling() {
+            checkGameStatus();  // Check immediately on load
+            setInterval(checkGameStatus, 3000);
         }
-    } catch (error) {
-        console.error('Error checking game status:', error);
-    }
-}
 
-function startPolling() {
-    setInterval(checkGameStatus, 3000);
-}
-
-window.onload = startPolling;
+        window.onload = startPolling;
     </script>
 </body>
 </html>

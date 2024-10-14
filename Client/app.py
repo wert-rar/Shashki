@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
-
 status_ = {
     "w1": "Ход белых",
     "b1": "Ход черных",
@@ -23,7 +22,7 @@ status_ = {
     "e1": "Ошибка при запросе к серверу"
 }
 current_games = {
-    1: Game(1, 0, 1),
+    1: Game(f_user='user1', c_user='user2', game_id=1),
 }
 unstarted_games = {}
 
@@ -261,6 +260,7 @@ def login():
         if user:
             session['flash'] = 'Успешный вход!'
             session['user'] = user_login
+            session['user_id'] = user['user_id']
             return redirect(url_for('profile', username=user_login))
         else:
             session['flash'] = 'Неправильное имя пользователя или пароль.'
@@ -288,6 +288,7 @@ def profile(username):
 @app.route("/logout")
 def logout():
     session.pop('user', None)
+    session.pop('user_id', None)
     session['flash'] = 'Вы вышли из системы.'
     return redirect(url_for('home'))
 
@@ -295,39 +296,37 @@ def logout():
 @app.route('/start_game')
 def start_game():
     user_login = session.get('user')
+    user_id = session.get('user_id')
     if not user_login:
         return redirect(url_for('login'))
 
     game = find_waiting_game()
 
     if game:
-        session['game_id'] = game.game_id
-        if not game.f_user and not game.c_user:
-            if random.choice([True, False]):
-                update_game_with_user(game.game_id, user_login, 'white')
-                session['color'] = 'white'
-            else:
-                update_game_with_user(game.game_id, user_login, 'black')
-                session['color'] = 'black'
-        elif not game.f_user:
-            update_game_with_user(game.game_id, user_login, 'white')
-            session['color'] = 'white'
-        elif not game.c_user:
-            update_game_with_user(game.game_id, user_login, 'black')
-            session['color'] = 'black'
+        if not game.f_user:
+            color = 'white'
+        else:
+            color = 'black'
+        try:
+            update_game_with_user(game.game_id, user_login, color)
+            session['game_id'] = game.game_id
+            session['color'] = color
+        except ValueError as e:
+            session['flash'] = str(e)
+            return redirect(url_for('profile', username=user_login))
     else:
         game_id = create_new_game(user_login)
         session['game_id'] = game_id
         session['color'] = 'white'
 
-    return render_template('waiting.html')
+    return render_template('waiting.html', game_id=session.get('game_id'), user_id=user_id)
 
 
 @app.route("/check_game_status", methods=["GET"])
 def check_game_status_route():
     game_id = session.get('game_id')
     user_id = session.get('user_id')
-    print(f"Checking game status, game_id: {game_id}, user: {user_id}")
+    logging.debug(f"Checking game status, game_id: {game_id}, user_id: {user_id}")
 
     if not game_id:
         return jsonify({"status": "no_game"}), 404
@@ -358,6 +357,35 @@ def update_board():
             return jsonify({"error": "Invalid update"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/leave_game', methods=['POST'])
+def leave_game():
+    game_id = session.get('game_id')
+    user_login = session.get('user')
+
+    if not game_id or not user_login:
+        return jsonify({"error": "No game to leave"}), 400
+
+    game = current_games.get(game_id) or unstarted_games.get(game_id)
+    if not game:
+        return jsonify({"error": "Game not found"}), 404
+
+    if game.f_user == user_login:
+        game.f_user = None
+    elif game.c_user == user_login:
+        game.c_user = None
+    else:
+        return jsonify({"error": "User not part of the game"}), 400
+    if game_id in current_games:
+        if not game.f_user or not game.c_user:
+            unstarted_games[game_id] = game
+            del current_games[game_id]
+    session.pop('game_id', None)
+    session.pop('color', None)
+
+    session['flash'] = 'Вы покинули игру.'
+    return jsonify({"message": "Left the game successfully"}), 200
 
 
 if __name__ == "__main__":

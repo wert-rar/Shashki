@@ -1,10 +1,11 @@
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <!--<script language="JavaScript" type="text/javascript" src="../static/client.js"></script>-->
-    <link rel="stylesheet" type="text/css" href="../static/styles.css" />
+    <!--<script language="JavaScript" type="text/javascript" src="{{ url_for('static', filename='client.js') }}"></script>-->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}" />
     <title>Шашки</title>
   </head>
 
@@ -17,9 +18,9 @@
       let HEADER_HEIGHT = 0;
       let CURRENT_STATUS = "w1";
       let SERVER_IP = "";
-      let user_id = {{user_id}};
-      let game_id = {{game_id}};
-      let user_color = "{{user_color}}";
+      let user_id = {{ user_id }};
+      let game_id = {{ game_id }};
+      let user_color = "{{ user_color }}";
 
       let status = {
         w1: "Ход белых",
@@ -71,7 +72,6 @@
         { color: 0, x: 6, y: 5, mode: "p" },
       ];
 
-
       function translate(pieces_data) {
         let n_pieces = [];
         for (let i = 0; i < pieces_data.length; i++) {
@@ -85,7 +85,6 @@
         return n_pieces;
       }
 
-
       function update_data(data) {
         CURRENT_STATUS = data.status_;
         pieces = data.pieces;
@@ -96,7 +95,6 @@
 
       // SERVER REQUEST CODE
       function server_move_request(status, pieces) {
-        // Server get and return pieces only in w-perspective
         let body = user_color == "b" ? {
             status_: status,
             pieces: translate(pieces),
@@ -117,7 +115,6 @@
             update_data(response);
           } else {
             let response = JSON.parse(xhr.responseText);
-            // if server is down,  return old pieces, since the server returns figures from a white perspective, for black, we translate the game into a white perspective
             update_data({ status_: "e1", pieces:  user_color == "b" ? translate(pieces):pieces  });
             throw new Error(response.error);
           }
@@ -147,7 +144,6 @@
             update_data(response);
           } else {
             let response = JSON.parse(xhr.responseText);
-            // if server is down,  return old pieces, since the server returns figures from a white perspective, for black, we translate the game into a white perspective
             update_data({ status_: "e1", pieces: user_color == "b" ? translate(pieces):pieces });
             throw new Error(response.error);
           }
@@ -155,7 +151,6 @@
         xhr.setRequestHeader("Content-type", "application/json");
         xhr.send(JSON.stringify(body));
       }
-
 
       // function win(stat) {
       //   if (stat == "b3")
