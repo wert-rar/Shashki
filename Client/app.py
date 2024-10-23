@@ -21,9 +21,7 @@ status_ = {
     "n": "Ничья1",
     "e1": "Ошибка при запросе к серверу"
 }
-current_games = {
-    1: Game(f_user='user1', c_user='user2', game_id=1),
-}
+current_games = {}
 unstarted_games = {}
 
 
@@ -184,6 +182,7 @@ def home():
 
 @app.route('/board/<int:game_id>/<user_login>')
 def get_board(game_id, user_login):
+    app.logger.debug(f"Game ID received: {game_id}")
     game = current_games.get(game_id)
     if not game:
         return jsonify({"error": "Invalid game ID"}), 404
@@ -272,10 +271,7 @@ def start_game():
     game = find_waiting_game()
 
     if game:
-        if not game.f_user:
-            color = 'white'
-        else:
-            color = 'black'
+        color = 'white' if not game.f_user else 'black'
         try:
             update_game_with_user(game.game_id, user_login, color)
             session['game_id'] = game.game_id
@@ -287,6 +283,8 @@ def start_game():
         game_id = create_new_game(user_login)
         session['game_id'] = game_id
         session['color'] = 'white'
+
+    app.logger.debug(f"Game created or joined: {session['game_id']} by {user_login} with color {session['color']}")
 
     return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
 
@@ -340,7 +338,7 @@ def move():
     else:
         current_status = f"{current_player}2"
 
-    logging.debug(f"Текущее состояние шашек после хода: {game.pieces}")  # Для отладки
+    logging.debug(f"Текущее состояние шашек после хода: {game.pieces}")
 
     return jsonify({"status_": current_status, "pieces": game.pieces})
 

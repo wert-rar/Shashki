@@ -25,8 +25,10 @@
     <button id="leave-button" onclick="leaveGame()">Leave Game</button>
 
     <script>
-        const gameId = "{{ game_id }}";
+        const game_id = "{{ game_id }}";
         const user_login = "{{ session['user'] }}";
+        console.log('Game ID:', game_id);
+        console.log('User login:', user_login);
 
         function leaveGame() {
             fetch('/leave_game', { method: 'POST' })
@@ -53,7 +55,8 @@
                 console.log('Game status:', data.status);
 
                 if (data.status === 'active') {
-                    window.location.href = `/board/${gameId}/${user_login}`;
+                    window.location.href = `/board/${game_id}/${user_login}`;
+                    console.log(`Redirecting to /board/${game_id}/${user_login}`);
                 } else if (data.status === 'waiting') {
                     document.getElementById('status').innerText = 'Waiting for an opponent...';
                 } else if (data.status === 'no_game') {

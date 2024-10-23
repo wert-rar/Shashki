@@ -1,4 +1,5 @@
 import itertools
+import random
 
 current_player = "w"
 unstarted_games = {}
@@ -95,7 +96,9 @@ def update_game_with_user(game_id, user_login, color):
 
 
 def create_new_game(user_login):
-    game_id = next(game_id_counter)
+    game_id = random.randint(1, 99999999)
+    while game_id in current_games or game_id in unstarted_games:
+        game_id = random.randint(1, 99999999)
     new_game = Game(f_user=user_login, c_user=None, game_id=game_id)
     unstarted_games[game_id] = new_game
     return game_id
