@@ -182,17 +182,22 @@ def home():
     return render_template('home.html')
 
 
-@app.route("/board/<int:game_id>/<int:user_id>")
-def get_board(game_id, user_id):
+@app.route('/board/<int:game_id>/<user_login>')
+def get_board(game_id, user_login):
     game = current_games.get(game_id)
     if not game:
         return jsonify({"error": "Invalid game ID"}), 404
 
-    user_color = 'white' if user_id == game.f_user else 'black'
+    if user_login == game.f_user:
+        user_color = 'white'
+    elif user_login == game.c_user:
+        user_color = 'black'
+    else:
+        return jsonify({"error": "User not part of this game"}), 403
 
     return render_template(
         'board.html',
-        user_id=user_id,
+        user_login=user_login,
         game_id=game_id,
         user_color=user_color,
         f_user=game.f_user,
@@ -227,8 +232,7 @@ def login():
         if user:
             session['flash'] = 'Успешный вход!'
             session['user'] = user_login
-            session['user_id'] = user['user_id']
-            return redirect(url_for('profile', username=user_login))
+            return redirect(url_for('home'))
         else:
             session['flash'] = 'Неправильное имя пользователя или пароль.'
 
@@ -242,7 +246,6 @@ def profile(username):
     if user:
         total_games = user['wins'] + user['losses']
         return render_template('profile.html',
-                               user_id=user['user_id'],
                                user_login=user['login'],
                                rang=user['rang'],
                                total_games=total_games,
@@ -255,7 +258,7 @@ def profile(username):
 @app.route("/logout")
 def logout():
     session.pop('user', None)
-    session.pop('user_id', None)
+    session.pop('user_login', None)
     session['flash'] = 'Вы вышли из системы.'
     return redirect(url_for('home'))
 
@@ -263,7 +266,6 @@ def logout():
 @app.route('/start_game')
 def start_game():
     user_login = session.get('user')
-    user_id = session.get('user_id')
     if not user_login:
         return redirect(url_for('login'))
 
@@ -286,14 +288,14 @@ def start_game():
         session['game_id'] = game_id
         session['color'] = 'white'
 
-    return render_template('waiting.html', game_id=session.get('game_id'), user_id=user_id)
+    return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
 
 
 @app.route("/check_game_status", methods=["GET"])
 def check_game_status_route():
     game_id = session.get('game_id')
-    user_id = session.get('user_id')
-    logging.debug(f"Checking game status, game_id: {game_id}, user_id: {user_id}")
+    user_login = session.get('user_login')
+    logging.debug(f"Checking game status, game_id: {game_id}, user_login: {user_login}")
 
     if not game_id:
         return jsonify({"status": "no_game"}), 404
@@ -310,19 +312,19 @@ def move():
     data = request.json
     new_pieces = data.get("pieces")
     game_id = data.get("game_id")
-    user_id = data.get("user_id")
+    user_login = data.get("user_login")
 
     game = current_games.get(game_id)
 
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
-    if user_id not in [game.f_user, game.c_user]:
+    if user_login not in [game.f_user, game.c_user]:
         return jsonify({"error": "Invalid user ID"}), 403
 
     current_player, current_pieces = game.pieces_and_current_player()
 
-    if (current_player == game.f_user and user_id != game.f_user) or \
-            (current_player == game.c_user and user_id != game.c_user):
+    if (current_player == game.f_user and user_login != game.f_user) or \
+            (current_player == game.c_user and user_login != game.c_user):
         return jsonify({"error": "Not your turn"}), 403
 
     result = validate_move(new_pieces, current_player, current_pieces)
