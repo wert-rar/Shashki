@@ -1,10 +1,6 @@
 import itertools
 import random
 
-current_player = "w"
-unstarted_games = {}
-current_games = {}
-
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
     {"color": 1, "x": 3, "y": 0, "mode": "p"},
@@ -61,17 +57,17 @@ class Game:
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
 
-def find_waiting_game():
+def find_waiting_game(unstarted_games):
     for game in unstarted_games.values():
         if not game.f_user or not game.c_user:
             return game
     return None
 
 
-def update_game_with_user(game_id, user_login, color):
+def update_game_with_user(game_id, user_login, color, current_games, unstarted_games):
     game = current_games.get(game_id) or unstarted_games.get(game_id)
     if not game:
-        raise ValueError(f"Игра {game_id} не существует.")
+        return False
 
     if color == 'white':
         if game.f_user is None:
@@ -81,7 +77,7 @@ def update_game_with_user(game_id, user_login, color):
                 del unstarted_games[game_id]
             return True
         else:
-            raise ValueError(f"В игре {game_id} уже есть белый игрок.")
+            return False
     elif color == 'black':
         if game.c_user is None:
             game.c_user = user_login
@@ -90,12 +86,12 @@ def update_game_with_user(game_id, user_login, color):
                 del unstarted_games[game_id]
             return True
         else:
-            raise ValueError(f"В игре {game_id} уже есть черный игрок.")
+            return False
     else:
-        raise ValueError("Цвет должен быть либо «белым», либо «черным».")
+        return False
 
 
-def create_new_game(user_login):
+def create_new_game(user_login, unstarted_games, current_games):
     game_id = random.randint(1, 99999999)
     while game_id in current_games or game_id in unstarted_games:
         game_id = random.randint(1, 99999999)
@@ -104,7 +100,7 @@ def create_new_game(user_login):
     return game_id
 
 
-def get_game_status(game_id):
+def get_game_status(game_id, current_games, unstarted_games):
     game = current_games.get(game_id) or unstarted_games.get(game_id)
     if not game:
         return None

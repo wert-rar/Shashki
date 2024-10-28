@@ -5,6 +5,9 @@ from base import check_user_exists, \
 from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
 
+current_games = {}
+unstarted_games = {}
+
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
@@ -21,8 +24,6 @@ status_ = {
     "n": "Ничья1",
     "e1": "Ошибка при запросе к серверу"
 }
-current_games = {}
-unstarted_games = {}
 
 
 def get_piece_at(pieces, x, y):
@@ -187,11 +188,8 @@ def get_board(game_id, user_login):
     if not game:
         return jsonify({"error": "Invalid game ID"}), 404
 
-    if user_login == game.f_user:
-        user_color = 'white'
-    elif user_login == game.c_user:
-        user_color = 'black'
-    else:
+    user_color = 'white' if user_login == game.f_user else 'black' if user_login == game.c_user else None
+    if not user_color:
         return jsonify({"error": "User not part of this game"}), 403
 
     return render_template(
@@ -257,7 +255,7 @@ def profile(username):
 @app.route("/logout")
 def logout():
     session.pop('user', None)
-    session.pop('user_login', None)
+    session.pop('game_id', None)
     session['flash'] = 'Вы вышли из системы.'
     return redirect(url_for('home'))
 
@@ -268,19 +266,19 @@ def start_game():
     if not user_login:
         return redirect(url_for('login'))
 
-    game = find_waiting_game()
+    game = find_waiting_game(unstarted_games)
 
     if game:
         color = 'white' if not game.f_user else 'black'
         try:
-            update_game_with_user(game.game_id, user_login, color)
+            update_game_with_user(game.game_id, user_login, color, current_games, unstarted_games)
             session['game_id'] = game.game_id
             session['color'] = color
         except ValueError as e:
             session['flash'] = str(e)
             return redirect(url_for('profile', username=user_login))
     else:
-        game_id = create_new_game(user_login)
+        game_id = create_new_game(user_login, unstarted_games, current_games)
         session['game_id'] = game_id
         session['color'] = 'white'
 
@@ -292,13 +290,13 @@ def start_game():
 @app.route("/check_game_status", methods=["GET"])
 def check_game_status_route():
     game_id = session.get('game_id')
-    user_login = session.get('user_login')
+    user_login = session.get('user')
     logging.debug(f"Checking game status, game_id: {game_id}, user_login: {user_login}")
 
     if not game_id:
         return jsonify({"status": "no_game"}), 404
 
-    game_status = get_game_status(game_id)
+    game_status = get_game_status(game_id, current_games, unstarted_games)
     if game_status:
         return jsonify(game_status)
     else:
@@ -310,7 +308,7 @@ def move():
     data = request.json
     new_pieces = data.get("pieces")
     game_id = data.get("game_id")
-    user_login = data.get("user_login")
+    user_login = session.get('user')
 
     game = current_games.get(game_id)
 
@@ -381,13 +379,14 @@ def leave_game():
         game.c_user = None
     else:
         return jsonify({"error": "User not part of the game"}), 400
+
     if game_id in current_games:
-        if not game.f_user or not game.c_user:
+        if not game.f_user and not game.c_user:
             unstarted_games[game_id] = game
             del current_games[game_id]
+
     session.pop('game_id', None)
     session.pop('color', None)
-
     session['flash'] = 'Вы покинули игру.'
     return jsonify({"message": "Left the game successfully"}), 200
 
