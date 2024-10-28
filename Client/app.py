@@ -343,21 +343,31 @@ def move():
 
 @app.route("/update_board", methods=["POST"])
 def update_board():
-    data = request.json
-    status = data.get("status_")
-    new_pieces = data.get("pieces")
-    game_id = data.get("game_id")
-    game = current_games.get(game_id)
-    if game is None:
-        return jsonify({"error": "Invalid game ID"}), 400
-
     try:
+        if not request.is_json:
+            return jsonify({"error": "Request data must be in JSON format"}), 400
+
+        data = request.get_json()
+
+        status = data.get("status_")
+        new_pieces = data.get("pieces")
+        game_id = int(data.get("game_id"))
+
+        print("Received data:", data)
+        print("Game ID:", game_id)
+
+        game = current_games.get(game_id)
+        if game is None:
+            print("Invalid game ID")
+            return jsonify({"error": "Invalid game ID"}), 400
+
         if new_pieces:
             game.pieces = new_pieces
             return jsonify({"status_": status, "pieces": game.pieces})
         else:
             return jsonify({"error": "Invalid update"}), 400
     except Exception as e:
+        print("Exception:", str(e))
         return jsonify({"error": str(e)}), 500
 
 
