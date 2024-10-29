@@ -40,18 +40,17 @@ class Game:
         self.pieces = [piece.copy() for piece in pieces]
         self.current_player = "w"
 
-    def user_color(self, user_id):
-        if user_id == self.f_user:
+    def user_color(self, user_login):
+        if user_login == self.f_user:
             return 'white'
-        elif user_id == self.c_user:
+        elif user_login == self.c_user:
             return 'black'
         return None
 
     def pieces_and_current_player(self):
-        current_player = self.f_user if self.moves_count % 2 == 0 else self.c_user
-        current_color = 1 if current_player == self.f_user else 0
-        current_pieces = [piece for piece in self.pieces if piece["color"] == current_color]
-        return current_player, current_pieces
+        current_color = "w" if self.moves_count % 2 == 0 else "b"
+        current_pieces = [piece for piece in self.pieces if piece["color"] == (1 if current_color == "w" else 0)]
+        return current_color, current_pieces
 
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"

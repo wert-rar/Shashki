@@ -323,13 +323,14 @@ def move():
     if user_login not in [game.f_user, game.c_user]:
         return jsonify({"error": "Invalid user ID"}), 403
 
-    current_player, current_pieces = game.pieces_and_current_player()
+    current_player = game.current_player
+    user_color = game.user_color(user_login)
 
-    if (current_player == game.f_user and user_login != game.f_user) or \
-            (current_player == game.c_user and user_login != game.c_user):
+    if user_color != current_player:
         return jsonify({"error": "Not your turn"}), 403
 
-    result = validate_move(new_pieces, current_player, current_pieces)
+    result = validate_move(new_pieces, current_player, game.pieces)
+    logging.debug(f"Validate move result: {result}")
 
     if result is True:
         game.pieces = new_pieces
@@ -342,7 +343,7 @@ def move():
     else:
         current_status = f"{current_player}2"
 
-    logging.debug(f"Текущее состояние шашек после хода: {game.pieces}")
+    logging.debug(f"Updated pieces after move: {game.pieces}")
     logging.debug(f"Returning status: {current_status}, pieces: {game.pieces}")
 
     return jsonify({"status_": current_status, "pieces": game.pieces})
