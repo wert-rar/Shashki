@@ -307,7 +307,7 @@ def check_game_status_route():
 def move():
     data = request.json
     new_pieces = data.get("pieces")
-    game_id = data.get("game_id")
+    game_id = int(data.get("game_id"))
     user_login = session.get('user')
 
     game = current_games.get(game_id)
