@@ -173,6 +173,12 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
         return "n"
 
     current_player = 'b' if current_player == 'w' else 'w'
+
+    print(f'Текущий игрок: {current_player}')
+    print(f'Фигуры до хода: {pieces}')
+    print(f'Фигуры после хода: {new_pieces}')
+
+
     return True, pieces, current_player
 
 
@@ -337,6 +343,7 @@ def move():
         current_status = f"{current_player}2"
 
     logging.debug(f"Текущее состояние шашек после хода: {game.pieces}")
+    logging.debug(f"Returning status: {current_status}, pieces: {game.pieces}")
 
     return jsonify({"status_": current_status, "pieces": game.pieces})
 
