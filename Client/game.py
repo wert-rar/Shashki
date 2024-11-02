@@ -47,11 +47,6 @@ class Game:
             return 'b'
         return None
 
-    def pieces_and_current_player(self):
-        current_color = "w" if self.moves_count % 2 == 0 else "b"
-        current_pieces = [piece for piece in self.pieces if piece["color"] == (1 if current_color == "w" else 0)]
-        return current_color, current_pieces
-
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
