@@ -94,8 +94,8 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
     if moved_piece is None:
         return False
 
-    if (current_player == "w" and moved_piece['color'] == 1) or (
-            current_player == "b" and moved_piece['color'] == 0):
+    if (current_player == "w" and moved_piece['color'] != 1) or (
+            current_player == "b" and moved_piece['color'] != 0):
         return False
 
     if get_piece_at(pieces, new_pos['x'], new_pos['y']):
@@ -327,6 +327,7 @@ def move():
     user_color = game.user_color(user_login)
 
     if user_color != current_player:
+        logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
         return jsonify({"error": "Not your turn"}), 403
 
     result = validate_move(new_pieces, current_player, game.pieces)
@@ -335,6 +336,7 @@ def move():
     if result is True:
         game.pieces = new_pieces
         game.moves_count += 1
+        game.current_player = "b" if current_player == "w" else "w"
         current_status = f"{current_player}1"
     elif result in ["w3", "b3"]:
         current_status = result
@@ -356,17 +358,12 @@ def update_board():
             return jsonify({"error": "Request data must be in JSON format"}), 400
 
         data = request.get_json()
-
         status = data.get("status_")
         new_pieces = data.get("pieces")
-        game_id = int(data.get("game_id"))
+        game_id = data.get("game_id")
 
-        print("Received data:", data)
-        print("Game ID:", game_id)
-
-        game = current_games.get(game_id)
+        game = current_games.get(int(game_id))
         if game is None:
-            print("Invalid game ID")
             return jsonify({"error": "Invalid game ID"}), 400
 
         if new_pieces:

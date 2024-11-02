@@ -42,9 +42,9 @@ class Game:
 
     def user_color(self, user_login):
         if user_login == self.f_user:
-            return 'white'
+            return 'w'
         elif user_login == self.c_user:
-            return 'black'
+            return 'b'
         return None
 
     def pieces_and_current_player(self):
