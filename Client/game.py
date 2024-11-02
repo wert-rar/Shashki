@@ -47,6 +47,13 @@ class Game:
             return 'b'
         return None
 
+    def update_pieces(self, new_pieces):
+        if len(new_pieces) != len(self.pieces):
+            return False
+
+        self.pieces = new_pieces
+        return True
+
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 

@@ -334,10 +334,12 @@ def move():
     logging.debug(f"Validate move result: {result}")
 
     if result is True:
-        game.pieces = new_pieces
-        game.moves_count += 1
-        game.current_player = "b" if current_player == "w" else "w"
-        current_status = f"{current_player}1"
+        if game.update_pieces(new_pieces):
+            game.moves_count += 1
+            game.current_player = "b" if current_player == "w" else "w"
+            current_status = f"{current_player}1"
+        else:
+            current_status = f"{current_player}2"
     elif result in ["w3", "b3"]:
         current_status = result
     elif result == 'continue':
