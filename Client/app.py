@@ -194,7 +194,7 @@ def get_board(game_id, user_login):
     if not game:
         return jsonify({"error": "Invalid game ID"}), 404
 
-    user_color = 'white' if user_login == game.f_user else 'black' if user_login == game.c_user else None
+    user_color = 'w' if user_login == game.f_user else 'b' if user_login == game.c_user else None
     if not user_color:
         return jsonify({"error": "User not part of this game"}), 403
 
@@ -275,7 +275,7 @@ def start_game():
     game = find_waiting_game(unstarted_games)
 
     if game:
-        color = 'white' if not game.f_user else 'black'
+        color = 'w' if not game.f_user else 'b'
         try:
             update_game_with_user(game.game_id, user_login, color, current_games, unstarted_games)
             session['game_id'] = game.game_id
@@ -286,7 +286,7 @@ def start_game():
     else:
         game_id = create_new_game(user_login, unstarted_games, current_games)
         session['game_id'] = game_id
-        session['color'] = 'white'
+        session['color'] = 'w'
 
     app.logger.debug(f"Game created or joined: {session['game_id']} by {user_login} with color {session['color']}")
 
@@ -334,6 +334,7 @@ def move():
     logging.debug(f"Validate move result: {result}")
 
     if result is True:
+        print(game.update_pieces(new_pieces))
         if game.update_pieces(new_pieces):
             game.moves_count += 1
             game.current_player = "b" if current_player == "w" else "w"

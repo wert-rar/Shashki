@@ -47,7 +47,7 @@ class Game:
             return 'b'
         return None
 
-    def update_pieces(self, new_pieces):
+    def update_pieces(self, new_pieces) -> bool:
         if len(new_pieces) != len(self.pieces):
             return False
 
@@ -70,7 +70,7 @@ def update_game_with_user(game_id, user_login, color, current_games, unstarted_g
     if not game:
         return False
 
-    if color == 'white':
+    if color == 'w':
         if game.f_user is None:
             game.f_user = user_login
             if game.c_user:
@@ -79,7 +79,7 @@ def update_game_with_user(game_id, user_login, color, current_games, unstarted_g
             return True
         else:
             return False
-    elif color == 'black':
+    elif color == 'b':
         if game.c_user is None:
             game.c_user = user_login
             if game.f_user:

@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <!--<script language="JavaScript" type="text/javascript" src="{{ url_for('static', filename='client.js') }}"></script>-->
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
     <title>Шашки</title>
   </head>
 
@@ -14,6 +18,7 @@
       let CANVAS = null;
       let CTX = null;
       let SELECTED_PIECE = null;
+      let IS_SELECTED = false;
       let CELL_SIZE = 0;
       let HEADER_HEIGHT = 0;
       let CURRENT_STATUS = "w1";
@@ -22,6 +27,8 @@
       let game_id = "{{ game_id }}";
       let user_color = "{{ user_color }}";
 
+      console.log(user_color);
+      console.log(user_login,game_id)
       let status = {
         w1: "Ход белых",
         b1: "Ход черных",
@@ -72,6 +79,8 @@
         { color: 0, x: 6, y: 5, mode: "p" },
       ];
 
+
+
       function translate(pieces_data) {
         let n_pieces = [];
         for (let i = 0; i < pieces_data.length; i++) {
@@ -95,17 +104,15 @@
 
       // SERVER REQUEST CODE
       function server_move_request(status, pieces) {
-        let body = user_color == "b" ? {
-            status_: status,
-            pieces: translate(pieces),
-            user_login: user_login,
-            game_id: game_id,
-          } : {
-            status_: status,
-            pieces: pieces,
-            user_login: user_login,
-            game_id: game_id,
-          }
+        if(user_color == "b"){
+   pieces = translate(pieces);
+  }
+        let body = {
+                status_: status,
+                pieces: pieces,
+                user_login: user_login,
+                game_id: game_id,
+              };
 
         let xhr = new XMLHttpRequest();
         xhr.open("POST", "/move");
@@ -115,7 +122,10 @@
             update_data(response);
           } else {
             let response = JSON.parse(xhr.responseText);
-            update_data({ status_: "e1", pieces:  user_color == "b" ? translate(pieces):pieces  });
+            update_data({
+              status_: "e1",
+              pieces: pieces,
+            });
             throw new Error(response.error);
           }
         });
@@ -124,17 +134,21 @@
       }
 
       function server_update_request(status, pieces) {
-        let body = user_color == "b" ? {
-            status_: status,
-            pieces: translate(pieces),
-            user_login: user_login,
-            game_id: game_id,
-          } : {
-            status_: status,
-            pieces: pieces,
-            user_login: user_login,
-            game_id: game_id,
-          }
+        let body =
+          user_color == "b"
+            ? {
+                status_: status,
+                pieces: translate(pieces),
+                user_login: user_login,
+                game_id: game_id,
+              }
+            : {
+                status_: status,
+                pieces: pieces,
+                user_login: user_login,
+                game_id: game_id,
+              };
+        if(IS_SELECTED) return;
 
         let xhr = new XMLHttpRequest();
         xhr.open("POST", "/update_board");
@@ -144,7 +158,10 @@
             update_data(response);
           } else {
             let response = JSON.parse(xhr.responseText);
-            update_data({ status_: "e1", pieces: user_color == "b" ? translate(pieces):pieces });
+            update_data({
+              status_: "e1",
+              pieces:  pieces,
+            });
             throw new Error(response.error);
           }
         });
@@ -195,6 +212,7 @@
         SELECTED_PIECE = getPressedPiece(evt);
         if (SELECTED_PIECE) {
           SELECTED_PIECE.y = evt.y - HEADER_HEIGHT;
+          IS_SELECTED = true;
         }
       }
 
@@ -210,10 +228,13 @@
         evt.preventDefault();
         if (SELECTED_PIECE != null) {
           let coords = getCoordinates(evt);
+          
           SELECTED_PIECE.piece.x = coords.x;
           SELECTED_PIECE.piece.y = coords.y;
-          SELECTED_PIECE = null;
+          
           server_move_request(CURRENT_STATUS, pieces);
+          SELECTED_PIECE = null;
+          IS_SELECTED = false;
         }
       }
 
