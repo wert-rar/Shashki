@@ -94,8 +94,8 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
     if moved_piece is None:
         return False
 
-    if (current_player == "w" and moved_piece['color'] != 1) or (
-            current_player == "b" and moved_piece['color'] != 0):
+    if (current_player == "w" and moved_piece['color'] != 0) or (
+            current_player == "b" and moved_piece['color'] != 1):
         return False
 
     if get_piece_at(pieces, new_pos['x'], new_pos['y']):
@@ -333,17 +333,21 @@ def move():
     result = validate_move(new_pieces, current_player, game.pieces)
     logging.debug(f"Validate move result: {result}")
 
-    if result is True:
-        print(game.update_pieces(new_pieces))
-        if game.update_pieces(new_pieces):
-            game.moves_count += 1
-            game.current_player = "b" if current_player == "w" else "w"
-            current_status = f"{current_player}1"
-        else:
-            current_status = f"{current_player}2"
-    elif result in ["w3", "b3"]:
-        current_status = result
-    elif result == 'continue':
+    if isinstance(result, tuple):
+        move_result, updated_pieces, new_current_player = result
+    else:
+        move_result = result
+
+    if move_result is True:
+        game.pieces = updated_pieces
+        game.moves_count += 1
+        game.current_player = new_current_player
+        current_status = f"{game.current_player}1"
+    elif move_result in ["w3", "b3", "n"]:
+        game.pieces = updated_pieces
+        current_status = move_result
+    elif move_result == 'continue':
+        game.pieces = updated_pieces
         current_status = f"{current_player}1"
     else:
         current_status = f"{current_player}2"
