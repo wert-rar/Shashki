@@ -228,10 +228,10 @@
         evt.preventDefault();
         if (SELECTED_PIECE != null) {
           let coords = getCoordinates(evt);
-          
+
           SELECTED_PIECE.piece.x = coords.x;
           SELECTED_PIECE.piece.y = coords.y;
-          
+
           server_move_request(CURRENT_STATUS, pieces);
           SELECTED_PIECE = null;
           IS_SELECTED = false;

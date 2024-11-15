@@ -157,7 +157,7 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
             moved_piece['is_king'] = True
 
-    if captured and can_capture(pieces, moved_piece) and not end_turn_flag:
+    if captured and can_capture(moved_piece, pieces) and not end_turn_flag:
         print('Дополнительное взятие возможно, ход остается тем же игроком')
         return 'continue'
 
@@ -177,7 +177,6 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
     print(f'Текущий игрок: {current_player}')
     print(f'Фигуры до хода: {pieces}')
     print(f'Фигуры после хода: {new_pieces}')
-
 
     return True, pieces, current_player
 
