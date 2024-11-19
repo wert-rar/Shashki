@@ -373,7 +373,7 @@ def update_board():
             return jsonify({"error": "Invalid game ID"}), 400
 
         if new_pieces:
-            game.pieces = new_pieces
+            # game.pieces = new_pieces
             return jsonify({"status_": status, "pieces": game.pieces})
         else:
             return jsonify({"error": "Invalid update"}), 400
