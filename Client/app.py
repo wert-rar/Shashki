@@ -340,21 +340,15 @@ def move():
     if move_result is True:
         game.pieces = updated_pieces
         game.moves_count += 1
-        game.current_player = new_current_player
-        current_status = f"{game.current_player}1"
+        game.switch_turn()
     elif move_result in ["w3", "b3", "n"]:
         game.pieces = updated_pieces
-        current_status = move_result
     elif move_result == 'continue':
         game.pieces = updated_pieces
-        current_status = f"{current_player}1"
     else:
-        current_status = f"{current_player}2"
+        return jsonify({"error": "Invalid move"}), 400
 
-    logging.debug(f"Updated pieces after move: {game.pieces}")
-    logging.debug(f"Returning status: {current_status}, pieces: {game.pieces}")
-
-    return jsonify({"status_": current_status, "pieces": game.pieces})
+    return jsonify({"status_": game.status, "pieces": game.pieces})
 
 
 @app.route("/update_board", methods=["POST"])
@@ -364,16 +358,12 @@ def update_board():
             return jsonify({"error": "Request data must be in JSON format"}), 400
 
         data = request.get_json()
-        status = data.get("status_")
-        new_pieces = data.get("pieces")
         game_id = data.get("game_id")
 
         game = current_games.get(int(game_id))
         if game is None:
             return jsonify({"error": "Invalid game ID"}), 400
-
-        return jsonify({"status_": status, "pieces": game.pieces})
-    
+        return jsonify({"status_": game.status, "pieces": game.pieces})
     except Exception as e:
         print("Exception:", str(e))
         return jsonify({"error": str(e)}), 500

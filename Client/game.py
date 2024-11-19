@@ -39,6 +39,7 @@ class Game:
         self.moves_count = 0
         self.pieces = [piece.copy() for piece in pieces]
         self.current_player = "w"
+        self.status = "w1"
 
     def user_color(self, user_login):
         if user_login == self.f_user:
@@ -50,9 +51,18 @@ class Game:
     def update_pieces(self, new_pieces) -> bool:
         if len(new_pieces) != len(self.pieces):
             return False
-
         self.pieces = new_pieces
         return True
+
+    def update_status(self):
+        if self.current_player == "w":
+            self.status = "w1"
+        else:
+            self.status = "b1"
+
+    def switch_turn(self):
+        self.current_player = 'b' if self.current_player == 'w' else 'w'
+        self.update_status()
 
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
