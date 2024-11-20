@@ -159,7 +159,10 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
     if captured and can_capture(moved_piece, pieces) and not end_turn_flag:
         print('Дополнительное взятие возможно, ход остается тем же игроком')
-        return 'continue'
+        if current_player == 'w':
+            return "w4", pieces, current_player
+        else:
+            return "b4", pieces, current_player
 
     if not any(piece['color'] == 0 for piece in pieces):
         print(status_['b3'])
@@ -170,7 +173,7 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
     if check_draw(pieces):
         print(status_['n'])
-        return "n"
+        return "n", pieces, current_player
 
     current_player = 'b' if current_player == 'w' else 'w'
 
@@ -339,16 +342,16 @@ def move():
     else:
         move_result = result
 
-    if move_result is True:
+    if move_result in ["w3", "b3", "n"]:
+        game.pieces = updated_pieces
+        game.status = move_result
+    elif move_result in ["w4", "b4"]:
+        game.pieces = updated_pieces
+        game.status = move_result
+    elif move_result is True:
         game.pieces = updated_pieces
         game.moves_count += 1
         game.switch_turn()
-    elif move_result in ["w3", "b3", "n"]:
-        game.pieces = updated_pieces
-        game.status = move_result
-    elif move_result == 'continue':
-        game.pieces = updated_pieces
-        game.status = move_result
     else:
         return jsonify({"error": "Invalid move"}), 400
 
