@@ -2,58 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
-            background: url('{{ url_for('static', filename='back_register.jpg') }}') no-repeat center center fixed;
-            background-size: cover;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f, #1f1f1f);
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(5px);
+            overflow: hidden;
+            color: white;
+        }
+
+        body:before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
+            animation: rotateBg 10s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes rotateBg {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .registration-menu {
-            width: 320px;
+            background: rgba(0, 0, 0, 0.85);
             padding: 40px;
-            background: white;
             border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
             text-align: center;
-            transition: transform 0.3s ease-in-out;
+            width: 90%;
+            max-width: 400px;
+            animation: fadeIn 1.2s ease;
             position: relative;
         }
 
-        .registration-menu:hover {
-            transform: scale(1.05);
-        }
-
-        .registration-menu h2 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            color: #333;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .back-button {
             position: absolute;
             top: 10px;
             left: 10px;
-            padding: 5px 10px;
-            background: #e74c3c;
+            font-size: 24px;
             color: white;
+            background: none;
             border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            text-decoration: none;
+            box-shadow: none;
             cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.2s ease, color 0.3s ease;
+            will-change: transform;
         }
 
         .back-button:hover {
-            background: #c0392b;
+            transform: scale(1.2);
+            color: #e74c3c;
+        }
+
+        .back-button:focus {
+            outline: none; /* Убираем синий фокус */
+        }
+
+        .registration-menu h2 {
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            color: #ecf0f1;
         }
 
         .registration-group {
@@ -63,63 +101,78 @@
         }
 
         .registration-group input {
-            width: 80%;
+            width: 90%;
             padding: 15px;
             margin: 10px 0;
             border: none;
-            border-bottom: 2px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
         }
 
         .registration-group input:focus {
-            border-color: #3498db;
+            background: rgba(255, 255, 255, 0.2);
             outline: none;
         }
 
-        .registration-menu button {
-            width: 80%;
+        .registration-menu button:not(.back-button) {
+            width: 90%;
             padding: 15px;
-            background: #3498db;
+            background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
             border: none;
-            border-radius: 4px;
-            font-size: 16px;
+            border-radius: 10px;
+            font-size: 1rem;
             cursor: pointer;
-            transition: background 0.3s;
+            margin: 15px 0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .registration-menu button:hover {
-            background: #2980b9;
+        .registration-menu button:not(.back-button):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.5);
+        }
+
+        .registration-link {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+
+        .registration-link a {
+            text-decoration: none; /* Убираем подчеркивание */
+            color: #3498db;
+            transition: color 0.3s ease;
+        }
+
+        .registration-link a:hover {
+            color: #2980b9;
         }
 
         ul {
             padding: 0;
             list-style: none;
-            margin-top: 10px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #e74c3c;
         }
 
-        .registration-link {
-            margin-top: 20px;
-
-            font-size: 14px;
-            color: #333;
+        .error-message {
+            color: red;
         }
 
-        .registration-link a {
-            color: #3498db;
-            text-decoration: none;
-        }
-
-        .registration-link a:hover {
-            text-decoration: underline;
+        .success-message {
+            color: green;
         }
     </style>
 </head>
 <body>
     <div class="registration-menu">
-        <a href="/" class="back-button">&larr; Назад</a>
+        <button class="back-button" onclick="window.location.href='/'">
+            <i class="fas fa-arrow-left"></i>
+        </button>
         <h2 id="title">Вход</h2>
         <form method="POST">
             <div class="registration-group">
@@ -131,15 +184,6 @@
         <div class="registration-link">
             Не зарегистрированы? <a href="/register">Зарегистрируйтесь</a>
         </div>
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <ul>
-                    {% for message in messages %}
-                        <li>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
     </div>
 </body>
 </html>

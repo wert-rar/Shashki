@@ -4,25 +4,161 @@
     <meta charset="UTF-8">
     <title>Waiting for Opponent</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding-top: 50px;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f, #1f1f1f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: #e0e0e0;
         }
-        #status {
-            font-size: 1.5em;
+
+        body:before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
+            animation: rotateBg 10s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes rotateBg {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(1);
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: scale(1.05) translateZ(0);
+            will-change: transform;
+            perspective: 1000px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #ffffff;
             margin-bottom: 20px;
         }
+
+        #status {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            color: #b0b0b0;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
         #leave-button {
-            padding: 10px 20px;
+            background: linear-gradient(135deg, #ff4b2b, #ff0000);
+            border: none;
+            padding: 12px 30px;
+            color: #fff;
             font-size: 1em;
+            font-weight: bold;
+            border-radius: 30px;
             cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #leave-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: left 0.3s;
+            z-index: -1;
+        }
+
+        #leave-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(255, 75, 43, 0.4);
+        }
+
+        #leave-button:hover:before {
+            left: 0;
+        }
+
+        #leave-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 10px rgba(255, 75, 43, 0.2);
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 6px solid rgba(255, 255, 255, 0.2);
+            border-top: 6px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            #leave-button {
+                width: 100%;
+                padding: 10px 0;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="status">Waiting for an opponent...</div>
-    <button id="leave-button" onclick="leaveGame()">Leave Game</button>
+    <div class="container">
+        <h1>Ожидание соперника</h1>
+        <div class="loader"></div>
+        <div id="status">Ждем соперника...</div>
+        <button id="leave-button" onclick="leaveGame()">Покинуть игру</button>
+    </div>
 
     <script>
         const game_id = "{{ game_id }}";
@@ -36,10 +172,10 @@
                     if (response.ok) {
                         window.location.href = '/';
                     } else {
-                        console.error('Failed to leave the game.');
+                        console.error('Не удалось покинуть игру.');
                     }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => console.error('Ошибка:', error));
         }
 
         async function checkGameStatus() {
@@ -47,25 +183,24 @@
                 const response = await fetch('/check_game_status');
                 if (!response.ok) {
                     if (response.status === 404) {
-                        document.getElementById('status').innerText = 'No game found.';
+                        document.getElementById('status').innerText = 'Игра не найдена.';
                     }
-                    throw new Error('Network response was not ok');
+                    throw new Error('Сетевой ответ не был успешным');
                 }
                 const data = await response.json();
-                console.log('Game status:', data.status);
+                console.log('Статус игры:', data.status);
 
                 if (data.status === 'active') {
                     window.location.href = `/board/${game_id}/${user_login}`;
-                    console.log(`Redirecting to /board/${game_id}/${user_login}`);
                 } else if (data.status === 'waiting') {
-                    document.getElementById('status').innerText = 'Waiting for an opponent...';
+                    document.getElementById('status').innerText = 'Ждем соперника...';
                 } else if (data.status === 'no_game') {
-                    document.getElementById('status').innerText = 'No game assigned.';
+                    document.getElementById('status').innerText = 'Игра не назначена.';
                 } else {
-                    document.getElementById('status').innerText = 'Unknown status.';
+                    document.getElementById('status').innerText = 'Неизвестный статус.';
                 }
             } catch (error) {
-                console.error('Error checking game status:', error);
+                console.error('Ошибка при проверке статуса игры:', error);
             }
         }
 
