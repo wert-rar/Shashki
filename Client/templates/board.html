@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,7 +20,8 @@
       let SELECTED_PIECE = null;
       let IS_SELECTED = false;
       let CELL_SIZE = 0;
-      let HEADER_HEIGHT = 0;
+      let BOARD_OFFSET_X = 0;
+      let BOARD_OFFSET_Y = 0;
       let CURRENT_STATUS = "w1";
       let SERVER_IP = "";
       let user_login = "{{ user_login }}";
@@ -28,7 +29,7 @@
       let user_color = "{{ user_color }}";
 
       console.log(user_color);
-      console.log(user_login,game_id)
+      console.log(user_login, game_id);
       let status = {
         w1: "Ход белых",
         b1: "Ход черных",
@@ -43,13 +44,13 @@
       };
 
       let colors = {
-        1: "rgb(0,0,0)",
-        0: "rgb(255,255,255)",
+        1: "rgb(0, 0, 0)",
+        0: "rgb(255, 255, 255)",
       };
 
       let b_colors = {
-        1: "#DA7422",
-        0: "#FFFBDB",
+        1: "#2E2E2E",
+        0: "#1C1C1C",
       };
 
       let pieces = [
@@ -65,21 +66,19 @@
         { color: 1, x: 3, y: 2, mode: "p" },
         { color: 1, x: 5, y: 2, mode: "p" },
         { color: 1, x: 7, y: 2, mode: "p" },
-        { color: 0, x: 0, y: 7, mode: "p" },
-        { color: 0, x: 2, y: 7, mode: "p" },
-        { color: 0, x: 4, y: 7, mode: "p" },
-        { color: 0, x: 6, y: 7, mode: "p" },
-        { color: 0, x: 1, y: 6, mode: "p" },
-        { color: 0, x: 3, y: 6, mode: "p" },
-        { color: 0, x: 5, y: 6, mode: "p" },
-        { color: 0, x: 7, y: 6, mode: "p" },
         { color: 0, x: 0, y: 5, mode: "p" },
         { color: 0, x: 2, y: 5, mode: "p" },
         { color: 0, x: 4, y: 5, mode: "p" },
         { color: 0, x: 6, y: 5, mode: "p" },
+        { color: 0, x: 1, y: 6, mode: "p" },
+        { color: 0, x: 3, y: 6, mode: "p" },
+        { color: 0, x: 5, y: 6, mode: "p" },
+        { color: 0, x: 7, y: 6, mode: "p" },
+        { color: 0, x: 0, y: 7, mode: "p" },
+        { color: 0, x: 2, y: 7, mode: "p" },
+        { color: 0, x: 4, y: 7, mode: "p" },
+        { color: 0, x: 6, y: 7, mode: "p" },
       ];
-
-
 
       function translate(pieces_data) {
         let n_pieces = [];
@@ -104,15 +103,15 @@
 
       // SERVER REQUEST CODE
       function server_move_request(status, pieces) {
-        if(user_color == "b"){
-   pieces = translate(pieces);
-  }
+        if (user_color == "b") {
+          pieces = translate(pieces);
+        }
         let body = {
-                status_: status,
-                pieces: pieces,
-                user_login: user_login,
-                game_id: game_id,
-              };
+          status_: status,
+          pieces: pieces,
+          user_login: user_login,
+          game_id: game_id,
+        };
 
         let xhr = new XMLHttpRequest();
         xhr.open("POST", "/move");
@@ -148,7 +147,7 @@
                 user_login: user_login,
                 game_id: game_id,
               };
-        if(IS_SELECTED) return;
+        if (IS_SELECTED) return;
 
         let xhr = new XMLHttpRequest();
         xhr.open("POST", "/update_board");
@@ -160,7 +159,7 @@
             let response = JSON.parse(xhr.responseText);
             update_data({
               status_: "e1",
-              pieces:  pieces,
+              pieces: pieces,
             });
             throw new Error(response.error);
           }
@@ -205,73 +204,119 @@
         CANVAS.addEventListener("touchstart", onTouchStart);
         CANVAS.addEventListener("touchmove", onTouchMove);
         CANVAS.addEventListener("touchend", onTouchEnd);
+        window.addEventListener("resize", adjustScreen);
       }
 
       function onMouseDown(evt) {
         evt.preventDefault();
-        SELECTED_PIECE = getPressedPiece(evt);
+        let rect = CANVAS.getBoundingClientRect();
+        let loc = {
+          x: evt.clientX - rect.left,
+          y: evt.clientY - rect.top,
+        };
+        SELECTED_PIECE = getPressedPiece(loc);
         if (SELECTED_PIECE) {
-          SELECTED_PIECE.y = evt.y - HEADER_HEIGHT;
+          SELECTED_PIECE.offsetX = loc.x - (BOARD_OFFSET_X + CELL_SIZE * (SELECTED_PIECE.piece.x + 0.5));
+          SELECTED_PIECE.offsetY = loc.y - (BOARD_OFFSET_Y + CELL_SIZE * (SELECTED_PIECE.piece.y + 0.5));
           IS_SELECTED = true;
         }
       }
 
       function onMouseMove(evt) {
         evt.preventDefault();
-        if (SELECTED_PIECE != null) {
-          SELECTED_PIECE.x = evt.x;
-          SELECTED_PIECE.y = evt.y - HEADER_HEIGHT;
+        if (SELECTED_PIECE != null && IS_SELECTED) {
+          let rect = CANVAS.getBoundingClientRect();
+          SELECTED_PIECE.x = evt.clientX - rect.left - SELECTED_PIECE.offsetX;
+          SELECTED_PIECE.y = evt.clientY - rect.top - SELECTED_PIECE.offsetY;
         }
       }
 
       function onMouseUp(evt) {
         evt.preventDefault();
         if (SELECTED_PIECE != null) {
-          let coords = getCoordinates(evt);
+          let rect = CANVAS.getBoundingClientRect();
+          let loc = {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top,
+          };
+          let coords = getCoordinates(loc);
 
-          SELECTED_PIECE.piece.x = coords.x;
-          SELECTED_PIECE.piece.y = coords.y;
+          if (coords.x !== -1 && coords.y !== -1) {
+            SELECTED_PIECE.piece.x = coords.x;
+            SELECTED_PIECE.piece.y = coords.y;
 
-          server_move_request(CURRENT_STATUS, pieces);
+            server_move_request(CURRENT_STATUS, pieces);
+          }
+
           SELECTED_PIECE = null;
           IS_SELECTED = false;
         }
       }
 
       function onTouchStart(evt) {
-        let loc = {
-          x: evt.touches[0].clientX,
-          y: evt.touches[0].clientY,
-        };
-        onMouseDown(loc);
+        evt.preventDefault();
+        if (evt.touches.length > 0) {
+          let rect = CANVAS.getBoundingClientRect();
+          let loc = {
+            x: evt.touches[0].clientX - rect.left,
+            y: evt.touches[0].clientY - rect.top,
+          };
+          SELECTED_PIECE = getPressedPiece(loc);
+          if (SELECTED_PIECE) {
+            SELECTED_PIECE.offsetX = loc.x - (BOARD_OFFSET_X + CELL_SIZE * (SELECTED_PIECE.piece.x + 0.5));
+            SELECTED_PIECE.offsetY = loc.y - (BOARD_OFFSET_Y + CELL_SIZE * (SELECTED_PIECE.piece.y + 0.5));
+            IS_SELECTED = true;
+          }
+        }
       }
 
       function onTouchMove(evt) {
-        let loc = {
-          x: evt.touches[0].clientX,
-          y: evt.touches[0].clientY,
-        };
-        onMouseMove(loc);
+        evt.preventDefault();
+        if (SELECTED_PIECE != null && IS_SELECTED && evt.touches.length > 0) {
+          let rect = CANVAS.getBoundingClientRect();
+          let loc = {
+            x: evt.touches[0].clientX - rect.left - SELECTED_PIECE.offsetX,
+            y: evt.touches[0].clientY - rect.top - SELECTED_PIECE.offsetY,
+          };
+          SELECTED_PIECE.x = loc.x;
+          SELECTED_PIECE.y = loc.y;
+        }
       }
 
       function onTouchEnd(evt) {
-        let loc = {
-          x: evt.touches[0].clientX,
-          y: evt.touches[0].clientY,
-        };
-        onMouseUp(loc);
+        evt.preventDefault();
+        if (SELECTED_PIECE != null) {
+          let rect = CANVAS.getBoundingClientRect();
+          let loc = {
+            x: evt.changedTouches[0].clientX - rect.left,
+            y: evt.changedTouches[0].clientY - rect.top,
+          };
+          let coords = getCoordinates(loc);
+
+          if (coords.x !== -1 && coords.y !== -1) {
+            SELECTED_PIECE.piece.x = coords.x;
+            SELECTED_PIECE.piece.y = coords.y;
+
+            server_move_request(CURRENT_STATUS, pieces);
+          }
+
+          SELECTED_PIECE = null;
+          IS_SELECTED = false;
+        }
       }
 
       function getCoordinates(loc) {
-        for (let i = 0; i < 8; i++) {
-          let y_range = (i + 1) * CELL_SIZE + HEADER_HEIGHT;
-          if (y_range < loc.y && loc.y < y_range + CELL_SIZE) {
-            for (let j = 0; j < 8; j++) {
-              let x_range = (j + 1) * CELL_SIZE;
-              if (x_range < loc.x && loc.x < x_range + CELL_SIZE)
-                return { x: j, y: i };
-            }
-          }
+        let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
+        let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
+
+        if (
+          gridX >= 0 &&
+          gridX < 8 &&
+          gridY >= 0 &&
+          gridY < 8 &&
+          (gridX + gridY) % 2 === 1
+        ) {
+          return { x: gridX, y: gridY };
         }
         return { x: -1, y: -1 };
       }
@@ -279,10 +324,10 @@
       function getPressedPiece(loc) {
         let coords = getCoordinates(loc);
         for (let i = 0; i < pieces.length; i++) {
-          if (pieces[i].x == coords.x && pieces[i].y == coords.y)
+          if (pieces[i].x === coords.x && pieces[i].y === coords.y) {
             return { piece: pieces[i], x: loc.x, y: loc.y };
+          }
         }
-
         return null;
       }
 
@@ -290,10 +335,17 @@
 
       // RENDER CODE
       function adjustScreen() {
-        CANVAS.width = window.innerWidth;
-        CANVAS.height = window.innerHeight * 0.9;
-        CELL_SIZE = CANVAS.height * 0.1;
-        console.log(CELL_SIZE);
+        const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
+        CANVAS.width = size;
+        CANVAS.height = size;
+
+        CELL_SIZE = CANVAS.height / 8;
+
+        // Центрируем доску
+        BOARD_OFFSET_X = (CANVAS.width - CELL_SIZE * 8) / 2;
+        BOARD_OFFSET_Y = (CANVAS.height - CELL_SIZE * 8) / 2;
+
+        CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
       }
 
       function draw_circle(x, y, r, width, strokeColor, fillColor) {
@@ -313,14 +365,14 @@
       function draw_piece(piece, user_color) {
         let fillStyle = colors[piece.color];
         let strokeStyle = colors[piece.color ? 0 : 1];
-        const X = CELL_SIZE * (piece.x + 1.5);
-        const Y = CELL_SIZE * (piece.y + 1.5);
+        const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
+        const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
         const radius = (CELL_SIZE / 2) * 0.8;
         draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
         draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
 
-        if (piece.mode != "p") {
-          draw_circle(X, Y, radius * 0.5, 6, "gold");
+        if (piece.mode !== "p") {
+          draw_circle(X, Y, radius * 0.5, 6, "gold", "rgba(255, 215, 0, 0.7)");
         }
       }
 
@@ -333,25 +385,27 @@
         draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
         draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
 
-        if (SELECTED_PIECE.piece.mode != "p") {
-          draw_circle(X, Y, radius * 0.5, 6, "gold");
+        if (SELECTED_PIECE.piece.mode !== "p") {
+          draw_circle(X, Y, radius * 0.5, 6, "gold", "rgba(255, 215, 0, 0.7)");
         }
       }
 
       function render_Board() {
-        CTX.fillStyle = "white";
+        CTX.fillStyle = "#121212";
         CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
-        let step = user_color == "b" ? 1 : 0;
+        let step = user_color === "b" ? 1 : 0;
         for (let i = 0; i < 8; i++) {
           for (let j = 0; j < 8; j++) {
-            CTX.fillStyle = b_colors[step % 2];
-            CTX.fillRect(
-              CELL_SIZE + CELL_SIZE * j,
-              CELL_SIZE + CELL_SIZE * i,
-              CELL_SIZE,
-              CELL_SIZE
-            );
+            if ((i + j) % 2 === 1) {
+              CTX.fillStyle = b_colors[step % 2];
+              CTX.fillRect(
+                BOARD_OFFSET_X + CELL_SIZE * j,
+                BOARD_OFFSET_Y + CELL_SIZE * i,
+                CELL_SIZE,
+                CELL_SIZE
+              );
+            }
             step++;
           }
           step++;
@@ -360,7 +414,7 @@
 
       function render_Pieces() {
         for (let i = 0; i < pieces.length; i++) {
-          if (SELECTED_PIECE?.piece == pieces[i]) {
+          if (SELECTED_PIECE?.piece === pieces[i]) {
             continue;
           }
           draw_piece(pieces[i], user_color);
@@ -378,8 +432,8 @@
     <div class="header">
       <div class="status" id="status">Сейчас ходят белые</div>
     </div>
-    <div class="board">
-      <canvas id="board" width="1400" height="500"></canvas>
+    <div class="board-container">
+      <canvas id="board"></canvas>
     </div>
   </body>
 </html>

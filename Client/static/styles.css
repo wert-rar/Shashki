@@ -1,22 +1,107 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1e1e1e;
+  color: #f0f0f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+  transition: background-color 0.5s ease;
+}
+
 .header {
-    color: white;
-    font-size: 24pt;
-    text-align: center;
-    background-color: rgb(225, 112, 14);
-    height: 5%;
-    margin: 0;
-    padding: 0;
+  width: 100%;
+  background: linear-gradient(135deg, #2c3e50, #4ca1af);
+  padding: 20px 0;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  animation: headerFadeIn 1s ease-out;
+}
+
+@keyframes headerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status {
+  font-size: 1.5em;
+  font-weight: bold;
+  transition: color 0.5s ease;
+}
+
+.board-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+@keyframes boardFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+canvas#board {
+  background-color: #1e1e1e;
+  border: 2px solid #4ca1af;
+  border-radius: 10px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.status-update {
+  animation: statusChange 0.5s ease;
+}
+
+@keyframes statusChange {
+  0% {
+    background-color: #4ca1af;
+    color: #1e1e1e;
+  }
+  50% {
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+  }
+  100% {
+    background-color: #4ca1af;
+    color: #1e1e1e;
+  }
+}
+
+@media (max-width: 768px) {
+  .status {
+    font-size: 1.2em;
   }
 
-  .board {
-    align-items: center;
-    height: 95%;
+  .header {
+    padding: 15px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .status {
+    font-size: 1em;
   }
 
-  .win {
-    color: white;
-    font-size: 24pt;
-    background-color: #8fec8d;
-    text-align: center;
-    height: 80%;
+  .header {
+    padding: 10px 0;
   }
+}
