@@ -47,32 +47,44 @@ def can_capture(piece, pieces):
     return False
 
 
-def check_draw(pieces):
+def can_player_move(pieces, color):
     for piece in pieces:
-        x, y, color = piece['x'], piece['y'], piece['color']
-        possible_moves = []
+        if piece['color'] != color:
+            continue
 
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 1]:
-                if abs(dx) == abs(dy) and (dx != 0 and dy != 0):
-                    new_x, new_y = x + dx, y + dy
-                    if 0 <= new_x < 8 and 0 <= new_y < 8:
-                        if not get_piece_at(pieces, new_x, new_y):
-                            possible_moves.append((new_x, new_y))
+        x, y = piece['x'], piece['y']
 
         if not piece.get('is_king', False):
-            for dx in [-2, 0, 2]:
-                for dy in [-2, 2]:
-                    if abs(dx) == abs(dy) and (dx != 0 and dy != 0):
-                        mid_x, mid_y = x + dx // 2, y + dy // 2
-                        new_x, new_y = x + dx, y + dy
-                        if 0 <= new_x < 8 and 0 <= new_y < 8:
-                            middle_piece = get_piece_at(pieces, mid_x, mid_y)
-                            if middle_piece and middle_piece['color'] != color and not get_piece_at(pieces, new_x,
-                                                                                                    new_y):
-                                possible_moves.append((new_x, new_y))
-        if possible_moves:
-            return False
+            if color == 0:
+                directions = [(-1, -1), (1, -1)]
+            else:
+                directions = [(-1, 1), (1, 1)]
+        else:
+            directions = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+
+        for dx, dy in directions:
+            new_x, new_y = x + dx, y + dy
+            if 0 <= new_x < 8 and 0 <= new_y < 8:
+                if not get_piece_at(pieces, new_x, new_y):
+                    return True
+
+        for dx, dy in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
+            mid_x, mid_y = x + dx // 2, y + dy // 2
+            new_x, new_y = x + dx, y + dy
+            if 0 <= new_x < 8 and 0 <= new_y < 8:
+                middle_piece = get_piece_at(pieces, mid_x, mid_y)
+                target_piece = get_piece_at(pieces, new_x, new_y)
+                if middle_piece and middle_piece['color'] != color and not target_piece:
+                    return True
+    return False
+
+
+def check_draw(pieces):
+    if can_player_move(pieces, 0):
+        return False
+    if can_player_move(pieces, 1):
+        return False
+    app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
 
 
@@ -82,11 +94,11 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
     moved_piece = None
     new_pos = None
-    print('быстрая проверка на наличие изменений: ', new_pieces != pieces)
+    print('Быстрая проверка на наличие изменений:', new_pieces != pieces)
 
     for piece, new_piece in zip(pieces, new_pieces):
         if piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']:
-            print(f'сдвинута фигура! c {piece} на {new_piece}')
+            print(f'Сдвинута фигура! С {piece} на {new_piece}')
             moved_piece = piece
             new_pos = new_piece
             break
@@ -158,6 +170,19 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
             moved_piece['is_king'] = True
             moved_piece['mode'] = 'k'
 
+    if check_draw(pieces):
+        print(status_['n'])
+        return "n", pieces, current_player
+
+    opponent_color = 1 if current_player == 'w' else 0
+    if not can_player_move(pieces, opponent_color):
+        if current_player == 'w':
+            print(status_['w3'])
+            return "w3", pieces, current_player
+        else:
+            print(status_['b3'])
+            return "b3", pieces, current_player
+
     if captured and can_capture(moved_piece, pieces) and not end_turn_flag:
         print('Дополнительное взятие возможно, ход остается тем же игроком')
         if current_player == 'w':
@@ -165,21 +190,9 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
         else:
             return "b4", pieces, current_player
 
-    if not any(piece['color'] == 0 for piece in pieces):
-        print(status_['b3'])
-        return "b3", pieces, current_player
-    if not any(piece['color'] == 1 for piece in pieces):
-        print(status_['w3'])
-        return "w3", pieces, current_player
-
-    if check_draw(pieces):
-        print(status_['n'])
-        return "n", pieces, current_player
-
     current_player = 'b' if current_player == 'w' else 'w'
 
     print(f"Оставшиеся шашки: {[piece['color'] for piece in pieces]}")
-
     print(f'Текущий игрок: {current_player}')
     print(f'Фигуры до хода: {pieces}')
     print(f'Фигуры после хода: {new_pieces}')
@@ -322,7 +335,6 @@ def move():
     user_login = session.get('user')
 
     game = current_games.get(game_id)
-
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
@@ -355,7 +367,6 @@ def move():
         game.switch_turn()
     else:
         return jsonify({"error": "Invalid move"}), 400
-
     return jsonify({"status_": game.status, "pieces": game.pieces})
 
 
