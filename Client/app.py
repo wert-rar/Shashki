@@ -163,16 +163,18 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
     if not any(piece['color'] == 0 for piece in pieces):
         print(status_['b3'])
-        return "b3"
+        return "b3", pieces, current_player
     if not any(piece['color'] == 1 for piece in pieces):
         print(status_['w3'])
-        return "w3"
+        return "w3", pieces, current_player
 
     if check_draw(pieces):
         print(status_['n'])
         return "n"
 
     current_player = 'b' if current_player == 'w' else 'w'
+
+    print(f"Оставшиеся шашки: {[piece['color'] for piece in pieces]}")
 
     print(f'Текущий игрок: {current_player}')
     print(f'Фигуры до хода: {pieces}')
@@ -343,8 +345,10 @@ def move():
         game.switch_turn()
     elif move_result in ["w3", "b3", "n"]:
         game.pieces = updated_pieces
+        game.status = move_result
     elif move_result == 'continue':
         game.pieces = updated_pieces
+        game.status = move_result
     else:
         return jsonify({"error": "Invalid move"}), 400
 
