@@ -80,6 +80,9 @@ def update_game_with_user(game_id, user_login, color, current_games, unstarted_g
     if not game:
         return False
 
+    if user_login in [game.f_user, game.c_user]:
+        return False
+
     if color == 'w':
         if game.f_user is None:
             game.f_user = user_login
@@ -118,5 +121,7 @@ def get_game_status(game_id, current_games, unstarted_games):
 
     if game.f_user and game.c_user:
         return {'status': 'active'}
-    else:
+    elif game.f_user or game.c_user:
         return {'status': 'waiting'}
+    else:
+        return {'status': 'no_players'}

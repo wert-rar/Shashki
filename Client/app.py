@@ -290,12 +290,24 @@ def start_game():
     if not user_login:
         return redirect(url_for('login'))
 
+    game_id = session.get('game_id')
+    if game_id:
+        game = current_games.get(game_id) or unstarted_games.get(game_id)
+        if game and user_login in [game.f_user, game.c_user]:
+            if game.f_user and game.c_user:
+                return redirect(url_for('get_board', game_id=game_id, user_login=user_login))
+            else:
+                return render_template('waiting.html', game_id=game_id, user_login=user_login)
+
     game = find_waiting_game(unstarted_games)
 
     if game:
         color = 'w' if not game.f_user else 'b'
         try:
-            update_game_with_user(game.game_id, user_login, color, current_games, unstarted_games)
+            updated = update_game_with_user(game.game_id, user_login, color, current_games, unstarted_games)
+            if not updated:
+                session['flash'] = 'Не удалось присоединиться к игре.'
+                return redirect(url_for('profile', username=user_login))
             session['game_id'] = game.game_id
             session['color'] = color
         except ValueError as e:
@@ -308,7 +320,11 @@ def start_game():
 
     app.logger.debug(f"Game created or joined: {session['game_id']} by {user_login} with color {session['color']}")
 
-    return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
+    game = current_games.get(session['game_id']) or unstarted_games.get(session['game_id'])
+    if game.f_user and game.c_user:
+        return redirect(url_for('get_board', game_id=session['game_id'], user_login=user_login))
+    else:
+        return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
 
 
 @app.route("/check_game_status", methods=["GET"])
@@ -322,6 +338,7 @@ def check_game_status_route():
 
     game_status = get_game_status(game_id, current_games, unstarted_games)
     if game_status:
+        game_status['current_user'] = user_login
         return jsonify(game_status)
     else:
         return jsonify({"status": "game_not_found"}), 404
