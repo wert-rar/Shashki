@@ -176,12 +176,8 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
     opponent_color = 1 if current_player == 'w' else 0
     if not can_player_move(pieces, opponent_color):
-        if current_player == 'w':
-            print(status_['w3'])
-            return "w3", pieces, current_player
-        else:
-            print(status_['b3'])
-            return "b3", pieces, current_player
+        print("Ничья: противник не имеет возможных ходов.")
+        return "n", pieces, current_player
 
     if captured and can_capture(moved_piece, pieces) and not end_turn_flag:
         print('Дополнительное взятие возможно, ход остается тем же игроком')
