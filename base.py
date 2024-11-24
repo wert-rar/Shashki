@@ -1,4 +1,3 @@
-import os
 import sqlite3
 
 
@@ -19,7 +18,6 @@ def create_tables():
     """)
 
 
-    # Создание таблицы 'game'
     cur.execute("""
         CREATE TABLE IF NOT EXISTS game(
             game_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +30,6 @@ def create_tables():
         )
     """)
 
-    # Проверка и добавление столбца 'start_time'
     cur.execute("PRAGMA table_info(game)")
     columns = [column[1] for column in cur.fetchall()]
     if 'start_time' not in columns:
@@ -49,14 +46,12 @@ def create_tables():
     print("Новая база данных создана.")
 
 
-# Подключение к базе данных
 def connect_db():
     con = sqlite3.connect("DataBase.db")
     con.row_factory = sqlite3.Row
     return con
 
 
-# Проверка существования пользователя
 def check_user_exists(user_login):
     con = connect_db()
     cur = con.cursor()
@@ -66,7 +61,6 @@ def check_user_exists(user_login):
     return exists
 
 
-# Регистрация нового пользователя
 def register_user(user_login, user_password):
     con = connect_db()
     cur = con.cursor()
@@ -75,7 +69,6 @@ def register_user(user_login, user_password):
     con.close()
 
 
-# Аутентификация пользователя
 def authenticate_user(user_login, user_password):
     con = connect_db()
     cur = con.cursor()
@@ -85,7 +78,6 @@ def authenticate_user(user_login, user_password):
     return user
 
 
-# Получение информации о пользователе
 def get_user_by_login(username):
     con = connect_db()
     cur = con.cursor()
@@ -95,7 +87,6 @@ def get_user_by_login(username):
     return user
 
 
-# Обновление рейтинга пользователя
 def update_user_rank(user_login, points):
     con = connect_db()
     cur = con.cursor()
