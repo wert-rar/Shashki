@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import random
 from base import check_user_exists, \
-    register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats
+    register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
 
@@ -9,6 +9,8 @@ current_games = {}
 unstarted_games = {}
 
 logging.basicConfig(level=logging.DEBUG)
+
+create_tables()
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
@@ -276,7 +278,8 @@ def profile(username):
                                rang=user['rang'],
                                total_games=total_games,
                                wins=user['wins'],
-                               losses=user['losses'])
+                               losses=user['losses'],
+                               draws=user['draws'])
     else:
         return 'Пользователь не найден', 404
 
@@ -416,6 +419,8 @@ def move():
                 update_user_rank(user_login, points_gained)
                 opponent_login = game.f_user if game.f_user != user_login else game.c_user
                 update_user_rank(opponent_login, points_gained)
+                update_user_stats(user_login, draws=1)
+                update_user_stats(opponent_login, draws=1)
             game.rank_updated = True
 
         session.pop('game_id', None)
@@ -433,6 +438,7 @@ def move():
     else:
         return jsonify({"error": "Invalid move"}), 400
     return jsonify({"status_": game.status, "pieces": game.pieces})
+
 
 
 
@@ -483,6 +489,8 @@ def update_board():
                     update_user_rank(user_login, points_gained)
                     opponent_login = game.f_user if game.f_user != user_login else game.c_user
                     update_user_rank(opponent_login, points_gained)
+                    update_user_stats(user_login, draws=1)
+                    update_user_stats(opponent_login, draws=1)
                 game.rank_updated = True
 
             session.pop('game_id', None)
