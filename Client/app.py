@@ -175,7 +175,16 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
         return "n", pieces, current_player
 
     opponent_color = 1 if current_player == 'w' else 0
-    if not can_player_move(pieces, opponent_color):
+    opponent_pieces = [p for p in pieces if p['color'] == opponent_color]
+
+    if not opponent_pieces:
+        if current_player == 'w':
+            print(status_['w3'])
+            return "w3", pieces, current_player
+        else:
+            print(status_['b3'])
+            return "b3", pieces, current_player
+    elif not can_player_move(pieces, opponent_color):
         print("Ничья: противник не имеет возможных ходов.")
         return "n", pieces, current_player
 
