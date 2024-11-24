@@ -83,9 +83,22 @@ def get_user_by_login(username):
     con.close()
     return user
 
+def update_user_rank(user_login, points):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("UPDATE player SET rang = rang + ? WHERE login = ?", (points, user_login))
+    con.commit()
+    con.close()
 
-if __name__ == "__main__":
-    create_tables()
-    input_login = input("Введите логин пользователя: ")
-    input_password = input("Введите пароль пользователя: ")
-    register_user(input_login, input_password)
+
+def update_user_stats(user_login, wins=0, losses=0):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("""
+        UPDATE player
+        SET wins = wins + ?,
+            losses = losses + ?
+        WHERE login = ?
+    """, (wins, losses, user_login))
+    con.commit()
+    con.close()

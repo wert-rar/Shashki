@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import random
 from base import check_user_exists, \
-    register_user, authenticate_user, get_user_by_login
+    register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats
 from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
 
@@ -292,12 +292,18 @@ def start_game():
 
     game_id = session.get('game_id')
     if game_id:
-        game = current_games.get(game_id) or unstarted_games.get(game_id)
+        game = current_games.get(int(game_id)) or unstarted_games.get(int(game_id))
         if game and user_login in [game.f_user, game.c_user]:
-            if game.f_user and game.c_user:
-                return redirect(url_for('get_board', game_id=game_id, user_login=user_login))
+            if game.status in ['w3', 'b3', 'n']:
+                session.pop('game_id', None)
+                session.pop('color', None)
+                if int(game_id) in current_games:
+                    del current_games[int(game_id)]
             else:
-                return render_template('waiting.html', game_id=game_id, user_login=user_login)
+                if game.f_user and game.c_user:
+                    return redirect(url_for('get_board', game_id=game_id, user_login=user_login))
+                else:
+                    return render_template('waiting.html', game_id=game_id, user_login=user_login)
 
     game = find_waiting_game(unstarted_games)
 
@@ -375,6 +381,43 @@ def move():
     if move_result in ["w3", "b3", "n"]:
         game.pieces = updated_pieces
         game.status = move_result
+
+        if move_result == 'w3':
+            winner_color = 'w'
+        elif move_result == 'b3':
+            winner_color = 'b'
+        else:
+            winner_color = None
+
+        if winner_color is None:
+            result = 'draw'
+            points_gained = 5
+        elif winner_color == user_color:
+            result = 'win'
+            points_gained = 10
+        else:
+            result = 'lose'
+            points_gained = 0
+
+        if not getattr(game, 'rank_updated', False):
+            if result == 'win':
+                update_user_rank(user_login, points_gained)
+                update_user_stats(user_login, wins=1)
+                opponent_login = game.f_user if game.f_user != user_login else game.c_user
+                update_user_stats(opponent_login, losses=1)
+            elif result == 'lose':
+                update_user_stats(user_login, losses=1)
+            elif result == 'draw':
+                update_user_rank(user_login, points_gained)
+                opponent_login = game.f_user if game.f_user != user_login else game.c_user
+                update_user_rank(opponent_login, points_gained)
+            game.rank_updated = True
+
+        session.pop('game_id', None)
+        session.pop('color', None)
+
+        return jsonify({"status_": game.status, "pieces": game.pieces, "points_gained": points_gained, "result": result})
+
     elif move_result in ["w4", "b4"]:
         game.pieces = updated_pieces
         game.status = move_result
@@ -387,6 +430,7 @@ def move():
     return jsonify({"status_": game.status, "pieces": game.pieces})
 
 
+
 @app.route("/update_board", methods=["POST"])
 def update_board():
     try:
@@ -395,11 +439,54 @@ def update_board():
 
         data = request.get_json()
         game_id = data.get("game_id")
+        user_login = session.get('user')
 
         game = current_games.get(int(game_id))
         if game is None:
             return jsonify({"error": "Invalid game ID"}), 400
-        return jsonify({"status_": game.status, "pieces": game.pieces})
+
+        response_data = {"status_": game.status, "pieces": game.pieces}
+
+        if game.status in ['w3', 'b3', 'n']:
+            user_color = game.user_color(user_login)
+            if game.status == 'w3':
+                winner_color = 'w'
+            elif game.status == 'b3':
+                winner_color = 'b'
+            else:
+                winner_color = None
+
+            if winner_color is None:
+                result = 'draw'
+                points_gained = 5
+            elif winner_color == user_color:
+                result = 'win'
+                points_gained = 10
+            else:
+                result = 'lose'
+                points_gained = 0
+
+            if not getattr(game, 'rank_updated', False):
+                if result == 'win':
+                    update_user_rank(user_login, points_gained)
+                    update_user_stats(user_login, wins=1)
+                    opponent_login = game.f_user if game.f_user != user_login else game.c_user
+                    update_user_stats(opponent_login, losses=1)
+                elif result == 'lose':
+                    update_user_stats(user_login, losses=1)
+                elif result == 'draw':
+                    update_user_rank(user_login, points_gained)
+                    opponent_login = game.f_user if game.f_user != user_login else game.c_user
+                    update_user_rank(opponent_login, points_gained)
+                game.rank_updated = True
+
+            session.pop('game_id', None)
+            session.pop('color', None)
+
+            response_data['points_gained'] = points_gained
+            response_data['result'] = result
+
+        return jsonify(response_data)
     except Exception as e:
         print("Exception:", str(e))
         return jsonify({"error": str(e)}), 500
@@ -412,6 +499,8 @@ def leave_game():
 
     if not game_id or not user_login:
         return jsonify({"error": "No game to leave"}), 400
+
+    game_id = int(game_id)
 
     game = current_games.get(game_id) or unstarted_games.get(game_id)
     if not game:
@@ -426,7 +515,6 @@ def leave_game():
 
     if game_id in current_games:
         if not game.f_user and not game.c_user:
-            unstarted_games[game_id] = game
             del current_games[game_id]
 
     session.pop('game_id', None)
