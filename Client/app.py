@@ -503,6 +503,47 @@ def update_board():
         print("Exception:", str(e))
         return jsonify({"error": str(e)}), 500
 
+@app.route("/give_up", methods=["POST"])
+def give_up():
+    try:
+        data = request.get_json()
+        game_id = int(data.get("game_id"))
+        user_login = data.get("user_login")
+
+        game = current_games.get(game_id) or unstarted_games.get(game_id)
+        if not game:
+            return jsonify({"error": "Игра не найдена"}), 404
+
+        if user_login not in [game.f_user, game.c_user]:
+            return jsonify({"error": "Пользователь не участвует в этой игре"}), 403
+
+        user_color = 'w' if user_login == game.f_user else 'b'
+        opponent_login = game.c_user if user_login == game.f_user else game.f_user
+
+        if user_color == 'w':
+            game.status = 'b3'
+        else:
+            game.status = 'w3'
+
+        if not getattr(game, 'rank_updated', False):
+            update_user_stats(user_login, losses=1)
+            update_user_stats(opponent_login, wins=1)
+            update_user_rank(opponent_login, 10)
+            game.rank_updated = True
+
+        response = {
+            "status_": game.status,
+            "pieces": game.pieces,
+            "result": "lose",
+            "points_gained": 0
+        }
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        app.logger.error(f"Ошибка при сдаче: {str(e)}")
+        return jsonify({"error": "Произошла ошибка при сдаче."}), 500
+
 
 @app.route('/leave_game', methods=['POST'])
 def leave_game():

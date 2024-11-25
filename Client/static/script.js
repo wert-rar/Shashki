@@ -83,14 +83,12 @@ function update_data(data) {
   document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
   if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
-    // Игра окончена
     displayGameOverMessage(data);
   }
 
   update();
 }
 
-// Функция для отображения сообщения об окончании игры
 function displayGameOverMessage(data) {
   let modal = document.getElementById("game-over-modal");
   let title = document.getElementById("game-over-title");
@@ -126,6 +124,25 @@ function returnToMainMenu() {
     }
   };
   xhr.send(JSON.stringify({}));
+}
+
+function give_up() {
+  if (confirm("Вы уверены, что хотите сдаться? Это будет считаться поражением.")) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/give_up", true);
+    xhr.setRequestHeader("Content-type", "application/json");
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === XMLHttpRequest.DONE) {
+        if (xhr.status === 200) {
+          let response = JSON.parse(xhr.responseText);
+          displayGameOverMessage(response);
+        } else {
+          alert("Произошла ошибка при попытке сдаться.");
+        }
+      }
+    };
+    xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}));
+  }
 }
 
 // SERVER REQUEST CODE
