@@ -35,7 +35,6 @@ def create_tables():
     if 'start_time' not in columns:
         cur.execute("ALTER TABLE game ADD COLUMN start_time TIMESTAMP")
 
-    # Инициализация таблицы 'game', если она пуста
     cur.execute("SELECT COUNT(*) FROM game")
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")

@@ -10,7 +10,6 @@ unstarted_games = {}
 
 logging.basicConfig(level=logging.DEBUG)
 
-create_tables()
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 
@@ -272,7 +271,7 @@ def profile(username):
     user = get_user_by_login(username)
 
     if user:
-        total_games = user['wins'] + user['losses']
+        total_games = user['wins'] + user['losses'] + user['draws']
         return render_template('profile.html',
                                user_login=user['login'],
                                rang=user['rang'],

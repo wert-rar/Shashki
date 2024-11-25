@@ -118,7 +118,7 @@ function displayGameOverMessage(data) {
 
 function returnToMainMenu() {
   var xhr = new XMLHttpRequest();
-  xhr.open("POST", "/leave_game", true); // асинхронный запрос
+  xhr.open("POST", "/leave_game", true);
   xhr.setRequestHeader("Content-type", "application/json");
   xhr.onreadystatechange = function() {
     if (xhr.readyState === XMLHttpRequest.DONE) {
