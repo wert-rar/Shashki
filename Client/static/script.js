@@ -8,6 +8,7 @@ let BOARD_OFFSET_X = 0;
 let BOARD_OFFSET_Y = 0;
 let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
+let LABEL_PADDING = 30;
 
 console.log(user_color);
 console.log(user_login, game_id);
@@ -373,14 +374,13 @@ function getPressedPiece(loc) {
 // RENDER CODE
 function adjustScreen() {
   const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
-  CANVAS.width = size;
-  CANVAS.height = size;
+  CANVAS.width = size + LABEL_PADDING * 2;
+  CANVAS.height = size + LABEL_PADDING * 2;
 
-  CELL_SIZE = CANVAS.height / 8;
+  CELL_SIZE = size / 8;
 
-  // Центрируем доску
-  BOARD_OFFSET_X = (CANVAS.width - CELL_SIZE * 8) / 2;
-  BOARD_OFFSET_Y = (CANVAS.height - CELL_SIZE * 8) / 2;
+  BOARD_OFFSET_X = LABEL_PADDING;
+  BOARD_OFFSET_Y = LABEL_PADDING;
 
   CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
 }
@@ -446,6 +446,40 @@ function render_Board() {
       step++;
     }
     step++;
+  }
+  drawLabels();
+}
+
+function drawLabels() {
+  CTX.fillStyle = "#f0f0f0";
+  CTX.font = `${CELL_SIZE / 3}px Arial`;
+  CTX.textAlign = "center";
+  CTX.textBaseline = "middle";
+
+  const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+  for (let i = 0; i < 8; i++) {
+    const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
+    const y = BOARD_OFFSET_Y - LABEL_PADDING / 2;
+    CTX.fillText(letters[i], x, y);
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
+    const y = BOARD_OFFSET_Y + CELL_SIZE * 8 + LABEL_PADDING / 2;
+    CTX.fillText(letters[i], x, y);
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const x = BOARD_OFFSET_X - LABEL_PADDING / 2;
+    const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
+    CTX.fillText(i + 1, x, y);
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const x = BOARD_OFFSET_X + CELL_SIZE * 8 + LABEL_PADDING / 2;
+    const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
+    CTX.fillText(i + 1, x, y);
   }
 }
 
