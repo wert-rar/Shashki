@@ -118,6 +118,12 @@ def check_draw(pieces):
     app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
 
+def is_all_kings(pieces):
+    for piece in pieces:
+        if piece.get('mode') != 'k':
+            return False
+    return True
+
 
 def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False):
     if len(new_pieces) != len(pieces):
@@ -125,11 +131,9 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
 
     moved_piece = None
     new_pos = None
-    print('Быстрая проверка на наличие изменений:', new_pieces != pieces)
 
     for piece, new_piece in zip(pieces, new_pieces):
         if piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']:
-            print(f'Сдвинута фигура! С {piece} на {new_piece}')
             moved_piece = piece
             new_pos = new_piece
             break
@@ -139,15 +143,16 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
 
     if game.must_capture_piece:
         if (moved_piece['x'], moved_piece['y']) != (game.must_capture_piece['x'], game.must_capture_piece['y']):
-            print('Должно двигаться обязательное захватывающееся')
+            print(f"Ошибка: двигается фигура {moved_piece}, но должна двигаться {game.must_capture_piece}")
             return False
 
     if (current_player == "w" and moved_piece['color'] != 0) or (
             current_player == "b" and moved_piece['color'] != 1):
+        print("Ошибка: игрок ходит не своей фигурой.")
         return False
 
     if get_piece_at(pieces, new_pos['x'], new_pos['y']):
-        print('Поле занято')
+        print("Ошибка: целевая клетка занята.")
         return False
 
     dx = new_pos['x'] - moved_piece['x']
@@ -157,6 +162,7 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
     captured = False
 
     if moved_piece.get('is_king', False):
+        # Дамка
         if abs_dx == abs_dy:
             step_x = dx // abs_dx
             step_y = dy // abs_dy
@@ -165,46 +171,60 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
                 piece_at_pos = get_piece_at(pieces, moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y)
                 if piece_at_pos:
                     if piece_at_pos['color'] == moved_piece['color']:
-                        print('Путь блокирован')
+                        print("Путь блокирован своей фигурой.")
                         return False
                     else:
                         captured_pieces.append(piece_at_pos)
             if len(captured_pieces) > 1:
-                print('Путь блокирован более чем одной фигурой')
+                print("Ошибка: захвачено более одной фигуры.")
                 return False
             elif captured_pieces:
                 pieces.remove(captured_pieces[0])
                 captured = True
+            else:
+                if game.must_capture_piece:
+                    print("Ошибка: в множественном захвате нельзя ходить без захвата.")
+                    return False
         else:
-            print('Дамка должна двигаться по диагонали')
+            print("Ошибка: дамка должна двигаться по диагонали.")
             return False
     else:
-        if abs_dx == 1 and abs_dy == 1:
-            if (moved_piece['color'] == 0 and dy == -1) or (moved_piece['color'] == 1 and dy == 1):
-                pass
-            else:
-                print('Обычные пешки не могут ходить назад')
-                return False
-        elif abs_dx == 2 and abs_dy == 2:
+        if abs_dx == 2 and abs_dy == 2:
             mid_x = (moved_piece['x'] + new_pos['x']) // 2
             mid_y = (moved_piece['y'] + new_pos['y']) // 2
             captured_piece = get_piece_at(pieces, mid_x, mid_y)
             if not captured_piece or captured_piece['color'] == moved_piece['color']:
-                print('Невозможно съесть фигуру')
+                print("Ошибка: невозможно съесть фигуру.")
                 return False
             pieces.remove(captured_piece)
             captured = True
-        else:
-            print('Ошибка с дистанцией')
+        elif game.must_capture_piece:
+            print("Ошибка: в множественном захвате нельзя ходить без захвата.")
             return False
+        else:
+            if abs_dx == 1 and abs_dy == 1:
+                if (moved_piece['color'] == 0 and dy == -1) or (moved_piece['color'] == 1 and dy == 1):
+                    pass
+                else:
+                    print("Ошибка: пешка не может ходить назад.")
+                    return False
+            else:
+                print("Ошибка с дистанцией хода пешки.")
+                return False
 
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
+
+    # Превращение в дамку
     if not moved_piece.get('is_king', False):
         if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
             moved_piece['is_king'] = True
             moved_piece['mode'] = 'k'
+
+    if is_all_kings(pieces):
+        print("Ничья: все шашки превратились в дамки.")
+        return "n", pieces, current_player
 
     if check_draw(pieces):
         print(status_['n'])
@@ -227,24 +247,16 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
     if captured:
         if can_capture(moved_piece, pieces):
             game.must_capture_piece = moved_piece.copy()
-            print('Дополнительное взятие возможно, ход остается тем же игроком')
-            if current_player == 'w':
-                return "w4", pieces, current_player
-            else:
-                return "b4", pieces, current_player
+            print("Дополнительный захват возможен.")
+            return f"{current_player}4", pieces, current_player
 
     if game.must_capture_piece and not can_capture(game.must_capture_piece, pieces):
+        print("Множественный захват завершён.")
         game.must_capture_piece = None
 
     current_player = 'b' if current_player == 'w' else 'w'
 
-    print(f"Оставшиеся шашки: {[piece['color'] for piece in pieces]}")
-    print(f'Текущий игрок: {current_player}')
-    print(f'Фигуры до хода: {pieces}')
-    print(f'Фигуры после хода: {new_pieces}')
-
     return True, pieces, current_player
-
 
 @app.route("/")
 def home():
