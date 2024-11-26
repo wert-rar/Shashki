@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-import random
 from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
@@ -9,6 +8,8 @@ current_games = {}
 unstarted_games = {}
 
 logging.basicConfig(level=logging.DEBUG)
+
+create_tables()
 
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
@@ -36,15 +37,37 @@ def get_piece_at(pieces, x, y):
 
 def can_capture(piece, pieces):
     x, y = piece['x'], piece['y']
-    possible_directions = [(2, 2), (2, -2), (-2, 2), (-2, -2)]
-    for dx, dy in possible_directions:
-        mid_x, mid_y = x + dx // 2, y + dy // 2
-        end_x, end_y = x + dx, y + dy
-        captured_piece = get_piece_at(pieces, mid_x, mid_y)
-        target_pos = get_piece_at(pieces, end_x, end_y)
-        if (0 <= end_x < 8 and 0 <= end_y < 8 and
-                captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
-            return True
+    if piece.get('is_king', False):
+        directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+        for dx, dy in directions:
+            step = 1
+            opponent_found = False
+            while True:
+                mid_x = x + dx * step
+                mid_y = y + dy * step
+                if not (0 <= mid_x < 8 and 0 <= mid_y < 8):
+                    break
+                mid_piece = get_piece_at(pieces, mid_x, mid_y)
+                if mid_piece:
+                    if mid_piece['color'] == piece['color']:
+                        break
+                    if opponent_found:
+                        break
+                    opponent_found = True
+                else:
+                    if opponent_found:
+                        return True
+                step += 1
+    else:
+        possible_directions = [(2, 2), (2, -2), (-2, 2), (-2, -2)]
+        for dx, dy in possible_directions:
+            mid_x, mid_y = x + dx // 2, y + dy // 2
+            end_x, end_y = x + dx, y + dy
+            captured_piece = get_piece_at(pieces, mid_x, mid_y)
+            target_pos = get_piece_at(pieces, end_x, end_y)
+            if (0 <= end_x < 8 and 0 <= end_y < 8 and
+                    captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
+                return True
     return False
 
 
@@ -63,20 +86,27 @@ def can_player_move(pieces, color):
         else:
             directions = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
 
-        for dx, dy in directions:
-            new_x, new_y = x + dx, y + dy
-            if 0 <= new_x < 8 and 0 <= new_y < 8:
-                if not get_piece_at(pieces, new_x, new_y):
-                    return True
-
-        for dx, dy in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
-            mid_x, mid_y = x + dx // 2, y + dy // 2
-            new_x, new_y = x + dx, y + dy
-            if 0 <= new_x < 8 and 0 <= new_y < 8:
-                middle_piece = get_piece_at(pieces, mid_x, mid_y)
-                target_piece = get_piece_at(pieces, new_x, new_y)
-                if middle_piece and middle_piece['color'] != color and not target_piece:
-                    return True
+        if piece.get('is_king', False):
+            for dx, dy in directions:
+                step = 1
+                while True:
+                    new_x = x + dx * step
+                    new_y = y + dy * step
+                    if not (0 <= new_x < 8 and 0 <= new_y < 8):
+                        break
+                    if not get_piece_at(pieces, new_x, new_y):
+                        return True
+                    else:
+                        break
+                    step += 1
+        else:
+            for dx, dy in directions:
+                new_x, new_y = x + dx, y + dy
+                if 0 <= new_x < 8 and 0 <= new_y < 8:
+                    if not get_piece_at(pieces, new_x, new_y):
+                        return True
+        if can_capture(piece, pieces):
+            return True
     return False
 
 
@@ -89,7 +119,7 @@ def check_draw(pieces):
     return True
 
 
-def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
+def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False):
     if len(new_pieces) != len(pieces):
         return False
 
@@ -106,6 +136,11 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
 
     if moved_piece is None:
         return False
+
+    if game.must_capture_piece:
+        if (moved_piece['x'], moved_piece['y']) != (game.must_capture_piece['x'], game.must_capture_piece['y']):
+            print('Должно двигаться обязательное захватывающееся')
+            return False
 
     if (current_player == "w" and moved_piece['color'] != 0) or (
             current_player == "b" and moved_piece['color'] != 1):
@@ -189,12 +224,17 @@ def validate_move(new_pieces, current_player, pieces, end_turn_flag=False):
         print("Ничья: противник не имеет возможных ходов.")
         return "n", pieces, current_player
 
-    if captured and can_capture(moved_piece, pieces) and not end_turn_flag:
-        print('Дополнительное взятие возможно, ход остается тем же игроком')
-        if current_player == 'w':
-            return "w4", pieces, current_player
-        else:
-            return "b4", pieces, current_player
+    if captured:
+        if can_capture(moved_piece, pieces):
+            game.must_capture_piece = moved_piece.copy()
+            print('Дополнительное взятие возможно, ход остается тем же игроком')
+            if current_player == 'w':
+                return "w4", pieces, current_player
+            else:
+                return "b4", pieces, current_player
+
+    if game.must_capture_piece and not can_capture(game.must_capture_piece, pieces):
+        game.must_capture_piece = None
 
     current_player = 'b' if current_player == 'w' else 'w'
 
@@ -377,7 +417,7 @@ def move():
         logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
         return jsonify({"error": "Not your turn"}), 403
 
-    result = validate_move(new_pieces, current_player, game.pieces)
+    result = validate_move(new_pieces, current_player, game.pieces, game)
     logging.debug(f"Validate move result: {result}")
 
     if isinstance(result, tuple):
@@ -437,8 +477,6 @@ def move():
     else:
         return jsonify({"error": "Invalid move"}), 400
     return jsonify({"status_": game.status, "pieces": game.pieces})
-
-
 
 
 @app.route("/update_board", methods=["POST"])
@@ -502,6 +540,7 @@ def update_board():
     except Exception as e:
         print("Exception:", str(e))
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/give_up", methods=["POST"])
 def give_up():
