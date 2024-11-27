@@ -8,7 +8,7 @@ let BOARD_OFFSET_X = 0;
 let BOARD_OFFSET_Y = 0;
 let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
-let LABEL_PADDING = 30;
+let LABEL_PADDING = 36;
 
 console.log(user_color);
 console.log(user_login, game_id);
@@ -32,8 +32,8 @@ let colors = {
 };
 
 let b_colors = {
-  1: "#2E2E2E",
-  0: "#1C1C1C",
+  1: "#971616",
+  0: "#971616",
 };
 
 let pieces = [

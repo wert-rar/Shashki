@@ -162,7 +162,6 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
     captured = False
 
     if moved_piece.get('is_king', False):
-        # Дамка
         if abs_dx == abs_dy:
             step_x = dx // abs_dx
             step_y = dy // abs_dy
@@ -214,8 +213,6 @@ def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False)
 
     moved_piece['x'] = new_pos['x']
     moved_piece['y'] = new_pos['y']
-
-    # Превращение в дамку
     if not moved_piece.get('is_king', False):
         if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
                 moved_piece['color'] == 1 and moved_piece['y'] == 7):
