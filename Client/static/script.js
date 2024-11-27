@@ -1,4 +1,3 @@
-
 let CANVAS = null;
 let CTX = null;
 let SELECTED_PIECE = null;
@@ -37,32 +36,31 @@ let b_colors = {
 };
 
 let pieces = [
-        { color: 1, x: 1, y: 0, mode: "p" },
-        { color: 1, x: 3, y: 0, mode: "p" },
-        { color: 1, x: 5, y: 0, mode: "p" },
-        { color: 1, x: 7, y: 0, mode: "p" },
-        { color: 1, x: 0, y: 1, mode: "p" },
-        { color: 1, x: 2, y: 1, mode: "p" },
-        { color: 1, x: 4, y: 1, mode: "p" },
-        { color: 1, x: 6, y: 1, mode: "p" },
-        { color: 1, x: 1, y: 2, mode: "p" },
-        { color: 1, x: 3, y: 2, mode: "p" },
-        { color: 1, x: 5, y: 2, mode: "p" },
-        { color: 1, x: 7, y: 2, mode: "p" },
-        { color: 0, x: 0, y: 5, mode: "p" },
-        { color: 0, x: 2, y: 5, mode: "p" },
-        { color: 0, x: 4, y: 5, mode: "p" },
-        { color: 0, x: 6, y: 5, mode: "p" },
-        { color: 0, x: 1, y: 6, mode: "p" },
-        { color: 0, x: 3, y: 6, mode: "p" },
-        { color: 0, x: 5, y: 6, mode: "p" },
-        { color: 0, x: 7, y: 6, mode: "p" },
-        { color: 0, x: 0, y: 7, mode: "p" },
-        { color: 0, x: 2, y: 7, mode: "p" },
-        { color: 0, x: 4, y: 7, mode: "p" },
-        { color: 0, x: 6, y: 7, mode: "p" },
-      ];
-
+  { color: 1, x: 1, y: 0, mode: "p" },
+  { color: 1, x: 3, y: 0, mode: "p" },
+  { color: 1, x: 5, y: 0, mode: "p" },
+  { color: 1, x: 7, y: 0, mode: "p" },
+  { color: 1, x: 0, y: 1, mode: "p" },
+  { color: 1, x: 2, y: 1, mode: "p" },
+  { color: 1, x: 4, y: 1, mode: "p" },
+  { color: 1, x: 6, y: 1, mode: "p" },
+  { color: 1, x: 1, y: 2, mode: "p" },
+  { color: 1, x: 3, y: 2, mode: "p" },
+  { color: 1, x: 5, y: 2, mode: "p" },
+  { color: 1, x: 7, y: 2, mode: "p" },
+  { color: 0, x: 0, y: 5, mode: "p" },
+  { color: 0, x: 2, y: 5, mode: "p" },
+  { color: 0, x: 4, y: 5, mode: "p" },
+  { color: 0, x: 6, y: 5, mode: "p" },
+  { color: 0, x: 1, y: 6, mode: "p" },
+  { color: 0, x: 3, y: 6, mode: "p" },
+  { color: 0, x: 5, y: 6, mode: "p" },
+  { color: 0, x: 7, y: 6, mode: "p" },
+  { color: 0, x: 0, y: 7, mode: "p" },
+  { color: 0, x: 2, y: 7, mode: "p" },
+  { color: 0, x: 4, y: 7, mode: "p" },
+  { color: 0, x: 6, y: 7, mode: "p" },
+];
 
 function translate(pieces_data) {
   let n_pieces = [];
@@ -82,6 +80,11 @@ function update_data(data) {
   pieces = data.pieces;
   if (user_color == "b") pieces = translate(pieces);
   document.getElementById("status").innerHTML = status[CURRENT_STATUS];
+
+  if (data.draw_offer && data.draw_offer !== user_color) {
+    let modal = document.getElementById("draw-offer-modal");
+    modal.style.display = "block";
+  }
 
   if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
     displayGameOverMessage(data);
@@ -144,6 +147,62 @@ function give_up() {
     };
     xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}));
   }
+}
+
+function give_draw() {
+  let body = {
+    game_id: game_id
+  };
+
+  fetch('/offer_draw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      alert(data.error);
+    } else {
+      alert('Предложение ничьей отправлено.');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Произошла ошибка при отправке предложения ничьей.');
+  });
+}
+
+function respond_draw(response) {
+  let body = {
+    game_id: game_id,
+    response: response
+  };
+
+  fetch('/respond_draw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      alert(data.error);
+    } else {
+      if (data.status_ === 'n') {
+        displayGameOverMessage(data);
+      }
+      document.getElementById("draw-offer-modal").style.display = "none";
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Произошла ошибка при ответе на предложение ничьей.');
+  });
 }
 
 // SERVER REQUEST CODE

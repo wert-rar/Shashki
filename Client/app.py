@@ -23,7 +23,7 @@ status_ = {
     "b3": "Победили черные",
     "w4": "Белые продолжают ход",
     "b4": "Черные продолжают ход",
-    "n": "Ничья1",
+    "n": "Ничья",
     "e1": "Ошибка при запросе к серверу"
 }
 
@@ -117,6 +117,7 @@ def check_draw(pieces):
         return False
     app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
+
 
 def is_all_kings(pieces):
     for piece in pieces:
@@ -504,6 +505,9 @@ def update_board():
 
         response_data = {"status_": game.status, "pieces": game.pieces}
 
+        if game.draw_offer:
+            response_data["draw_offer"] = game.draw_offer
+
         if game.status in ['w3', 'b3', 'n']:
             user_color = game.user_color(user_login)
             if game.status == 'w3':
@@ -622,6 +626,70 @@ def leave_game():
     session.pop('color', None)
     session['flash'] = 'Вы покинули игру.'
     return jsonify({"message": "Left the game successfully"}), 200
+
+
+@app.route("/offer_draw", methods=["POST"])
+def offer_draw():
+    data = request.json
+    game_id = int(data.get("game_id"))
+    user_login = session.get('user')
+
+    game = current_games.get(game_id) or unstarted_games.get(game_id)
+    if not game:
+        return jsonify({"error": "Игра не найдена"}), 404
+
+    if user_login not in [game.f_user, game.c_user]:
+        return jsonify({"error": "Пользователь не участвует в этой игре"}), 403
+
+    user_color = 'w' if user_login == game.f_user else 'b'
+
+    if game.draw_offer:
+        return jsonify({"error": "Партия уже на рассмотрении"}), 400
+
+    game.draw_offer = user_color
+    app.logger.debug(f"Пользователь {user_login} предложил ничью в игре {game_id}")
+
+    return jsonify({"message": "Предложение ничьей отправлено"}), 200
+
+
+@app.route("/respond_draw", methods=["POST"])
+def respond_draw():
+    data = request.json
+    game_id = int(data.get("game_id"))
+    user_login = session.get('user')
+    response = data.get("response")
+
+    game = current_games.get(game_id) or unstarted_games.get(game_id)
+    if not game:
+        return jsonify({"error": "Игра не найдена"}), 404
+
+    if user_login not in [game.f_user, game.c_user]:
+        return jsonify({"error": "Пользователь не участвует в этой игре"}), 403
+
+    user_color = 'w' if user_login == game.f_user else 'b'
+
+    if not game.draw_offer:
+        return jsonify({"error": "Нет активных предложений ничьей"}), 400
+
+    if game.draw_offer == user_color:
+        return jsonify({"error": "Вы уже предложили ничью"}), 400
+
+    if response == "accept":
+        game.status = "n"
+        app.logger.debug(f"Пользователь {user_login} принял ничью в игре {game_id}")
+        update_user_rank(user_login, 5)
+        opponent_login = game.f_user if game.f_user != user_login else game.c_user
+        update_user_rank(opponent_login, 5)
+        update_user_stats(user_login, draws=1)
+        update_user_stats(opponent_login, draws=1)
+        game.draw_offer = None
+    elif response == "decline":
+        app.logger.debug(f"Пользователь {user_login} отклонил ничью в игре {game_id}")
+        game.draw_offer = None
+    else:
+        return jsonify({"error": "Неверный ответ"}), 400
+
+    return jsonify({"status_": game.status, "pieces": game.pieces}), 200
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@
     <div class="sidebar">
       <h2>Меню</h2>
       <button id="give-up-button" onclick="give_up()">Сдаться</button>
+      <button id="give-draw-button" onclick="give_draw()">Предложить ничью</button>
     </div>
     <div class="header">
       <div class="status" id="status">Сейчас ходят белые</div>
@@ -36,6 +37,15 @@
         </h2>
         <p id="game-over-message"></p>
         <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+      </div>
+    </div>
+
+    <div id="draw-offer-modal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h2>Предложение ничьей</h2>
+        <p>Ваш противник предложил ничью. Примите или отклоните предложение.</p>
+        <button onclick="respond_draw('accept')">Принять</button>
+        <button onclick="respond_draw('decline')">Отклонить</button>
       </div>
     </div>
 
