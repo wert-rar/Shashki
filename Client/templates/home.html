@@ -18,6 +18,7 @@
             align-items: center;
             overflow: hidden;
             color: white;
+            position: relative;
         }
 
         body:before {
@@ -50,6 +51,8 @@
             width: 100%;
             max-width: 400px;
             transition: transform 0.3s ease-out;
+            z-index: 1;
+            position: relative;
         }
 
         .container:hover {
@@ -113,6 +116,7 @@
             right: 20px;
             display: flex;
             gap: 10px;
+            z-index: 2;
         }
 
         .navigation-menu a {
@@ -138,6 +142,7 @@
             width: 100%;
             text-align: center;
             animation: fadeIn 1.5s ease;
+            z-index: 2;
         }
 
         .message ul {
@@ -171,6 +176,115 @@
                 transform: translateY(0);
             }
         }
+
+        #return-to-game {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #4CAF50;
+            border-radius: 15px;
+            padding: 20px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 255, 150, 0.3);
+            display: none;
+            z-index: 2;
+        }
+
+        #return-to-game h2 {
+            font-size: 1.5rem;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        #return-to-game p {
+            font-size: 1rem;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        #return-to-game .button {
+            background-color: #FF9800;
+        }
+
+        #return-to-game .leave-button {
+            background-color: #f44336;
+        }
+
+        #return-to-game .leave-button:hover {
+            background-color: #d32f2f;
+        }
+
+        #return-to-game .button + .button {
+            margin-left: 15px;
+        }
+
+        #leave-game-modal,
+        #game-over-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3;
+        }
+
+        #leave-game-modal {
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        #game-over-modal {
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 4;
+        }
+
+        .modal-content {
+            background: rgba(0, 0, 0, 1);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
+        }
+
+        #leave-game-modal .modal-content h2 {
+            margin-bottom: 20px;
+            color: #FF5722;
+        }
+
+        #game-over-modal .modal-content h2 {
+            margin-bottom: 20px;
+            color: #FFD700;
+        }
+
+        #leave-game-modal .modal-content p,
+        #game-over-modal .modal-content p {
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .modal-content .button {
+            width: 120px;
+            margin: 10px;
+        }
+
+        #leave-game-modal .confirm-button {
+            background-color: #f44336;
+        }
+
+        #leave-game-modal .confirm-button:hover {
+            background-color: #d32f2f;
+        }
+
+        #game-over-modal .modal-content {
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -203,7 +317,34 @@
     <button class="button" onclick="startMultiplayerGame()">Сетевая игра</button>
 </div>
 
+<div id="return-to-game">
+    <h2>У вас есть активная игра</h2>
+    <p>Вы можете вернуться к вашей текущей игре.</p>
+    <button class="button" onclick="returnToGame()">Вернуться в игру</button>
+    <button class="button leave-button" onclick="showLeaveGameModal()">Покинуть игру</button>
+</div>
+
+<div id="leave-game-modal">
+    <div class="modal-content">
+        <h2>Подтверждение выхода</h2>
+        <p>Вы точно хотите покинуть игру? Это будет считаться поражением и вы потеряете ранг.</p>
+        <button class="button confirm-button" onclick="leaveGame()">Да</button>
+        <button class="button" onclick="hideLeaveGameModal()">Отмена</button>
+    </div>
+</div>
+
+<div id="game-over-modal">
+    <div class="modal-content">
+        <h2>Игра окончена</h2>
+        <p id="game-over-message">Вы проиграли. Вы потеряли 10 очков к рангу.</p>
+        <button class="button" onclick="hideGameOverModal()">Закрыть</button>
+    </div>
+</div>
+
 <script>
+    var user_login = "{{ session['user'] if 'user' in session else '' }}";
+    var game_id = "{{ session['game_id'] if 'game_id' in session else '' }}";
+
     function startSingleGame() {
         window.location.href = '';
     }

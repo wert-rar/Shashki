@@ -394,7 +394,6 @@ def start_game():
 def check_game_status_route():
     game_id = session.get('game_id')
     user_login = session.get('user')
-    logging.debug(f"Checking game status, game_id: {game_id}, user_login: {user_login}")
 
     if not game_id:
         return jsonify({"status": "no_game"}), 404
@@ -402,6 +401,7 @@ def check_game_status_route():
     game_status = get_game_status(game_id, current_games, unstarted_games)
     if game_status:
         game_status['current_user'] = user_login
+        game_status['game_id'] = game_id
         return jsonify(game_status)
     else:
         return jsonify({"status": "game_not_found"}), 404
@@ -562,6 +562,9 @@ def give_up():
         game_id = int(data.get("game_id"))
         user_login = data.get("user_login")
 
+        if not game_id or not user_login:
+            return jsonify({"error": "Недостаточно данных для сдачи"}), 400
+
         game = current_games.get(game_id) or unstarted_games.get(game_id)
         if not game:
             return jsonify({"error": "Игра не найдена"}), 404
@@ -578,10 +581,16 @@ def give_up():
             game.status = 'w3'
 
         if not getattr(game, 'rank_updated', False):
-            update_user_stats(user_login, losses=1)
-            update_user_stats(opponent_login, wins=1)
-            update_user_rank(opponent_login, 10)
+            if opponent_login:
+                update_user_stats(user_login, losses=1)
+                update_user_stats(opponent_login, wins=1)
+
+                update_user_rank(opponent_login, 10)
+
             game.rank_updated = True
+
+        session.pop('game_id', None)
+        session.pop('color', None)
 
         response = {
             "status_": game.status,
@@ -618,9 +627,11 @@ def leave_game():
     else:
         return jsonify({"error": "User not part of the game"}), 400
 
-    if game_id in current_games:
-        if not game.f_user and not game.c_user:
+    if game.f_user is None and game.c_user is None:
+        if game_id in current_games:
             del current_games[game_id]
+        elif game_id in unstarted_games:
+            del unstarted_games[game_id]
 
     session.pop('game_id', None)
     session.pop('color', None)
