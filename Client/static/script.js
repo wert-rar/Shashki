@@ -63,16 +63,12 @@ let pieces = [
 ];
 
 function translate(pieces_data) {
-  let n_pieces = [];
-  for (let i = 0; i < pieces_data.length; i++) {
-    n_pieces.push({
-      color: pieces_data[i].color,
-      x: 7 - pieces_data[i].x,
-      y: 7 - pieces_data[i].y,
-      mode: pieces_data[i].mode,
-    });
-  }
-  return n_pieces;
+    return pieces_data.map(piece => ({
+        color: piece.color,
+        x: 7 - piece.x,
+        y: 7 - piece.y,
+        mode: piece.mode,
+    }));
 }
 
 function update_data(data) {
@@ -89,8 +85,6 @@ function update_data(data) {
   if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
     displayGameOverMessage(data);
   }
-
-  update();
 }
 
 function displayGameOverMessage(data) {
@@ -445,31 +439,43 @@ function adjustScreen() {
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
-  CTX.beginPath();
-  CTX.arc(x, y, r, 0, 2 * Math.PI, false);
-  if (fillColor) {
-    CTX.fillStyle = fillColor;
-    CTX.fill();
-  }
-  if (strokeColor) {
-    CTX.strokeStyle = strokeColor;
-    CTX.lineWidth = width;
-    CTX.stroke();
-  }
+    CTX.beginPath();
+    CTX.arc(x, y, r, 0, 2 * Math.PI, false);
+    if (fillColor) {
+        CTX.fillStyle = fillColor;
+        CTX.fill();
+    }
+    if (strokeColor) {
+        CTX.strokeStyle = strokeColor;
+        CTX.lineWidth = width;
+        CTX.stroke();
+    }
+    CTX.closePath();
 }
 
 function draw_piece(piece, user_color) {
-  let fillStyle = colors[piece.color];
-  let strokeStyle = colors[piece.color ? 0 : 1];
-  const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
-  const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
-  const radius = (CELL_SIZE / 2) * 0.8;
-  draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
-  draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
+    let fillStyle = colors[piece.color];
+    let strokeStyle = colors[piece.color ? 0 : 1];
+    const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
+    const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
+    const radius = (CELL_SIZE / 2) * 0.8;
 
-  if (piece.mode !== "p") {
-    draw_circle(X, Y, radius * 0.5, 6, "gold", "rgba(255, 215, 0, 0.7)");
-  }
+    const innerRadius = radius * 0.7;
+    const crownRadius = radius * 0.5;
+
+    draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
+    draw_circle(X, Y, innerRadius, 3, strokeStyle, false);
+
+    if (piece.mode !== "p") {
+        CTX.beginPath();
+        CTX.arc(X, Y, crownRadius, 0, 2 * Math.PI, false);
+        CTX.fillStyle = "rgba(255, 215, 0, 0.7)";
+        CTX.fill();
+        CTX.lineWidth = 6;
+        CTX.strokeStyle = "gold";
+        CTX.stroke();
+        CTX.closePath();
+    }
 }
 
 function draw_SELECTED_PIECE() {
@@ -553,6 +559,7 @@ function render_Pieces() {
 }
 
 function update() {
+  CTX.clearRect(0, 0, CANVAS.width, CANVAS.height)
   render_Board();
   render_Pieces();
   window.requestAnimationFrame(update);
