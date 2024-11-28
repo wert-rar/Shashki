@@ -352,6 +352,115 @@
     function startMultiplayerGame() {
         window.location.href = '/start_game';
     }
+
+    function returnToGame() {
+        if (game_id && user_login) {
+            window.location.href = `/board/${game_id}/${user_login}`;
+        } else {
+            alert("Активная игра не найдена.");
+        }
+    }
+
+    function showLeaveGameModal() {
+        document.getElementById('leave-game-modal').style.display = 'flex';
+    }
+
+    function hideLeaveGameModal() {
+        document.getElementById('leave-game-modal').style.display = 'none';
+    }
+
+    function hideGameOverModal() {
+        document.getElementById('game-over-modal').style.display = 'none';
+    }
+
+    function leaveGame() {
+        if (game_id && user_login) {
+            fetch('/give_up', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({game_id: game_id, user_login: user_login})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    hideLeaveGameModal();
+                    document.getElementById('return-to-game').style.display = 'none';
+                    displayGameOverMessage(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при покидании игры.');
+            });
+        } else {
+            alert("Активная игра не найдена.");
+        }
+    }
+
+    function displayGameOverMessage(data) {
+        let modal = document.getElementById("game-over-modal");
+        let message = document.getElementById("game-over-message");
+
+        let resultText = "";
+        if (data.result === "win") {
+            resultText = "Поздравляем! Вы победили!";
+        } else if (data.result === "lose") {
+            resultText = "Вы проиграли.";
+        } else if (data.result === "draw") {
+            resultText = "Ничья.";
+        }
+
+        let points_gained = data.points_gained || 0;
+        let points_text = points_gained >= 0 ? `Вы получили ${points_gained} очков к рангу.` : `Вы потеряли ${Math.abs(points_gained)} очков к рангу.`;
+
+        message.innerHTML = `
+            ${resultText}<br>
+            ${points_text}
+        `;
+
+        modal.style.display = "flex";
+    }
+
+    function checkForActiveGame() {
+        fetch('/check_game_status')
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else {
+                    throw new Error('Нет активной игры.');
+                }
+            })
+            .then(data => {
+                if (data.status === 'active' || data.status === 'waiting') {
+                    if (data.game_id) {
+                        game_id = data.game_id;
+                    }
+                    document.getElementById('return-to-game').style.display = 'block';
+                } else {
+                    document.getElementById('return-to-game').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.log(error.message);
+                document.getElementById('return-to-game').style.display = 'none';
+            });
+    }
+
+    function handlePageShow(event) {
+        if (event.persisted) {
+            checkForActiveGame();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        checkForActiveGame();
+        setInterval(checkForActiveGame, 5000);
+    });
+    window.addEventListener('pageshow', handlePageShow);
 </script>
 </body>
 </html>
