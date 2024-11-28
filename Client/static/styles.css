@@ -14,11 +14,12 @@ body {
 
 .header {
   width: 100%;
-  background: linear-gradient(135deg, #2c3e50, #4ca1af);
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
   padding: 20px 0;
   text-align: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  animation: headerFadeIn 1s ease-out;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), inset -5px 0 10px rgba(0, 0, 0, 0.2);
+  height: 40px;
+  flex-shrink: 0;
 }
 
 @keyframes headerFadeIn {
@@ -166,41 +167,97 @@ canvas#board {
 
 .sidebar {
   position: fixed;
-  top: 0;
+  top: 80px;
   left: 0;
-  width: 200px;
-  height: 100%;
-  background-color: #2c3e50;
+  width: 250px;
+  height: calc(100% - 80px);
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
   color: #ecf0f1;
   padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease, background-color 0.3s ease;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid rgb(34, 34, 34);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
 }
 
 .sidebar h2 {
   text-align: center;
-  margin-bottom: 30px;
-  font-size: 1.5em;
+  margin-bottom: 20px;
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #4ca1af;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #4ca1af;
+  padding-bottom: 10px;
 }
 
 .sidebar button {
   width: 100%;
-  padding: 12px;
+  padding: 12px 15px;
   margin-bottom: 15px;
   font-size: 1em;
-  font-weight: bold;
+  font-weight: 600;
   color: #ecf0f1;
-  background-color: #e74c3c;
+  background-color: #4ca1af;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar button:hover {
-  background-color: #c0392b;
+  background-color: #3a8ea5;
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar button i {
+  margin-right: 8px;
+  font-size: 1.2em;
+}
+
+.moves-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.moves-list li {
+  background-color: #34495e;
+  margin-bottom: 10px;
+  padding: 10px 15px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.3s ease;
+}
+
+.moves-list li:hover {
+  background-color: #3d566e;
+}
+
+.move-player {
+  font-weight: bold;
+  color: #ecf0f1;
+}
+
+.move-description {
+  font-size: 0.9em;
+  color: #bdc3c7;
 }
 
 .board-container {
