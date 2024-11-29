@@ -101,31 +101,28 @@ def can_move(piece, pieces):
     return moves
 
 
-def get_possible_moves(pieces, color):
+def get_possible_moves(pieces, color, must_capture_piece=None):
     all_moves = {}
-    captures_exist = False
     for piece in pieces:
         if piece['color'] != color:
             continue
+
+        if must_capture_piece and (piece['x'], piece['y']) != (must_capture_piece['x'], must_capture_piece['y']):
+            continue
+
         capture_moves = can_capture(piece, pieces)
-        if capture_moves:
-            captures_exist = True
-            all_moves[(piece['x'], piece['y'])] = capture_moves
-    if captures_exist:
-        return all_moves
-    else:
-        for piece in pieces:
-            if piece['color'] != color:
-                continue
+        if must_capture_piece:
+            if capture_moves:
+                all_moves[(piece['x'], piece['y'])] = capture_moves
+        else:
             normal_moves = can_move(piece, pieces)
-            if normal_moves:
-                all_moves[(piece['x'], piece['y'])] = normal_moves
-        return all_moves
+            all_moves[(piece['x'], piece['y'])] = capture_moves + normal_moves
+    return all_moves
 
 
 def can_player_move(pieces, color):
     moves = get_possible_moves(pieces, color)
-    return len(moves) > 0
+    return any(moves.values())
 
 
 def check_draw(pieces):
@@ -147,7 +144,13 @@ def is_all_kings(pieces):
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
     x, y = selected_piece['x'], selected_piece['y']
     dest_x, dest_y = new_pos['x'], new_pos['y']
-    valid_moves = get_possible_moves(pieces, 0 if current_player == 'w' else 1)
+    color = 0 if current_player == 'w' else 1
+
+    if game.must_capture_piece:
+        valid_moves = get_possible_moves(pieces, color, must_capture_piece=game.must_capture_piece)
+    else:
+        valid_moves = get_possible_moves(pieces, color)
+
     piece_moves = valid_moves.get((x, y), [])
 
     if not any(move['x'] == dest_x and move['y'] == dest_y for move in piece_moves):
@@ -155,22 +158,21 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
 
     new_pieces = [piece.copy() for piece in pieces]
 
+    captured = False
     if abs(dest_x - x) > 1:
         dx = 1 if dest_x > x else -1
         dy = 1 if dest_y > y else -1
         current_x, current_y = x + dx, y + dy
-        captured_piece = None
         while current_x != dest_x and current_y != dest_y:
             piece_at_square = get_piece_at(new_pieces, current_x, current_y)
             if piece_at_square and piece_at_square['color'] != selected_piece['color']:
-                captured_piece = piece_at_square
+                new_pieces.remove(piece_at_square)
+                captured = True
                 break
             elif piece_at_square:
                 break
             current_x += dx
             current_y += dy
-        if captured_piece:
-            new_pieces.remove(captured_piece)
 
     for piece in new_pieces:
         if piece['x'] == x and piece['y'] == y:
@@ -183,10 +185,15 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                     piece['mode'] = 'k'
             break
 
-    capture_moves = can_capture(piece, new_pieces)
-    if capture_moves and abs(dest_x - x) > 1:
-        game.must_capture_piece = piece.copy()
-        return "continue_capture", new_pieces
+    if captured:
+        capture_moves = can_capture(piece, new_pieces)
+        if capture_moves:
+            game.must_capture_piece = piece.copy()
+            return "continue_capture", new_pieces
+        else:
+            game.must_capture_piece = None
+    else:
+        game.must_capture_piece = None
 
     return True, new_pieces
 
@@ -639,8 +646,16 @@ def get_possible_moves_route():
         return jsonify({"error": "Not your turn"}), 403
 
     x, y = selected_piece['x'], selected_piece['y']
-    valid_moves = get_possible_moves(game.pieces, 0 if current_player == 'w' else 1)
-    moves = valid_moves.get((x, y), [])
+    color = 0 if current_player == 'w' else 1
+    moves = []
+
+    if game.must_capture_piece:
+        if (x, y) == (game.must_capture_piece['x'], game.must_capture_piece['y']):
+            valid_moves = get_possible_moves(game.pieces, color, must_capture_piece=game.must_capture_piece)
+            moves = valid_moves.get((x, y), [])
+    else:
+        valid_moves = get_possible_moves(game.pieces, color)
+        moves = valid_moves.get((x, y), [])
 
     return jsonify({"moves": moves})
 

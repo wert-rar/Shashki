@@ -76,6 +76,8 @@ function translate(pieces_data) {
 
 function update_data(data) {
   CURRENT_STATUS = data.status_;
+  CURRENT_PLAYER = data.current_player;
+  let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
   pieces = data.pieces;
   if (user_color == "b") pieces = translate(pieces);
   document.getElementById("status").innerHTML = status[CURRENT_STATUS];
@@ -87,6 +89,20 @@ function update_data(data) {
 
   if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
     displayGameOverMessage(data);
+  }
+
+  if (previousSelectedPiece) {
+    SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
+    if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
+      IS_SELECTED = true;
+      server_get_possible_moves(SELECTED_PIECE, function(moves) {
+        possibleMoves = moves;
+      });
+    } else {
+      IS_SELECTED = false;
+      SELECTED_PIECE = null;
+      possibleMoves = [];
+    }
   }
 }
 
@@ -233,10 +249,19 @@ function server_move_request(selected_piece, new_pos) {
       server_update_request(CURRENT_STATUS, pieces);
     } else {
       update_data(data);
+      let movedPiece = getPieceAt(new_pos.x, new_pos.y);
+      if (movedPiece && data.multiple_capture) {
+        IS_SELECTED = true;
+        SELECTED_PIECE = movedPiece;
+        server_get_possible_moves(SELECTED_PIECE, function(moves) {
+          possibleMoves = moves;
+        });
+      } else {
+        IS_SELECTED = false;
+        SELECTED_PIECE = null;
+        possibleMoves = [];
+      }
     }
-    IS_SELECTED = false;
-    SELECTED_PIECE = null;
-    possibleMoves = [];
   })
   .catch(error => {
     console.error('Error:', error);
@@ -251,8 +276,6 @@ function server_update_request(status, pieces) {
     user_login: user_login,
     game_id: game_id,
   };
-
-  if (IS_SELECTED) return;
 
   fetch('/update_board', {
     method: 'POST',
@@ -288,7 +311,12 @@ function server_get_possible_moves(selected_piece, callback) {
     },
     body: JSON.stringify(data)
   })
-  .then(response => response.json())
+  .then(response => {
+    if (!response.ok) {
+      return response.json().then(errData => Promise.reject(errData));
+    }
+    return response.json();
+  })
   .then(data => {
     if (user_color == "b") {
       data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
@@ -297,7 +325,10 @@ function server_get_possible_moves(selected_piece, callback) {
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Произошла ошибка при получении возможных ходов.');
+    alert(error.error || 'Произошла ошибка при получении возможных ходов.');
+    IS_SELECTED = false;
+    SELECTED_PIECE = null;
+    possibleMoves = [];
   });
 }
 
@@ -421,21 +452,31 @@ function draw_piece(piece, user_color) {
   }
 
   if (IS_SELECTED && SELECTED_PIECE === piece) {
+    CTX.save();
+    CTX.shadowColor = 'rgba(255, 255, 0, 1)';
+    CTX.shadowBlur = 20;
     CTX.beginPath();
-    CTX.arc(X, Y, radius * 1.1, 5, "green");
-    CTX.strokeStyle = "green";
+    CTX.arc(X, Y, radius * 1.1, 0, 2 * Math.PI, false);
+    CTX.strokeStyle = 'yellow';
+    CTX.lineWidth = 5;
     CTX.stroke();
     CTX.closePath();
+    CTX.restore();
   }
 }
 
 function draw_possible_moves() {
+  CTX.save();
+  CTX.lineWidth = 4;
+  CTX.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+  CTX.shadowColor = 'rgba(0, 162, 255, 0.8)';
+  CTX.shadowBlur = 10;
   for (let move of possibleMoves) {
-    const X = BOARD_OFFSET_X + CELL_SIZE * (move.x + 0.5);
-    const Y = BOARD_OFFSET_Y + CELL_SIZE * (move.y + 0.5);
-    const radius = (CELL_SIZE / 2) * 0.2;
-    draw_circle(X, Y, radius, 0, null, "rgba(0, 255, 0, 0.5)");
+    const X = BOARD_OFFSET_X + CELL_SIZE * move.x;
+    const Y = BOARD_OFFSET_Y + CELL_SIZE * move.y;
+    CTX.strokeRect(X, Y, CELL_SIZE, CELL_SIZE);
   }
+  CTX.restore();
 }
 
 function render_Board() {
