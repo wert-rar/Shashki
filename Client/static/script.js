@@ -62,13 +62,16 @@ let pieces = [
   { color: 0, x: 6, y: 7, mode: "p" },
 ];
 
+let possibleMoves = [];
+
 function translate(pieces_data) {
-    return pieces_data.map(piece => ({
-        color: piece.color,
-        x: 7 - piece.x,
-        y: 7 - piece.y,
-        mode: piece.mode,
-    }));
+  return pieces_data.map(piece => ({
+    color: piece.color,
+    x: 7 - piece.x,
+    y: 7 - piece.y,
+    mode: piece.mode,
+    is_king: piece.is_king,
+  }));
 }
 
 function update_data(data) {
@@ -200,10 +203,48 @@ function respond_draw(response) {
 }
 
 // SERVER REQUEST CODE
-function server_move_request(status, pieces) {
+function server_move_request(selected_piece, new_pos) {
+  let data = {
+    selected_piece: selected_piece,
+    new_pos: new_pos,
+    user_login: user_login,
+    game_id: game_id,
+  };
+
   if (user_color == "b") {
-    pieces = translate(pieces);
+    data.selected_piece = translate([selected_piece])[0];
+    data.new_pos = {
+      x: 7 - new_pos.x,
+      y: 7 - new_pos.y
+    };
   }
+
+  fetch('/move', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      alert(data.error);
+      server_update_request(CURRENT_STATUS, pieces);
+    } else {
+      update_data(data);
+    }
+    IS_SELECTED = false;
+    SELECTED_PIECE = null;
+    possibleMoves = [];
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Произошла ошибка при отправке хода.');
+  });
+}
+
+function server_update_request(status, pieces) {
   let body = {
     status_: status,
     pieces: pieces,
@@ -211,59 +252,53 @@ function server_move_request(status, pieces) {
     game_id: game_id,
   };
 
-  let xhr = new XMLHttpRequest();
-  xhr.open("POST", "/move");
-  xhr.addEventListener("load", function () {
-    if (xhr.status === 200 && xhr.readyState === 4) {
-      let response = JSON.parse(xhr.responseText);
-      update_data(response);
-    } else {
-      let response = JSON.parse(xhr.responseText);
-      update_data({
-        status_: "e1",
-        pieces: pieces,
-      });
-      throw new Error(response.error);
-    }
-  });
-  xhr.setRequestHeader("Content-type", "application/json");
-  xhr.send(JSON.stringify(body));
-}
-
-function server_update_request(status, pieces) {
-  let body =
-    user_color == "b"
-      ? {
-          status_: status,
-          pieces: translate(pieces),
-          user_login: user_login,
-          game_id: game_id,
-        }
-      : {
-          status_: status,
-          pieces: pieces,
-          user_login: user_login,
-          game_id: game_id,
-        };
   if (IS_SELECTED) return;
 
-  let xhr = new XMLHttpRequest();
-  xhr.open("POST", "/update_board");
-  xhr.addEventListener("load", function () {
-    if (xhr.status === 200 && xhr.readyState === 4) {
-      let response = JSON.parse(xhr.responseText);
-      update_data(response);
-    } else {
-      let response = JSON.parse(xhr.responseText);
-      update_data({
-        status_: "e1",
-        pieces: pieces,
-      });
-      throw new Error(response.error);
-    }
+  fetch('/update_board', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+  .then(response => response.json())
+  .then(data => {
+    update_data(data);
+  })
+  .catch(error => {
+    console.error('Error:', error);
   });
-  xhr.setRequestHeader("Content-type", "application/json");
-  xhr.send(JSON.stringify(body));
+}
+
+function server_get_possible_moves(selected_piece, callback) {
+  let data = {
+    selected_piece: selected_piece,
+    game_id: game_id,
+    user_login: user_login,
+  };
+
+  if (user_color == "b") {
+    data.selected_piece = translate([selected_piece])[0];
+  }
+
+  fetch('/get_possible_moves', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (user_color == "b") {
+      data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+    }
+    callback(data.moves);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Произошла ошибка при получении возможных ходов.');
+  });
 }
 
 function startPolling() {
@@ -285,144 +320,52 @@ function onLoad() {
   startPolling();
 }
 
-// DRAG AND DROP CODE
+// CLICK HANDLING CODE
 function addEventListeners() {
-  CANVAS.addEventListener("mousedown", onMouseDown);
-  CANVAS.addEventListener("mousemove", onMouseMove);
-  CANVAS.addEventListener("mouseup", onMouseUp);
-  CANVAS.addEventListener("touchstart", onTouchStart);
-  CANVAS.addEventListener("touchmove", onTouchMove);
-  CANVAS.addEventListener("touchend", onTouchEnd);
+  CANVAS.addEventListener("click", onClick);
   window.addEventListener("resize", adjustScreen);
 }
 
-function onMouseDown(evt) {
+function onClick(evt) {
   evt.preventDefault();
   let rect = CANVAS.getBoundingClientRect();
   let loc = {
     x: evt.clientX - rect.left,
     y: evt.clientY - rect.top,
   };
-  SELECTED_PIECE = getPressedPiece(loc);
-  if (SELECTED_PIECE) {
-    SELECTED_PIECE.offsetX =
-      loc.x - (BOARD_OFFSET_X + CELL_SIZE * (SELECTED_PIECE.piece.x + 0.5));
-    SELECTED_PIECE.offsetY =
-      loc.y - (BOARD_OFFSET_Y + CELL_SIZE * (SELECTED_PIECE.piece.y + 0.5));
-    IS_SELECTED = true;
-  }
-}
-
-function onMouseMove(evt) {
-  evt.preventDefault();
-  if (SELECTED_PIECE != null && IS_SELECTED) {
-    let rect = CANVAS.getBoundingClientRect();
-    SELECTED_PIECE.x = evt.clientX - rect.left - SELECTED_PIECE.offsetX;
-    SELECTED_PIECE.y = evt.clientY - rect.top - SELECTED_PIECE.offsetY;
-  }
-}
-
-function onMouseUp(evt) {
-  evt.preventDefault();
-  if (SELECTED_PIECE != null) {
-    let rect = CANVAS.getBoundingClientRect();
-    let loc = {
-      x: evt.clientX - rect.left,
-      y: evt.clientY - rect.top,
-    };
-    let coords = getCoordinates(loc);
-
-    if (coords.x !== -1 && coords.y !== -1) {
-      SELECTED_PIECE.piece.x = coords.x;
-      SELECTED_PIECE.piece.y = coords.y;
-
-      server_move_request(CURRENT_STATUS, pieces);
-    }
-
-    SELECTED_PIECE = null;
-    IS_SELECTED = false;
-  }
-}
-
-function onTouchStart(evt) {
-  evt.preventDefault();
-  if (evt.touches.length > 0) {
-    let rect = CANVAS.getBoundingClientRect();
-    let loc = {
-      x: evt.touches[0].clientX - rect.left,
-      y: evt.touches[0].clientY - rect.top,
-    };
-    SELECTED_PIECE = getPressedPiece(loc);
-    if (SELECTED_PIECE) {
-      SELECTED_PIECE.offsetX =
-        loc.x - (BOARD_OFFSET_X + CELL_SIZE * (SELECTED_PIECE.piece.x + 0.5));
-      SELECTED_PIECE.offsetY =
-        loc.y - (BOARD_OFFSET_Y + CELL_SIZE * (SELECTED_PIECE.piece.y + 0.5));
-      IS_SELECTED = true;
-    }
-  }
-}
-
-function onTouchMove(evt) {
-  evt.preventDefault();
-  if (SELECTED_PIECE != null && IS_SELECTED && evt.touches.length > 0) {
-    let rect = CANVAS.getBoundingClientRect();
-    SELECTED_PIECE.x =
-      evt.touches[0].clientX - rect.left - SELECTED_PIECE.offsetX;
-    SELECTED_PIECE.y =
-      evt.touches[0].clientY - rect.top - SELECTED_PIECE.offsetY;
-  }
-}
-
-function onTouchEnd(evt) {
-  evt.preventDefault();
-  if (SELECTED_PIECE != null) {
-    let rect = CANVAS.getBoundingClientRect();
-    let loc = {
-      x: evt.changedTouches[0].clientX - rect.left,
-      y: evt.changedTouches[0].clientY - rect.top,
-    };
-    let coords = getCoordinates(loc);
-
-    if (coords.x !== -1 && coords.y !== -1) {
-      SELECTED_PIECE.piece.x = coords.x;
-      SELECTED_PIECE.piece.y = coords.y;
-
-      server_move_request(CURRENT_STATUS, pieces);
-    }
-
-    SELECTED_PIECE = null;
-    IS_SELECTED = false;
-  }
-}
-
-function getCoordinates(loc) {
-  let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
-  let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
-
-  if (
-    gridX >= 0 &&
-    gridX < 8 &&
-    gridY >= 0 &&
-    gridY < 8 &&
-    (gridX + gridY) % 2 === 1
-  ) {
-    return { x: gridX, y: gridY };
-  }
-  return { x: -1, y: -1 };
-}
-
-function getPressedPiece(loc) {
   let coords = getCoordinates(loc);
-  for (let i = 0; i < pieces.length; i++) {
-    if (pieces[i].x === coords.x && pieces[i].y === coords.y) {
-      return { piece: pieces[i], x: loc.x, y: loc.y };
+  if (coords.x === -1 || coords.y === -1) return;
+
+  if (!IS_SELECTED) {
+    SELECTED_PIECE = getPieceAt(coords.x, coords.y);
+    if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
+      IS_SELECTED = true;
+      server_get_possible_moves(SELECTED_PIECE, function(moves) {
+        possibleMoves = moves;
+      });
+    }
+  } else {
+    let move = possibleMoves.find(m => m.x === coords.x && m.y === coords.y);
+    if (move) {
+      server_move_request(SELECTED_PIECE, move);
+    } else {
+      IS_SELECTED = false;
+      SELECTED_PIECE = null;
+      possibleMoves = [];
+    }
+  }
+}
+
+function getPieceAt(x, y) {
+  for (let piece of pieces) {
+    if (piece.x === x && piece.y === y) {
+      return piece;
     }
   }
   return null;
 }
 
-// DRAG AND DROP CODE
+// CLICK HANDLING CODE
 
 // RENDER CODE
 function adjustScreen() {
@@ -439,56 +382,59 @@ function adjustScreen() {
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
-    CTX.beginPath();
-    CTX.arc(x, y, r, 0, 2 * Math.PI, false);
-    if (fillColor) {
-        CTX.fillStyle = fillColor;
-        CTX.fill();
-    }
-    if (strokeColor) {
-        CTX.strokeStyle = strokeColor;
-        CTX.lineWidth = width;
-        CTX.stroke();
-    }
-    CTX.closePath();
+  CTX.beginPath();
+  CTX.arc(x, y, r, 0, 2 * Math.PI, false);
+  if (fillColor) {
+    CTX.fillStyle = fillColor;
+    CTX.fill();
+  }
+  if (strokeColor) {
+    CTX.strokeStyle = strokeColor;
+    CTX.lineWidth = width;
+    CTX.stroke();
+  }
+  CTX.closePath();
 }
 
 function draw_piece(piece, user_color) {
-    let fillStyle = colors[piece.color];
-    let strokeStyle = colors[piece.color ? 0 : 1];
-    const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
-    const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
-    const radius = (CELL_SIZE / 2) * 0.8;
+  let fillStyle = colors[piece.color];
+  let strokeStyle = colors[piece.color ? 0 : 1];
+  const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
+  const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
+  const radius = (CELL_SIZE / 2) * 0.8;
 
-    const innerRadius = radius * 0.7;
-    const crownRadius = radius * 0.5;
+  const innerRadius = radius * 0.7;
+  const crownRadius = radius * 0.5;
 
-    draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
-    draw_circle(X, Y, innerRadius, 3, strokeStyle, false);
+  draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
+  draw_circle(X, Y, innerRadius, 3, strokeStyle, false);
 
-    if (piece.mode !== "p") {
-        CTX.beginPath();
-        CTX.arc(X, Y, crownRadius, 0, 2 * Math.PI, false);
-        CTX.fillStyle = "rgba(255, 215, 0, 0.7)";
-        CTX.fill();
-        CTX.lineWidth = 6;
-        CTX.strokeStyle = "gold";
-        CTX.stroke();
-        CTX.closePath();
-    }
+  if (piece.mode !== "p") {
+    CTX.beginPath();
+    CTX.arc(X, Y, crownRadius, 0, 2 * Math.PI, false);
+    CTX.fillStyle = "rgba(255, 215, 0, 0.7)";
+    CTX.fill();
+    CTX.lineWidth = 6;
+    CTX.strokeStyle = "gold";
+    CTX.stroke();
+    CTX.closePath();
+  }
+
+  if (IS_SELECTED && SELECTED_PIECE === piece) {
+    CTX.beginPath();
+    CTX.arc(X, Y, radius * 1.1, 5, "green");
+    CTX.strokeStyle = "green";
+    CTX.stroke();
+    CTX.closePath();
+  }
 }
 
-function draw_SELECTED_PIECE() {
-  let fillStyle = colors[SELECTED_PIECE.piece.color];
-  let strokeStyle = colors[SELECTED_PIECE.piece.color ? 0 : 1];
-  const X = SELECTED_PIECE.x;
-  const Y = SELECTED_PIECE.y;
-  const radius = (CELL_SIZE / 2) * 0.8;
-  draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
-  draw_circle(X, Y, radius * 0.7, 3, strokeStyle, false);
-
-  if (SELECTED_PIECE.piece.mode !== "p") {
-    draw_circle(X, Y, radius * 0.5, 6, "gold", "rgba(255, 215, 0, 0.7)");
+function draw_possible_moves() {
+  for (let move of possibleMoves) {
+    const X = BOARD_OFFSET_X + CELL_SIZE * (move.x + 0.5);
+    const Y = BOARD_OFFSET_Y + CELL_SIZE * (move.y + 0.5);
+    const radius = (CELL_SIZE / 2) * 0.2;
+    draw_circle(X, Y, radius, 0, null, "rgba(0, 255, 0, 0.5)");
   }
 }
 
@@ -550,18 +496,33 @@ function drawLabels() {
 
 function render_Pieces() {
   for (let i = 0; i < pieces.length; i++) {
-    if (SELECTED_PIECE?.piece === pieces[i]) {
-      continue;
-    }
     draw_piece(pieces[i], user_color);
   }
-  if (SELECTED_PIECE) draw_SELECTED_PIECE();
+  if (IS_SELECTED) {
+    draw_possible_moves();
+  }
 }
 
 function update() {
-  CTX.clearRect(0, 0, CANVAS.width, CANVAS.height)
+  CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
   render_Board();
   render_Pieces();
   window.requestAnimationFrame(update);
 }
 // RENDER CODE END
+
+function getCoordinates(loc) {
+  let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
+  let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
+
+  if (
+    gridX >= 0 &&
+    gridX < 8 &&
+    gridY >= 0 &&
+    gridY < 8 &&
+    (gridX + gridY) % 2 === 1
+  ) {
+    return { x: gridX, y: gridY };
+  }
+  return { x: -1, y: -1 };
+}

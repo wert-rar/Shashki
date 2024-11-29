@@ -37,26 +37,27 @@ def get_piece_at(pieces, x, y):
 
 def can_capture(piece, pieces):
     x, y = piece['x'], piece['y']
+    moves = []
     if piece.get('is_king', False):
         directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
         for dx, dy in directions:
-            step = 1
             opponent_found = False
+            captured_x, captured_y = None, None
+            step = 1
             while True:
-                mid_x = x + dx * step
-                mid_y = y + dy * step
-                if not (0 <= mid_x < 8 and 0 <= mid_y < 8):
+                curr_x = x + dx * step
+                curr_y = y + dy * step
+                if not (0 <= curr_x < 8 and 0 <= curr_y < 8):
                     break
-                mid_piece = get_piece_at(pieces, mid_x, mid_y)
-                if mid_piece:
-                    if mid_piece['color'] == piece['color']:
+                curr_piece = get_piece_at(pieces, curr_x, curr_y)
+                if curr_piece:
+                    if curr_piece['color'] != piece['color'] and not opponent_found:
+                        opponent_found = True
+                        captured_x, captured_y = curr_x, curr_y
+                    else:
                         break
-                    if opponent_found:
-                        break
-                    opponent_found = True
-                else:
-                    if opponent_found:
-                        return True
+                elif opponent_found:
+                    moves.append({'x': curr_x, 'y': curr_y})
                 step += 1
     else:
         possible_directions = [(2, 2), (2, -2), (-2, 2), (-2, -2)]
@@ -67,46 +68,64 @@ def can_capture(piece, pieces):
             target_pos = get_piece_at(pieces, end_x, end_y)
             if (0 <= end_x < 8 and 0 <= end_y < 8 and
                     captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
-                return True
-    return False
+                moves.append({'x': end_x, 'y': end_y})
+    return moves
 
-def can_player_move(pieces, color):
+
+def can_move(piece, pieces):
+    x, y = piece['x'], piece['y']
+    moves = []
+    if piece.get('is_king', False):
+        directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+        for dx, dy in directions:
+            step = 1
+            while True:
+                new_x = x + dx * step
+                new_y = y + dy * step
+                if not (0 <= new_x < 8 and 0 <= new_y < 8):
+                    break
+                if not get_piece_at(pieces, new_x, new_y):
+                    moves.append({'x': new_x, 'y': new_y})
+                else:
+                    break
+                step += 1
+    else:
+        if piece['color'] == 0:
+            directions = [(-1, -1), (1, -1)]
+        else:
+            directions = [(-1, 1), (1, 1)]
+        for dx, dy in directions:
+            new_x, new_y = x + dx, y + dy
+            if 0 <= new_x < 8 and 0 <= new_y < 8 and not get_piece_at(pieces, new_x, new_y):
+                moves.append({'x': new_x, 'y': new_y})
+    return moves
+
+
+def get_possible_moves(pieces, color):
+    all_moves = {}
+    captures_exist = False
     for piece in pieces:
         if piece['color'] != color:
             continue
+        capture_moves = can_capture(piece, pieces)
+        if capture_moves:
+            captures_exist = True
+            all_moves[(piece['x'], piece['y'])] = capture_moves
+    if captures_exist:
+        return all_moves
+    else:
+        for piece in pieces:
+            if piece['color'] != color:
+                continue
+            normal_moves = can_move(piece, pieces)
+            if normal_moves:
+                all_moves[(piece['x'], piece['y'])] = normal_moves
+        return all_moves
 
-        x, y = piece['x'], piece['y']
 
-        if not piece.get('is_king', False):
-            if color == 0:
-                directions = [(-1, -1), (1, -1)]
-            else:
-                directions = [(-1, 1), (1, 1)]
-        else:
-            directions = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
-
-        if piece.get('is_king', False):
-            for dx, dy in directions:
-                step = 1
-                while True:
-                    new_x = x + dx * step
-                    new_y = y + dy * step
-                    if not (0 <= new_x < 8 and 0 <= new_y < 8):
-                        break
-                    if not get_piece_at(pieces, new_x, new_y):
-                        return True
-                    else:
-                        break
-                    step += 1
-        else:
-            for dx, dy in directions:
-                new_x, new_y = x + dx, y + dy
-                if 0 <= new_x < 8 and 0 <= new_y < 8:
-                    if not get_piece_at(pieces, new_x, new_y):
-                        return True
-        if can_capture(piece, pieces):
-            return True
-    return False
+def can_player_move(pieces, color):
+    moves = get_possible_moves(pieces, color)
+    return len(moves) > 0
 
 
 def check_draw(pieces):
@@ -120,140 +139,57 @@ def check_draw(pieces):
 
 def is_all_kings(pieces):
     for piece in pieces:
-        if piece.get('mode') != 'k':
+        if not piece.get('is_king', False):
             return False
     return True
 
 
-def validate_move(new_pieces, current_player, pieces, game, end_turn_flag=False):
-    if len(new_pieces) != len(pieces):
+def validate_move(selected_piece, new_pos, current_player, pieces, game):
+    x, y = selected_piece['x'], selected_piece['y']
+    dest_x, dest_y = new_pos['x'], new_pos['y']
+    valid_moves = get_possible_moves(pieces, 0 if current_player == 'w' else 1)
+    piece_moves = valid_moves.get((x, y), [])
+
+    if not any(move['x'] == dest_x and move['y'] == dest_y for move in piece_moves):
         return False
 
-    moved_piece = None
-    new_pos = None
+    new_pieces = [piece.copy() for piece in pieces]
 
-    for piece, new_piece in zip(pieces, new_pieces):
-        if piece['x'] != new_piece['x'] or piece['y'] != new_piece['y']:
-            moved_piece = piece
-            new_pos = new_piece
+    if abs(dest_x - x) > 1:
+        dx = 1 if dest_x > x else -1
+        dy = 1 if dest_y > y else -1
+        current_x, current_y = x + dx, y + dy
+        captured_piece = None
+        while current_x != dest_x and current_y != dest_y:
+            piece_at_square = get_piece_at(new_pieces, current_x, current_y)
+            if piece_at_square and piece_at_square['color'] != selected_piece['color']:
+                captured_piece = piece_at_square
+                break
+            elif piece_at_square:
+                break
+            current_x += dx
+            current_y += dy
+        if captured_piece:
+            new_pieces.remove(captured_piece)
+
+    for piece in new_pieces:
+        if piece['x'] == x and piece['y'] == y:
+            piece['x'] = dest_x
+            piece['y'] = dest_y
+            if not piece.get('is_king', False):
+                if (piece['color'] == 0 and piece['y'] == 0) or (
+                        piece['color'] == 1 and piece['y'] == 7):
+                    piece['is_king'] = True
+                    piece['mode'] = 'k'
             break
 
-    if moved_piece is None:
-        return False
+    capture_moves = can_capture(piece, new_pieces)
+    if capture_moves and abs(dest_x - x) > 1:
+        game.must_capture_piece = piece.copy()
+        return "continue_capture", new_pieces
 
-    if game.must_capture_piece:
-        if (moved_piece['x'], moved_piece['y']) != (game.must_capture_piece['x'], game.must_capture_piece['y']):
-            print(f"Ошибка: двигается фигура {moved_piece}, но должна двигаться {game.must_capture_piece}")
-            return False
+    return True, new_pieces
 
-    if (current_player == "w" and moved_piece['color'] != 0) or (
-            current_player == "b" and moved_piece['color'] != 1):
-        print("Ошибка: игрок ходит не своей фигурой.")
-        return False
-
-    if get_piece_at(pieces, new_pos['x'], new_pos['y']):
-        print("Ошибка: целевая клетка занята.")
-        return False
-
-    dx = new_pos['x'] - moved_piece['x']
-    dy = new_pos['y'] - moved_piece['y']
-    abs_dx = abs(dx)
-    abs_dy = abs(dy)
-    captured = False
-
-    if moved_piece.get('is_king', False):
-        if abs_dx == abs_dy:
-            step_x = dx // abs_dx
-            step_y = dy // abs_dy
-            captured_pieces = []
-            for i in range(1, abs_dx):
-                piece_at_pos = get_piece_at(pieces, moved_piece['x'] + i * step_x, moved_piece['y'] + i * step_y)
-                if piece_at_pos:
-                    if piece_at_pos['color'] == moved_piece['color']:
-                        print("Путь блокирован своей фигурой.")
-                        return False
-                    else:
-                        captured_pieces.append(piece_at_pos)
-            if len(captured_pieces) > 1:
-                print("Ошибка: захвачено более одной фигуры.")
-                return False
-            elif captured_pieces:
-                pieces.remove(captured_pieces[0])
-                captured = True
-            else:
-                if game.must_capture_piece:
-                    print("Ошибка: в множественном захвате нельзя ходить без захвата.")
-                    return False
-        else:
-            print("Ошибка: дамка должна двигаться по диагонали.")
-            return False
-    else:
-        if abs_dx == 2 and abs_dy == 2:
-            mid_x = (moved_piece['x'] + new_pos['x']) // 2
-            mid_y = (moved_piece['y'] + new_pos['y']) // 2
-            captured_piece = get_piece_at(pieces, mid_x, mid_y)
-            if not captured_piece or captured_piece['color'] == moved_piece['color']:
-                print("Ошибка: невозможно съесть фигуру.")
-                return False
-            pieces.remove(captured_piece)
-            captured = True
-        elif game.must_capture_piece:
-            print("Ошибка: в множественном захвате нельзя ходить без захвата.")
-            return False
-        else:
-            if abs_dx == 1 and abs_dy == 1:
-                if (moved_piece['color'] == 0 and dy == -1) or (moved_piece['color'] == 1 and dy == 1):
-                    pass
-                else:
-                    print("Ошибка: пешка не может ходить назад.")
-                    return False
-            else:
-                print("Ошибка с дистанцией хода пешки.")
-                return False
-
-    moved_piece['x'] = new_pos['x']
-    moved_piece['y'] = new_pos['y']
-    if not moved_piece.get('is_king', False):
-        if (moved_piece['color'] == 0 and moved_piece['y'] == 0) or (
-                moved_piece['color'] == 1 and moved_piece['y'] == 7):
-            moved_piece['is_king'] = True
-            moved_piece['mode'] = 'k'
-
-    if is_all_kings(pieces):
-        print("Ничья: все шашки превратились в дамки.")
-        return "n", pieces, current_player
-
-    if check_draw(pieces):
-        print(status_['n'])
-        return "n", pieces, current_player
-
-    opponent_color = 1 if current_player == 'w' else 0
-    opponent_pieces = [p for p in pieces if p['color'] == opponent_color]
-
-    if not opponent_pieces:
-        if current_player == 'w':
-            print(status_['w3'])
-            return "w3", pieces, current_player
-        else:
-            print(status_['b3'])
-            return "b3", pieces, current_player
-    elif not can_player_move(pieces, opponent_color):
-        print("Ничья: противник не имеет возможных ходов.")
-        return "n", pieces, current_player
-
-    if captured:
-        if can_capture(moved_piece, pieces):
-            game.must_capture_piece = moved_piece.copy()
-            print("Дополнительный захват возможен.")
-            return f"{current_player}4", pieces, current_player
-
-    if game.must_capture_piece and not can_capture(game.must_capture_piece, pieces):
-        print("Множественный захват завершён.")
-        game.must_capture_piece = None
-
-    current_player = 'b' if current_player == 'w' else 'w'
-
-    return True, pieces, current_player
 
 @app.route("/")
 def home():
@@ -409,7 +345,8 @@ def check_game_status_route():
 @app.route("/move", methods=["POST"])
 def move():
     data = request.json
-    new_pieces = data.get("pieces")
+    selected_piece = data.get("selected_piece")
+    new_pos = data.get("new_pos")
     game_id = int(data.get("game_id"))
     user_login = session.get('user')
 
@@ -426,65 +363,44 @@ def move():
         logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
         return jsonify({"error": "Not your turn"}), 403
 
-    result = validate_move(new_pieces, current_player, game.pieces, game)
+    result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
     logging.debug(f"Validate move result: {result}")
 
     if isinstance(result, tuple):
-        move_result, updated_pieces, new_current_player = result
-    else:
-        move_result = result
-
-    if move_result in ["w3", "b3", "n"]:
-        game.pieces = updated_pieces
-        game.status = move_result
-
-        if move_result == 'w3':
-            winner_color = 'w'
-        elif move_result == 'b3':
-            winner_color = 'b'
+        move_result, updated_pieces = result
+        if move_result == "continue_capture":
+            game.pieces = updated_pieces
+            game.status = f"{current_player}4"
+            return jsonify({"status_": game.status, "pieces": game.pieces})
         else:
-            winner_color = None
-
-        if winner_color is None:
-            result = 'draw'
-            points_gained = 5
-        elif winner_color == user_color:
-            result = 'win'
-            points_gained = 10
-        else:
-            result = 'lose'
-            points_gained = 0
-
-        if not getattr(game, 'rank_updated', False):
-            if result == 'win':
-                update_user_rank(user_login, points_gained)
-                update_user_stats(user_login, wins=1)
-                opponent_login = game.f_user if game.f_user != user_login else game.c_user
-                update_user_stats(opponent_login, losses=1)
-            elif result == 'lose':
-                update_user_stats(user_login, losses=1)
-            elif result == 'draw':
-                update_user_rank(user_login, points_gained)
-                opponent_login = game.f_user if game.f_user != user_login else game.c_user
-                update_user_rank(opponent_login, points_gained)
-                update_user_stats(user_login, draws=1)
-                update_user_stats(opponent_login, draws=1)
-            game.rank_updated = True
-
-        session.pop('game_id', None)
-        session.pop('color', None)
-
-        return jsonify({"status_": game.status, "pieces": game.pieces, "points_gained": points_gained, "result": result})
-
-    elif move_result in ["w4", "b4"]:
-        game.pieces = updated_pieces
-        game.status = move_result
-    elif move_result is True:
-        game.pieces = updated_pieces
+            game.pieces = updated_pieces
+            game.moves_count += 1
+            game.switch_turn()
+    elif result is True:
         game.moves_count += 1
         game.switch_turn()
     else:
         return jsonify({"error": "Invalid move"}), 400
+
+    if is_all_kings(game.pieces):
+        game.status = "n"
+        return jsonify({"status_": game.status, "pieces": game.pieces})
+
+    if check_draw(game.pieces):
+        game.status = "n"
+        return jsonify({"status_": game.status, "pieces": game.pieces})
+
+    opponent_color = 'b' if current_player == 'w' else 'w'
+    opponent_pieces = [p for p in game.pieces if p['color'] == (0 if opponent_color == 'w' else 1)]
+
+    if not opponent_pieces:
+        game.status = f"{current_player}3"
+        return jsonify({"status_": game.status, "pieces": game.pieces})
+
+    if not can_player_move(game.pieces, 0 if opponent_color == 'w' else 1):
+        game.status = "n"
+        return jsonify({"status_": game.status, "pieces": game.pieces})
+
     return jsonify({"status_": game.status, "pieces": game.pieces})
 
 
@@ -700,6 +616,33 @@ def respond_draw():
         return jsonify({"error": "Неверный ответ"}), 400
 
     return jsonify({"status_": game.status, "pieces": game.pieces}), 200
+
+
+@app.route("/get_possible_moves", methods=["POST"])
+def get_possible_moves_route():
+    data = request.json
+    selected_piece = data.get("selected_piece")
+    game_id = int(data.get("game_id"))
+    user_login = session.get('user')
+
+    game = current_games.get(game_id)
+    if game is None:
+        return jsonify({"error": "Invalid game ID"}), 400
+    if user_login not in [game.f_user, game.c_user]:
+        return jsonify({"error": "Invalid user ID"}), 403
+
+    current_player = game.current_player
+    user_color = game.user_color(user_login)
+
+    if user_color != current_player:
+        logging.debug(f"User {user_login} attempted to get moves, but it's {current_player}'s turn.")
+        return jsonify({"error": "Not your turn"}), 403
+
+    x, y = selected_piece['x'], selected_piece['y']
+    valid_moves = get_possible_moves(game.pieces, 0 if current_player == 'w' else 1)
+    moves = valid_moves.get((x, y), [])
+
+    return jsonify({"moves": moves})
 
 
 if __name__ == "__main__":
