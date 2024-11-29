@@ -43,6 +43,7 @@ class Game:
         self.rank_updated = False
         self.must_capture_piece = None
         self.draw_offer = None
+        self.move_history = []
 
     def user_color(self, user_login):
         if user_login == self.f_user:

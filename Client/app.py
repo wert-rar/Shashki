@@ -71,7 +71,6 @@ def can_capture(piece, pieces):
                 moves.append({'x': end_x, 'y': end_y})
     return moves
 
-
 def can_move(piece, pieces):
     x, y = piece['x'], piece['y']
     moves = []
@@ -100,7 +99,6 @@ def can_move(piece, pieces):
                 moves.append({'x': new_x, 'y': new_y})
     return moves
 
-
 def get_possible_moves(pieces, color, must_capture_piece=None):
     all_moves = {}
     for piece in pieces:
@@ -119,11 +117,9 @@ def get_possible_moves(pieces, color, must_capture_piece=None):
             all_moves[(piece['x'], piece['y'])] = capture_moves + normal_moves
     return all_moves
 
-
 def can_player_move(pieces, color):
     moves = get_possible_moves(pieces, color)
     return any(moves.values())
-
 
 def check_draw(pieces):
     if can_player_move(pieces, 0):
@@ -132,7 +128,6 @@ def check_draw(pieces):
         return False
     app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
-
 
 def is_all_kings(pieces):
     for piece in pieces:
@@ -154,11 +149,14 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     piece_moves = valid_moves.get((x, y), [])
 
     if not any(move['x'] == dest_x and move['y'] == dest_y for move in piece_moves):
-        return False
+        return {'move_result': 'invalid'}
 
     new_pieces = [piece.copy() for piece in pieces]
 
     captured = False
+    captured_pieces = []
+    moved_piece = None
+
     if abs(dest_x - x) > 1:
         dx = 1 if dest_x > x else -1
         dy = 1 if dest_y > y else -1
@@ -168,6 +166,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
             if piece_at_square and piece_at_square['color'] != selected_piece['color']:
                 new_pieces.remove(piece_at_square)
                 captured = True
+                captured_pieces.append({'x': current_x, 'y': current_y})
                 break
             elif piece_at_square:
                 break
@@ -178,6 +177,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         if piece['x'] == x and piece['y'] == y:
             piece['x'] = dest_x
             piece['y'] = dest_y
+            moved_piece = piece
             if not piece.get('is_king', False):
                 if (piece['color'] == 0 and piece['y'] == 0) or (
                         piece['color'] == 1 and piece['y'] == 7):
@@ -186,17 +186,26 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
             break
 
     if captured:
-        capture_moves = can_capture(piece, new_pieces)
+        capture_moves = can_capture(moved_piece, new_pieces)
         if capture_moves:
-            game.must_capture_piece = piece.copy()
-            return "continue_capture", new_pieces
+            game.must_capture_piece = moved_piece.copy()
+            return {
+                'move_result': 'continue_capture',
+                'new_pieces': new_pieces,
+                'captured': True,
+                'captured_pieces': captured_pieces
+            }
         else:
             game.must_capture_piece = None
     else:
         game.must_capture_piece = None
 
-    return True, new_pieces
-
+    return {
+        'move_result': 'valid',
+        'new_pieces': new_pieces,
+        'captured': captured,
+        'captured_pieces': captured_pieces
+    }
 
 @app.route("/")
 def home():
@@ -373,17 +382,24 @@ def move():
     result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
     logging.debug(f"Validate move result: {result}")
 
-    if isinstance(result, tuple):
-        move_result, updated_pieces = result
-        if move_result == "continue_capture":
-            game.pieces = updated_pieces
-            game.status = f"{current_player}4"
-            return jsonify({"status_": game.status, "pieces": game.pieces})
-        else:
-            game.pieces = updated_pieces
-            game.moves_count += 1
-            game.switch_turn()
-    elif result is True:
+    if result['move_result'] == 'invalid':
+        return jsonify({"error": "Invalid move"}), 400
+
+    move_record = {
+        'player': current_player,
+        'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
+        'to': {'x': new_pos['x'], 'y': new_pos['y']},
+        'captured': result['captured'],
+        'captured_pieces': result.get('captured_pieces', [])
+    }
+    game.move_history.append(move_record)
+
+    if result['move_result'] == 'continue_capture':
+        game.pieces = result['new_pieces']
+        game.status = f"{current_player}4"
+        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+    elif result['move_result'] == 'valid':
+        game.pieces = result['new_pieces']
         game.moves_count += 1
         game.switch_turn()
     else:
@@ -391,24 +407,24 @@ def move():
 
     if is_all_kings(game.pieces):
         game.status = "n"
-        return jsonify({"status_": game.status, "pieces": game.pieces})
+        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
     if check_draw(game.pieces):
         game.status = "n"
-        return jsonify({"status_": game.status, "pieces": game.pieces})
+        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
     opponent_color = 'b' if current_player == 'w' else 'w'
     opponent_pieces = [p for p in game.pieces if p['color'] == (0 if opponent_color == 'w' else 1)]
 
     if not opponent_pieces:
         game.status = f"{current_player}3"
-        return jsonify({"status_": game.status, "pieces": game.pieces})
+        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
     if not can_player_move(game.pieces, 0 if opponent_color == 'w' else 1):
         game.status = "n"
-        return jsonify({"status_": game.status, "pieces": game.pieces})
+        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
-    return jsonify({"status_": game.status, "pieces": game.pieces})
+    return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
 
 @app.route("/update_board", methods=["POST"])
@@ -429,6 +445,8 @@ def update_board():
 
         if game.draw_offer:
             response_data["draw_offer"] = game.draw_offer
+
+        response_data["move_history"] = game.move_history
 
         if game.status in ['w3', 'b3', 'n']:
             user_color = game.user_color(user_login)

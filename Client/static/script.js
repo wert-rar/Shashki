@@ -104,6 +104,10 @@ function update_data(data) {
       possibleMoves = [];
     }
   }
+
+  if (data.move_history) {
+    updateMovesList(data.move_history);
+  }
 }
 
 function displayGameOverMessage(data) {
@@ -566,4 +570,34 @@ function getCoordinates(loc) {
     return { x: gridX, y: gridY };
   }
   return { x: -1, y: -1 };
+}
+
+// MOVE LIST
+
+function convertCoordinatesToNotation(x, y) {
+  const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  if (user_color == 'w') {
+    let file = letters[x];
+    let rank = 8 - y;
+    return file + rank;
+  } else {
+    let file = letters[7 - x];
+    let rank = y + 1;
+    return file + rank;
+  }
+}
+
+function updateMovesList(moveHistory) {
+  const movesList = document.querySelector('.moves-list');
+  movesList.innerHTML = '';
+
+  moveHistory.forEach((move, index) => {
+    let player = move.player === (user_color === 'w' ? 'w' : 'b') ? 'Вы' : 'Противник';
+    let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
+    let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
+    let moveText = `${player}: ${fromPos} - ${toPos}`;
+    let li = document.createElement('li');
+    li.textContent = moveText;
+    movesList.appendChild(li);
+  });
 }
