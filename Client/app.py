@@ -193,7 +193,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 'move_result': 'continue_capture',
                 'new_pieces': new_pieces,
                 'captured': True,
-                'captured_pieces': captured_pieces
+                'captured_pieces': captured_pieces,
+                'multiple_capture': True
             }
         else:
             game.must_capture_piece = None
@@ -204,7 +205,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'move_result': 'valid',
         'new_pieces': new_pieces,
         'captured': captured,
-        'captured_pieces': captured_pieces
+        'captured_pieces': captured_pieces,
+        'multiple_capture': False
     }
 
 @app.route("/")

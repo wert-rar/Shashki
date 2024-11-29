@@ -592,12 +592,29 @@ function updateMovesList(moveHistory) {
   movesList.innerHTML = '';
 
   moveHistory.forEach((move, index) => {
-    let player = move.player === (user_color === 'w' ? 'w' : 'b') ? 'Вы' : 'Противник';
+    let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
+    let player = isPlayerMove ? 'Вы' : 'Противник';
     let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
     let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
-    let moveText = `${player}: ${fromPos} - ${toPos}`;
+    let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
     let li = document.createElement('li');
-    li.textContent = moveText;
+    li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move');
+
+    let moveContent = document.createElement('div');
+    moveContent.classList.add('move-content');
+
+    let playerLabel = document.createElement('span');
+    playerLabel.classList.add('move-player');
+    playerLabel.textContent = player;
+
+    let moveDescription = document.createElement('span');
+    moveDescription.classList.add('move-description');
+    moveDescription.textContent = moveText;
+
+    moveContent.appendChild(playerLabel);
+    moveContent.appendChild(moveDescription);
+    li.appendChild(moveContent);
+
     movesList.appendChild(li);
   });
 }

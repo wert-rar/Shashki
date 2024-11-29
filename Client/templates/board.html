@@ -1,62 +1,54 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+JX4rD1RrVZk2zXKWr8+8Y"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="{{ url_for('static', filename='styles.css') }}"
-    />
-    <title>Шашки</title>
-  </head>
+<head>
+    <meta charset="UTF-8">
+    <title>Игра в шашки</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body onload="onLoad()">
 
-  <body onload="onLoad()">
-    <div class="sidebar">
-      <h2>Меню</h2>
-      <button id="give-up-button" onclick="give_up()">Сдаться</button>
-      <button id="give-draw-button" onclick="give_draw()">Предложить ничью</button>
-      <h3>Ходы игроков</h3>
-      <ul class="moves-list"></ul>
-    </div>
     <div class="header">
-      <div class="status" id="status">Сейчас ходят белые</div>
+        <span class="status" id="status">Загрузка...</span>
     </div>
+
     <div class="board-container">
-      <canvas id="board"></canvas>
+        <canvas id="board"></canvas>
+    </div>
+     <div class="sidebar">
+        <h2>Меню</h2>
+        <button id="give-up-button" onclick="give_up()">Сдаться</button>
+        <button id="give-draw-button" onclick="give_draw()">Предложить ничью</button>
+    </div>
+
+    <div class="moves-sidebar">
+        <h2>Ходы игроков</h2>
+        <div class="moves-container">
+            <ul class="moves-list"></ul>
+        </div>
     </div>
 
     <div id="game-over-modal" class="modal">
-      <div class="modal-content">
-        <h2 id="game-over-title">
-          <i class="fas fa-trophy"></i> Игра окончена
-        </h2>
-        <p id="game-over-message"></p>
-        <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
-      </div>
+        <div class="modal-content">
+            <h2 id="game-over-title">Игра окончена</h2>
+            <p id="game-over-message"></p>
+            <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+        </div>
     </div>
 
-    <div id="draw-offer-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <h2>Предложение ничьей</h2>
-        <p>Ваш противник предложил ничью. Примите или отклоните предложение.</p>
-        <button onclick="respond_draw('accept')">Принять</button>
-        <button onclick="respond_draw('decline')">Отклонить</button>
-      </div>
+    <div id="draw-offer-modal" class="modal">
+        <div class="modal-content">
+            <h2>Предложение ничьей</h2>
+            <p>Противник предлагает ничью. Согласиться?</p>
+            <button onclick="respond_draw('accept')">Принять</button>
+            <button onclick="respond_draw('decline')">Отклонить</button>
+        </div>
     </div>
 
     <script>
-      var user_login = "{{ user_login }}";
-      var game_id = "{{ game_id }}";
-      var user_color = "{{ user_color }}";
+        const user_login = "{{ user_login }}";
+        const game_id = "{{ game_id }}";
+        const user_color = "{{ user_color }}";
     </script>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-  </body>
+    <script src="/static/script.js"></script>
+</body>
 </html>
