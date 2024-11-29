@@ -653,6 +653,7 @@ function convertCoordinatesToNotation(x, y) {
 
 function updateMovesList(moveHistory) {
   const movesList = document.querySelector('.moves-list');
+  const movesContainer = document.querySelector('.moves-container');
 
   for (let i = lastMoveCount; i < moveHistory.length; i++) {
     let move = moveHistory[i];
@@ -661,6 +662,7 @@ function updateMovesList(moveHistory) {
     let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
     let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
     let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
+
     let li = document.createElement('li');
     li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
 
@@ -687,4 +689,6 @@ function updateMovesList(moveHistory) {
   }
 
   lastMoveCount = moveHistory.length;
+
+  movesContainer.scrollTop = movesContainer.scrollHeight;
 }
