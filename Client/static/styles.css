@@ -265,39 +265,54 @@ canvas#board {
     color: #FFFFFF;
 }
 
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    color: #FFFFFF;
+    padding: 15px 20px;
+    border-radius: 8px;
+    z-index: 200;
+    font-size: 1em;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+.notification-info {
+    background-color: #28a745;
+}
+
+.notification-error {
+    background-color: #dc3545;
+}
+
+.notification.fade-out {
+    opacity: 0;
+}
+
+.modal .modal-content h2 {
+    color: #FF4C4C;
+}
+
+.modal .modal-content button {
+    background-color: #FF4C4C;
+    color: #FFFFFF;
+}
+
+@media (max-width: 1440px) {
+}
+
 @media (max-width: 1024px) {
-    .sidebar, .moves-sidebar {
-        width: 200px;
-    }
-    .board-container {
-        margin-left: 200px;
-        margin-right: 200px;
-    }
 }
 
 @media (max-width: 768px) {
-    .sidebar, .moves-sidebar {
-        width: 180px;
-    }
-    .board-container {
-        margin-left: 180px;
-        margin-right: 180px;
-    }
 }
 
-@media (max-width: 600px) {
-    .sidebar, .moves-sidebar {
-        display: none;
-    }
-    .board-container {
-        margin: 0;
-    }
-    .header {
-        position: fixed;
-        top: 0;
-        z-index: 10;
-    }
-    .board-container {
-        padding-top: 70px;
-    }
+@media (max-width: 425px) {
+}
+
+@media (max-width: 375px) {
+}
+
+@media (max-width: 320px) {
 }

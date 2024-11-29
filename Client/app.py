@@ -443,10 +443,16 @@ def update_board():
         if game is None:
             return jsonify({"error": "Invalid game ID"}), 400
 
+        user_color = game.user_color(user_login)
         response_data = {"status_": game.status, "pieces": game.pieces}
 
         if game.draw_offer:
             response_data["draw_offer"] = game.draw_offer
+
+        if game.draw_response:
+            if game.draw_response['to'] == user_color:
+                response_data['draw_response'] = game.draw_response['response']
+                game.draw_response = None
 
         response_data["move_history"] = game.move_history
 
@@ -629,6 +635,7 @@ def respond_draw():
 
     if response == "accept":
         game.status = "n"
+        game.draw_response = {'response': 'accept', 'to': game.draw_offer}
         app.logger.debug(f"Пользователь {user_login} принял ничью в игре {game_id}")
         update_user_rank(user_login, 5)
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
@@ -637,6 +644,7 @@ def respond_draw():
         update_user_stats(opponent_login, draws=1)
         game.draw_offer = None
     elif response == "decline":
+        game.draw_response = {'response': 'decline', 'to': game.draw_offer}
         app.logger.debug(f"Пользователь {user_login} отклонил ничью в игре {game_id}")
         game.draw_offer = None
     else:

@@ -83,9 +83,21 @@ function update_data(data) {
   if (user_color == "b") pieces = translate(pieces);
   document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
-  if (data.draw_offer && data.draw_offer !== user_color) {
-    let modal = document.getElementById("draw-offer-modal");
-    modal.style.display = "block";
+ if (data.draw_response && data.draw_response !== null) {
+    if (data.draw_response === 'accept') {
+      displayGameOverMessage(data);
+    } else if (data.draw_response === 'decline') {
+      showNotification('Ваше предложение ничьей было отклонено.', 'error');
+    }
+  }
+
+  if (data.draw_offer && data.draw_offer !== null) {
+    if (data.draw_offer !== user_color) {
+      let modal = document.getElementById("draw-offer-modal");
+      modal.style.display = "block";
+    }
+  } else {
+    document.getElementById("draw-offer-modal").style.display = "none";
   }
 
   if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
@@ -149,25 +161,35 @@ function returnToMainMenu() {
 }
 
 function give_up() {
-  if (confirm("Вы уверены, что хотите сдаться? Это будет считаться поражением.")) {
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/give_up", true);
-    xhr.setRequestHeader("Content-type", "application/json");
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        if (xhr.status === 200) {
-          let response = JSON.parse(xhr.responseText);
-          displayGameOverMessage(response);
-        } else {
-          alert("Произошла ошибка при попытке сдаться.");
-        }
+  document.getElementById('surrender-modal').style.display = 'block';
+}
+
+function confirmSurrender() {
+  closeModal('surrender-modal');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/give_up", true);
+  xhr.setRequestHeader("Content-type", "application/json");
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === XMLHttpRequest.DONE) {
+      if (xhr.status === 200) {
+        let response = JSON.parse(xhr.responseText);
+        displayGameOverMessage(response);
+      } else {
+        showError('Произошла ошибка при попытке сдаться.');
       }
-    };
-    xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}));
-  }
+    }
+  };
+  xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}));
 }
 
 function give_draw() {
+  document.getElementById('offer-draw-modal').style.display = 'block';
+}
+
+function confirmOfferDraw() {
+  closeModal('offer-draw-modal');
+
   let body = {
     game_id: game_id
   };
@@ -182,15 +204,59 @@ function give_draw() {
   .then(response => response.json())
   .then(data => {
     if (data.error) {
-      alert(data.error);
+      showError(data.error);
     } else {
-      alert('Предложение ничьей отправлено.');
+      showNotification('Предложение ничьей отправлено.');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Произошла ошибка при отправке предложения ничьей.');
+    showError('Произошла ошибка при отправке предложения ничьей.');
   });
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+function showNotification(message, type = 'info') {
+  let notification = document.createElement('div');
+  notification.classList.add('notification');
+  notification.innerText = message;
+
+  if (type === 'error') {
+    notification.classList.add('notification-error');
+  } else {
+    notification.classList.add('notification-info');
+  }
+
+  notification.innerText = message;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.classList.add('fade-out');
+  }, 3000);
+
+  notification.addEventListener('transitionend', () => {
+    notification.remove();
+  });
+}
+
+
+
+function showError(message) {
+  let errorModal = document.createElement('div');
+  errorModal.classList.add('modal');
+  errorModal.innerHTML = `
+      <div class="modal-content">
+          <h2>Ошибка</h2>
+          <p>${message}</p>
+          <button onclick="this.parentElement.parentElement.style.display='none'">Закрыть</button>
+      </div>
+  `;
+  document.body.appendChild(errorModal);
+  errorModal.style.display = 'block';
 }
 
 function respond_draw(response) {
@@ -209,17 +275,14 @@ function respond_draw(response) {
   .then(response => response.json())
   .then(data => {
     if (data.error) {
-      alert(data.error);
+      showError(data.error);
     } else {
-      if (data.status_ === 'n') {
-        displayGameOverMessage(data);
-      }
       document.getElementById("draw-offer-modal").style.display = "none";
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Произошла ошибка при ответе на предложение ничьей.');
+    showError('Произошла ошибка при ответе на предложение ничьей.');
   });
 }
 
@@ -250,7 +313,7 @@ function server_move_request(selected_piece, new_pos) {
   .then(response => response.json())
   .then(data => {
     if (data.error) {
-      alert(data.error);
+      showError(data.error);
       server_update_request(CURRENT_STATUS, pieces);
     } else {
       update_data(data);
@@ -270,7 +333,7 @@ function server_move_request(selected_piece, new_pos) {
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Произошла ошибка при отправке хода.');
+    showError('Произошла ошибка при отправке хода.');
   });
 }
 
@@ -330,7 +393,7 @@ function server_get_possible_moves(selected_piece, callback) {
   })
   .catch(error => {
     console.error('Error:', error);
-    alert(error.error || 'Произошла ошибка при получении возможных ходов.');
+    showError(error.error || 'Произошла ошибка при получении возможных ходов.');
     IS_SELECTED = false;
     SELECTED_PIECE = null;
     possibleMoves = [];
@@ -589,35 +652,39 @@ function convertCoordinatesToNotation(x, y) {
 }
 
 function updateMovesList(moveHistory) {
-    const movesList = document.querySelector('.moves-list');
+  const movesList = document.querySelector('.moves-list');
 
-    for (let i = lastMoveCount; i < moveHistory.length; i++) {
-        let move = moveHistory[i];
-        let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
-        let player = isPlayerMove ? 'Вы' : 'Противник';
-        let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
-        let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
-        let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
-        let li = document.createElement('li');
-        li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
+  for (let i = lastMoveCount; i < moveHistory.length; i++) {
+    let move = moveHistory[i];
+    let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
+    let player = isPlayerMove ? 'Вы' : 'Противник';
+    let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
+    let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
+    let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
+    let li = document.createElement('li');
+    li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
 
-        let moveContent = document.createElement('div');
-        moveContent.classList.add('move-content');
+    let moveContent = document.createElement('div');
+    moveContent.classList.add('move-content');
 
-        let playerLabel = document.createElement('span');
-        playerLabel.classList.add('move-player');
-        playerLabel.textContent = player;
+    let playerLabel = document.createElement('span');
+    playerLabel.classList.add('move-player');
+    playerLabel.textContent = player;
 
-        let moveDescription = document.createElement('span');
-        moveDescription.classList.add('move-description');
-        moveDescription.textContent = moveText;
+    let moveDescription = document.createElement('span');
+    moveDescription.classList.add('move-description');
+    moveDescription.textContent = moveText;
 
-        moveContent.appendChild(playerLabel);
-        moveContent.appendChild(moveDescription);
-        li.appendChild(moveContent);
+    moveContent.appendChild(playerLabel);
+    moveContent.appendChild(moveDescription);
+    li.appendChild(moveContent);
 
-        movesList.appendChild(li);
-    }
+    li.addEventListener('animationend', () => {
+      li.classList.remove('new-move');
+    });
 
-    lastMoveCount = moveHistory.length;
+    movesList.appendChild(li);
+  }
+
+  lastMoveCount = moveHistory.length;
 }
