@@ -8,6 +8,7 @@ let BOARD_OFFSET_Y = 0;
 let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
 let LABEL_PADDING = 36;
+let lastMoveCount = 0;
 
 console.log(user_color);
 console.log(user_login, game_id);
@@ -588,33 +589,35 @@ function convertCoordinatesToNotation(x, y) {
 }
 
 function updateMovesList(moveHistory) {
-  const movesList = document.querySelector('.moves-list');
-  movesList.innerHTML = '';
+    const movesList = document.querySelector('.moves-list');
 
-  moveHistory.forEach((move, index) => {
-    let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
-    let player = isPlayerMove ? 'Вы' : 'Противник';
-    let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
-    let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
-    let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
-    let li = document.createElement('li');
-    li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move');
+    for (let i = lastMoveCount; i < moveHistory.length; i++) {
+        let move = moveHistory[i];
+        let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
+        let player = isPlayerMove ? 'Вы' : 'Противник';
+        let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
+        let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
+        let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
+        let li = document.createElement('li');
+        li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
 
-    let moveContent = document.createElement('div');
-    moveContent.classList.add('move-content');
+        let moveContent = document.createElement('div');
+        moveContent.classList.add('move-content');
 
-    let playerLabel = document.createElement('span');
-    playerLabel.classList.add('move-player');
-    playerLabel.textContent = player;
+        let playerLabel = document.createElement('span');
+        playerLabel.classList.add('move-player');
+        playerLabel.textContent = player;
 
-    let moveDescription = document.createElement('span');
-    moveDescription.classList.add('move-description');
-    moveDescription.textContent = moveText;
+        let moveDescription = document.createElement('span');
+        moveDescription.classList.add('move-description');
+        moveDescription.textContent = moveText;
 
-    moveContent.appendChild(playerLabel);
-    moveContent.appendChild(moveDescription);
-    li.appendChild(moveContent);
+        moveContent.appendChild(playerLabel);
+        moveContent.appendChild(moveDescription);
+        li.appendChild(moveContent);
 
-    movesList.appendChild(li);
-  });
+        movesList.appendChild(li);
+    }
+
+    lastMoveCount = moveHistory.length;
 }

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
-from game import Game, find_waiting_game, update_game_with_user, get_game_status, create_new_game
+from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
 
 current_games = {}
