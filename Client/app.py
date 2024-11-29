@@ -70,7 +70,6 @@ def can_capture(piece, pieces):
                 return True
     return False
 
-
 def can_player_move(pieces, color):
     for piece in pieces:
         if piece['color'] != color:
