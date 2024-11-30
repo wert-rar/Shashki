@@ -71,6 +71,7 @@ def can_capture(piece, pieces):
                 moves.append({'x': end_x, 'y': end_y})
     return moves
 
+
 def can_move(piece, pieces):
     x, y = piece['x'], piece['y']
     moves = []
@@ -99,6 +100,7 @@ def can_move(piece, pieces):
                 moves.append({'x': new_x, 'y': new_y})
     return moves
 
+
 def get_possible_moves(pieces, color, must_capture_piece=None):
     all_moves = {}
     for piece in pieces:
@@ -117,9 +119,11 @@ def get_possible_moves(pieces, color, must_capture_piece=None):
             all_moves[(piece['x'], piece['y'])] = capture_moves + normal_moves
     return all_moves
 
+
 def can_player_move(pieces, color):
     moves = get_possible_moves(pieces, color)
     return any(moves.values())
+
 
 def check_draw(pieces):
     if can_player_move(pieces, 0):
@@ -128,6 +132,7 @@ def check_draw(pieces):
         return False
     app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
+
 
 def is_all_kings(pieces):
     for piece in pieces:
@@ -208,6 +213,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'captured_pieces': captured_pieces,
         'multiple_capture': False
     }
+
 
 @app.route("/")
 def home():
@@ -504,7 +510,7 @@ def update_board():
 
 
 @app.route("/give_up", methods=["POST"])
-def give_up():
+def give_up_route():
     try:
         data = request.get_json()
         game_id = int(data.get("game_id"))
@@ -612,7 +618,7 @@ def offer_draw():
 
 
 @app.route("/respond_draw", methods=["POST"])
-def respond_draw():
+def respond_draw_route():
     data = request.json
     game_id = int(data.get("game_id"))
     user_login = session.get('user')
@@ -686,6 +692,19 @@ def get_possible_moves_route():
         moves = valid_moves.get((x, y), [])
 
     return jsonify({"moves": moves})
+
+
+@app.route('/singleplayer/<user_login>')
+def singleplayer(user_login):
+    user_color = 'w'
+    return render_template(
+        'singleplayer.html',
+        user_login=user_login,
+        game_id=None,
+        user_color=user_color,
+        f_user=user_login,
+        c_user='bot'
+    )
 
 
 if __name__ == "__main__":
