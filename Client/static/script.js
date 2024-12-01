@@ -10,6 +10,9 @@ let SERVER_IP = "";
 let LABEL_PADDING = 36;
 let lastMoveCount = 0;
 
+let boardStates = [];
+let currentView = null;
+
 console.log(user_color);
 console.log(user_login, game_id);
 
@@ -76,51 +79,54 @@ function translate(pieces_data) {
 }
 
 function update_data(data) {
-  CURRENT_STATUS = data.status_;
-  CURRENT_PLAYER = data.current_player;
-  let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
-  pieces = data.pieces;
-  if (user_color == "b") pieces = translate(pieces);
-  document.getElementById("status").innerHTML = status[CURRENT_STATUS];
+    CURRENT_STATUS = data.status_;
+    CURRENT_PLAYER = data.current_player;
+    let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
- if (data.draw_response && data.draw_response !== null) {
-    if (data.draw_response === 'accept') {
-      displayGameOverMessage(data);
-    } else if (data.draw_response === 'decline') {
-      showNotification('Ваше предложение ничьей было отклонено.', 'error');
+    if (currentView === null) {
+        pieces = data.pieces;
+        if (user_color == "b") pieces = translate(pieces);
     }
-  }
+    document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
-  if (data.draw_offer && data.draw_offer !== null) {
-    if (data.draw_offer !== user_color) {
-      let modal = document.getElementById("draw-offer-modal");
-      modal.style.display = "block";
+    if (data.draw_response && data.draw_response !== null) {
+        if (data.draw_response === 'accept') {
+            displayGameOverMessage(data);
+        } else if (data.draw_response === 'decline') {
+            showNotification('Ваше предложение ничьей было отклонено.', 'error');
+        }
     }
-  } else {
-    document.getElementById("draw-offer-modal").style.display = "none";
-  }
 
-  if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
-    displayGameOverMessage(data);
-  }
-
-  if (previousSelectedPiece) {
-    SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
-    if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
-      IS_SELECTED = true;
-      server_get_possible_moves(SELECTED_PIECE, function(moves) {
-        possibleMoves = moves;
-      });
+    if (data.draw_offer && data.draw_offer !== null) {
+        if (data.draw_offer !== user_color) {
+            let modal = document.getElementById("draw-offer-modal");
+            modal.style.display = "block";
+        }
     } else {
-      IS_SELECTED = false;
-      SELECTED_PIECE = null;
-      possibleMoves = [];
+        document.getElementById("draw-offer-modal").style.display = "none";
     }
-  }
 
-  if (data.move_history) {
-    updateMovesList(data.move_history);
-  }
+    if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
+        displayGameOverMessage(data);
+    }
+
+    if (previousSelectedPiece) {
+        SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
+        if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
+            IS_SELECTED = true;
+            server_get_possible_moves(SELECTED_PIECE, function(moves) {
+                possibleMoves = moves;
+            });
+        } else {
+            IS_SELECTED = false;
+            SELECTED_PIECE = null;
+            possibleMoves = [];
+        }
+    }
+
+    if (data.move_history) {
+        updateMovesList(data.move_history);
+    }
 }
 
 function displayGameOverMessage(data) {
@@ -140,8 +146,8 @@ function displayGameOverMessage(data) {
   let points_gained = data.points_gained || 0;
 
   title.innerText = "Игра окончена";
-  message.innerHTML = `
-    ${resultText}<br>
+  message.innerHTML =
+    `${resultText}<br>
     Вы получили ${points_gained} очков к рангу.
   `;
 
@@ -243,13 +249,11 @@ function showNotification(message, type = 'info') {
   });
 }
 
-
-
 function showError(message) {
   let errorModal = document.createElement('div');
   errorModal.classList.add('modal');
-  errorModal.innerHTML = `
-      <div class="modal-content">
+  errorModal.innerHTML =
+      `<div class="modal-content">
           <h2>Ошибка</h2>
           <p>${message}</p>
           <button onclick="this.parentElement.parentElement.style.display='none'">Закрыть</button>
@@ -407,17 +411,40 @@ function startPolling() {
 // SERVER REQUEST CODE
 
 function onLoad() {
-  CANVAS = document.getElementById("board");
-  CTX = CANVAS.getContext("2d");
-  HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
-  if (user_color == "b") {
-    pieces = translate(pieces);
-  }
-  adjustScreen();
-  update();
-  addEventListeners();
-  startPolling();
+    CANVAS = document.getElementById("board");
+    CTX = CANVAS.getContext("2d");
+    HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
+    if (user_color == "b") {
+        pieces = translate(pieces);
+    }
+    boardStates = [JSON.parse(JSON.stringify(pieces))];
+    adjustScreen();
+    update();
+    addEventListeners();
+    startPolling();
 }
+
+function applyMove(boardState, move) {
+    let newState = boardState.map(piece => ({...piece}));
+    let movingPiece = newState.find(p => p.x === move.from.x && p.y === move.from.y);
+    if (movingPiece) {
+        movingPiece.x = move.to.x;
+        movingPiece.y = move.to.y;
+        if (move.captured) {
+            let capturedX = (move.from.x + move.to.x) / 2;
+            let capturedY = (move.from.y + move.to.y) / 2;
+            let capturedPieceIndex = newState.findIndex(p => p.x === capturedX && p.y === capturedY);
+            if (capturedPieceIndex !== -1) {
+                newState.splice(capturedPieceIndex, 1);
+            }
+        }
+        if (move.promotion) {
+            movingPiece.mode = 'k';
+        }
+    }
+    return newState;
+}
+
 
 // CLICK HANDLING CODE
 function addEventListeners() {
@@ -426,33 +453,34 @@ function addEventListeners() {
 }
 
 function onClick(evt) {
-  evt.preventDefault();
-  let rect = CANVAS.getBoundingClientRect();
-  let loc = {
-    x: evt.clientX - rect.left,
-    y: evt.clientY - rect.top,
-  };
-  let coords = getCoordinates(loc);
-  if (coords.x === -1 || coords.y === -1) return;
+    if (currentView !== null) return;
+    evt.preventDefault();
+    let rect = CANVAS.getBoundingClientRect();
+    let loc = {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top,
+    };
+    let coords = getCoordinates(loc);
+    if (coords.x === -1 || coords.y === -1) return;
 
-  if (!IS_SELECTED) {
-    SELECTED_PIECE = getPieceAt(coords.x, coords.y);
-    if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
-      IS_SELECTED = true;
-      server_get_possible_moves(SELECTED_PIECE, function(moves) {
-        possibleMoves = moves;
-      });
-    }
-  } else {
-    let move = possibleMoves.find(m => m.x === coords.x && m.y === coords.y);
-    if (move) {
-      server_move_request(SELECTED_PIECE, move);
+    if (!IS_SELECTED) {
+        SELECTED_PIECE = getPieceAt(coords.x, coords.y);
+        if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
+            IS_SELECTED = true;
+            server_get_possible_moves(SELECTED_PIECE, function(moves) {
+                possibleMoves = moves;
+            });
+        }
     } else {
-      IS_SELECTED = false;
-      SELECTED_PIECE = null;
-      possibleMoves = [];
+        let move = possibleMoves.find(m => m.x === coords.x && m.y === coords.y);
+        if (move) {
+            server_move_request(SELECTED_PIECE, move);
+        } else {
+            IS_SELECTED = false;
+            SELECTED_PIECE = null;
+            possibleMoves = [];
+        }
     }
-  }
 }
 
 function getPieceAt(x, y) {
@@ -652,43 +680,82 @@ function convertCoordinatesToNotation(x, y) {
 }
 
 function updateMovesList(moveHistory) {
-  const movesList = document.querySelector('.moves-list');
-  const movesContainer = document.querySelector('.moves-container');
+    const movesList = document.querySelector('.moves-list');
+    const movesContainer = document.querySelector('.moves-container');
 
-  for (let i = lastMoveCount; i < moveHistory.length; i++) {
-    let move = moveHistory[i];
-    let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
-    let player = isPlayerMove ? 'Вы' : 'Противник';
-    let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
-    let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
-    let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
+    for (let i = lastMoveCount; i < moveHistory.length; i++) {
+        let move = {...moveHistory[i]};
+        if (user_color == "b") {
+            move.from = {x: 7 - move.from.x, y: 7 - move.from.y};
+            move.to = {x: 7 - move.to.x, y: 7 - move.to.y};
+        }
 
-    let li = document.createElement('li');
-    li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
+        let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
+        let player = isPlayerMove ? 'Вы' : 'Противник';
+        let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
+        let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
+        let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
 
-    let moveContent = document.createElement('div');
-    moveContent.classList.add('move-content');
+        let li = document.createElement('li');
+        li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
 
-    let playerLabel = document.createElement('span');
-    playerLabel.classList.add('move-player');
-    playerLabel.textContent = player;
+        let moveContent = document.createElement('div');
+        moveContent.classList.add('move-content');
 
-    let moveDescription = document.createElement('span');
-    moveDescription.classList.add('move-description');
-    moveDescription.textContent = moveText;
+        let playerLabel = document.createElement('span');
+        playerLabel.classList.add('move-player');
+        playerLabel.textContent = player;
 
-    moveContent.appendChild(playerLabel);
-    moveContent.appendChild(moveDescription);
-    li.appendChild(moveContent);
+        let moveDescription = document.createElement('span');
+        moveDescription.classList.add('move-description');
+        moveDescription.textContent = moveText;
 
-    li.addEventListener('animationend', () => {
-      li.classList.remove('new-move');
-    });
+        moveContent.appendChild(playerLabel);
+        moveContent.appendChild(moveDescription);
+        li.appendChild(moveContent);
 
-    movesList.appendChild(li);
-  }
+        li.addEventListener('click', () => {
+            document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'));
+            li.classList.add('selected');
+            viewBoardState(i + 1);
+        });
 
-  lastMoveCount = moveHistory.length;
+        li.addEventListener('animationend', () => {
+            li.classList.remove('new-move');
+        });
 
-  movesContainer.scrollTop = movesContainer.scrollHeight;
+        movesList.appendChild(li);
+
+        let lastState = boardStates[boardStates.length - 1];
+        let newState = applyMove(lastState, move);
+        boardStates.push(newState);
+    }
+
+    lastMoveCount = moveHistory.length;
+
+    movesContainer.scrollTop = movesContainer.scrollHeight;
+}
+
+function viewBoardState(moveIndex) {
+    if (moveIndex < 0 || moveIndex > boardStates.length - 1) return;
+    pieces = boardStates[moveIndex].map(piece => ({...piece}));
+    currentView = moveIndex;
+    showHistoryViewIndicator();
+}
+
+function returnToCurrentView() {
+    pieces = boardStates[boardStates.length - 1].map(piece => ({...piece}));
+    currentView = null;
+    let indicator = document.getElementById('history-view-indicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+
+    document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'));
+}
+
+function showHistoryViewIndicator() {
+    let indicator = document.getElementById('history-view-indicator');
+    if (!indicator) return;
+    indicator.style.display = 'block';
 }

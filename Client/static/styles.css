@@ -108,7 +108,7 @@ canvas#board {
     position: fixed;
     top: 60px;
     right: 0;
-    width: 240px;
+    width: 270px;
     height: calc(100% - 60px);
     background: #1F1F1F;
     color: #FFFFFF;
@@ -141,7 +141,8 @@ canvas#board {
     flex: 1;
     overflow-y: auto;
     margin-top: 10px;
-    padding-right: 5px;
+    padding-right: 20px;
+    padding-left: 15px;
     padding-bottom: 20px;
 }
 
@@ -166,6 +167,7 @@ canvas#board {
 }
 
 .moves-list li {
+    position: relative;
     margin-bottom: 10px;
     padding: 12px;
     border-radius: 8px;
@@ -299,6 +301,7 @@ canvas#board {
     border-radius: 10px;
     cursor: pointer;
     transition: background 0.3s;
+    margin: 5px;
 }
 
 .modal-content button:hover {
@@ -338,6 +341,99 @@ canvas#board {
 .modal .modal-content button {
     background-color: #FF4C4C;
     color: #FFFFFF;
+}
+
+/* Ходы игроков */
+
+.moves-list li.selected {
+    position: relative;
+    z-index: 1;
+    border: 2px solid rgba(0, 170, 255, 0.6);
+    border-radius: 8px;
+    animation: pulse-border 1.5s infinite ease-in-out;
+    box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    background-color: inherit;
+}
+
+.moves-list li:focus,
+.moves-list li:active {
+    outline: none;
+    border-color: transparent;
+    box-shadow: none;
+    background-color: inherit;
+}
+
+.moves-list li {
+    border: none;
+    background-color: #393E46;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+@keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
+    }
+}
+
+.moves-list li.selected:hover {
+    background-color: #4a4a4a;
+}
+
+.moves-list li:active {
+    background-color: #393E46;
+    transform: none;
+}
+
+.moves-list li {
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/*Просмотр истории ходов */
+
+#history-view-indicator {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    background-color: #1F1F1F;
+    color: #FFFFFF;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    font-size: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 2px solid #00ADB5;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#history-view-indicator:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
+}
+
+.history-indicator button {
+    padding: 10px 15px;
+    background-color: #00ADB5;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #1F1F1F;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.history-indicator button:hover {
+    background-color: #393E46;
+    color: #FFFFFF;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 @media (max-width: 1440px) {
