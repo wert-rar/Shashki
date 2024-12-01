@@ -683,6 +683,8 @@ function updateMovesList(moveHistory) {
     const movesList = document.querySelector('.moves-list');
     const movesContainer = document.querySelector('.moves-container');
 
+    let hasNewMoves = moveHistory.length > lastMoveCount;
+
     for (let i = lastMoveCount; i < moveHistory.length; i++) {
         let move = {...moveHistory[i]};
         if (user_color == "b") {
@@ -733,7 +735,9 @@ function updateMovesList(moveHistory) {
 
     lastMoveCount = moveHistory.length;
 
-    movesContainer.scrollTop = movesContainer.scrollHeight;
+    if (hasNewMoves) {
+        movesContainer.scrollTop = movesContainer.scrollHeight;
+    }
 }
 
 function viewBoardState(moveIndex) {
