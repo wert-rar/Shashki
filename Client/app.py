@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
 from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
@@ -71,6 +71,7 @@ def can_capture(piece, pieces):
                 moves.append({'x': end_x, 'y': end_y})
     return moves
 
+
 def can_move(piece, pieces):
     x, y = piece['x'], piece['y']
     moves = []
@@ -99,6 +100,7 @@ def can_move(piece, pieces):
                 moves.append({'x': new_x, 'y': new_y})
     return moves
 
+
 def get_possible_moves(pieces, color, must_capture_piece=None):
     all_moves = {}
     for piece in pieces:
@@ -117,9 +119,11 @@ def get_possible_moves(pieces, color, must_capture_piece=None):
             all_moves[(piece['x'], piece['y'])] = capture_moves + normal_moves
     return all_moves
 
+
 def can_player_move(pieces, color):
     moves = get_possible_moves(pieces, color)
     return any(moves.values())
+
 
 def check_draw(pieces):
     if can_player_move(pieces, 0):
@@ -128,6 +132,7 @@ def check_draw(pieces):
         return False
     app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
+
 
 def is_all_kings(pieces):
     for piece in pieces:
@@ -209,6 +214,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'multiple_capture': False
     }
 
+
 @app.route("/")
 def home():
     return render_template('home.html')
@@ -219,11 +225,11 @@ def get_board(game_id, user_login):
     app.logger.debug(f"Game ID received: {game_id}")
     game = current_games.get(game_id)
     if not game:
-        return jsonify({"error": "Invalid game ID"}), 404
+        abort(404)
 
     user_color = 'w' if user_login == game.f_user else 'b' if user_login == game.c_user else None
     if not user_color:
-        return jsonify({"error": "User not part of this game"}), 403
+        abort(403)
 
     return render_template(
         'board.html',
@@ -283,7 +289,7 @@ def profile(username):
                                losses=user['losses'],
                                draws=user['draws'])
     else:
-        return 'Пользователь не найден', 404
+        abort(404)
 
 
 @app.route("/logout")
@@ -292,6 +298,27 @@ def logout():
     session.pop('game_id', None)
     session['flash'] = 'Вы вышли из системы.'
     return redirect(url_for('home'))
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template('403.html'), 403
+
+
+@app.route('/trigger_error')
+def trigger_error():
+    abort(500)
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    app.logger.error(f"Ошибка 500: {e}")
+    return render_template('500.html'), 500
 
 
 @app.route('/start_game')
@@ -372,7 +399,7 @@ def move():
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
-        return jsonify({"error": "Invalid user ID"}), 403
+        abort(403)
 
     current_player = game.current_player
     user_color = game.user_color(user_login)
@@ -499,7 +526,7 @@ def update_board():
 
         return jsonify(response_data)
     except Exception as e:
-        print("Exception:", str(e))
+        app.logger.error(f"Exception in update_board: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -518,7 +545,7 @@ def give_up_route():
             return jsonify({"error": "Игра не найдена"}), 404
 
         if user_login not in [game.f_user, game.c_user]:
-            return jsonify({"error": "Пользователь не участвует в этой игре"}), 403
+            abort(403)
 
         user_color = 'w' if user_login == game.f_user else 'b'
         opponent_login = game.c_user if user_login == game.f_user else game.f_user
@@ -573,7 +600,7 @@ def leave_game():
     elif game.c_user == user_login:
         game.c_user = None
     else:
-        return jsonify({"error": "User not part of the game"}), 400
+        abort(403)
 
     if game.f_user is None and game.c_user is None:
         if game_id in current_games:
@@ -598,7 +625,7 @@ def offer_draw():
         return jsonify({"error": "Игра не найдена"}), 404
 
     if user_login not in [game.f_user, game.c_user]:
-        return jsonify({"error": "Пользователь не участвует в этой игре"}), 403
+        abort(403)
 
     user_color = 'w' if user_login == game.f_user else 'b'
 
@@ -623,7 +650,7 @@ def respond_draw_route():
         return jsonify({"error": "Игра не найдена"}), 404
 
     if user_login not in [game.f_user, game.c_user]:
-        return jsonify({"error": "Пользователь не участвует в этой игре"}), 403
+        abort(403)
 
     user_color = 'w' if user_login == game.f_user else 'b'
 
@@ -664,7 +691,7 @@ def get_possible_moves_route():
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
-        return jsonify({"error": "Invalid user ID"}), 403
+        abort(403)
 
     current_player = game.current_player
     user_color = game.user_color(user_login)
@@ -686,6 +713,7 @@ def get_possible_moves_route():
         moves = valid_moves.get((x, y), [])
 
     return jsonify({"moves": moves})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

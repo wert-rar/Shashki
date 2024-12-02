@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Страница не найдена</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background-color: #1e1e1e;
+            --text-color: #ffffff;
+            --accent-color: #e74c3c;
+            --button-color: #3498db;
+            --button-hover-color: #2980b9;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .error-container {
+            text-align: center;
+        }
+
+        .error-container h1 {
+            font-size: 6rem;
+            margin-bottom: 20px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .error-container h1 .four {
+            display: inline-block;
+            position: relative;
+        }
+
+        .error-container h1 .checker-svg {
+            width: 80px;
+            height: 80px;
+            margin: 0 10px;
+            animation: drop-rise 2s infinite;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+        }
+
+        @keyframes drop-rise {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(30px) rotate(10deg); }
+            70% { transform: translateY(15px) rotate(-10deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        .error-container p {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            opacity: 0;
+            animation: fadeIn 1s ease forwards 1s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .error-container a {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: var(--button-color);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 700;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .error-container a::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(45deg);
+            transition: transform var(--transition-speed);
+        }
+
+        .error-container a:hover::before {
+            transform: rotate(0deg);
+        }
+
+        .error-container a:hover {
+            background-color: var(--button-hover-color);
+            transform: translateY(-3px);
+        }
+
+        .error-container a:active {
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 600px) {
+            .error-container h1 {
+                font-size: 4rem;
+            }
+
+            .error-container h1 .checker-svg {
+                width: 60px;
+                height: 60px;
+                margin: 0 5px;
+            }
+
+            .error-container p {
+                font-size: 1.2rem;
+            }
+
+            .error-container a {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles-js"></div>
+
+    <div class="error-container">
+        <h1>
+            <span class="four">4</span>
+            <svg class="checker-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="Шашка">
+                <defs>
+                    <linearGradient id="checker-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#c0392b;stop-opacity:1" />
+                    </linearGradient>
+                    <radialGradient id="checker-inner-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                        <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#ecf0f1;stop-opacity:1" />
+                    </radialGradient>
+                </defs>
+                <circle cx="32" cy="32" r="30" stroke="#e74c3c" stroke-width="4" fill="url(#checker-gradient)"/>
+                <circle cx="32" cy="32" r="10" fill="url(#checker-inner-gradient)"/>
+                <ellipse cx="32" cy="45" rx="10" ry="3" fill="rgba(0,0,0,0.2)" />
+                <circle cx="22" cy="22" r="3" fill="#c0392b"/>
+                <circle cx="42" cy="42" r="3" fill="#c0392b"/>
+                <path d="M32 22 L32 42" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span class="four">4</span>
+        </h1>
+        <p>Упс! Страница не найдена.</p>
+        <a href="{{ url_for('home') }}">Вернуться на главную</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script>
+        particlesJS("particles-js", {
+            "particles": {
+                "number": {
+                    "value": 40,
+                    "density": {
+                        "enable": true,
+                        "value_area": 800
+                    }
+                },
+                "color": {
+                    "value": "#ffffff"
+                },
+                "shape": {
+                    "type": "circle",
+                    "stroke": {
+                        "width": 0,
+                        "color": "#000000"
+                    }
+                },
+                "opacity": {
+                    "value": 0.3,
+                    "random": true
+                },
+                "size": {
+                    "value": 3,
+                    "random": true
+                },
+                "line_linked": {
+                    "enable": true,
+                    "distance": 150,
+                    "color": "#ffffff",
+                    "opacity": 0.2,
+                    "width": 1
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 2,
+                    "direction": "none",
+                    "random": false,
+                    "straight": false,
+                    "out_mode": "out",
+                    "bounce": false
+                }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": {
+                    "onhover": {
+                        "enable": true,
+                        "mode": "repulse"
+                    },
+                    "onclick": {
+                        "enable": true,
+                        "mode": "push"
+                    },
+                    "resize": true
+                },
+                "modes": {
+                    "repulse": {
+                        "distance": 100,
+                        "duration": 0.4
+                    },
+                    "push": {
+                        "particles_nb": 4
+                    }
+                }
+            },
+            "retina_detect": true
+        });
+    </script>
+</body>
+</html>
