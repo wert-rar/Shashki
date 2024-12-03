@@ -146,8 +146,8 @@ function displayGameOverMessage(data) {
   let points_gained = data.points_gained || 0;
 
   title.innerText = "Игра окончена";
-  message.innerHTML =
-    `${resultText}<br>
+  message.innerHTML = `
+    ${resultText}<br>
     Вы получили ${points_gained} очков к рангу.
   `;
 
@@ -250,8 +250,8 @@ function showNotification(message, type = 'info') {
 function showError(message) {
   let errorModal = document.createElement('div');
   errorModal.classList.add('modal');
-  errorModal.innerHTML =
-      `<div class="modal-content">
+  errorModal.innerHTML = `
+      <div class="modal-content">
           <h2>Ошибка</h2>
           <p>${message}</p>
           <button onclick="this.parentElement.parentElement.style.display='none'">Закрыть</button>
@@ -428,8 +428,8 @@ function applyMove(boardState, move) {
         movingPiece.x = move.to.x;
         movingPiece.y = move.to.y;
         if (move.captured) {
-            let capturedX = (move.from.x + move.to.x) / 2;
-            let capturedY = (move.from.y + move.to.y) / 2;
+            let capturedX = Math.floor((move.from.x + move.to.x) / 2);
+            let capturedY = Math.floor((move.from.y + move.to.y) / 2);
             let capturedPieceIndex = newState.findIndex(p => p.x === capturedX && p.y === capturedY);
             if (capturedPieceIndex !== -1) {
                 newState.splice(capturedPieceIndex, 1);
@@ -515,6 +515,9 @@ function adjustScreen() {
   }
 
   const dpr = window.devicePixelRatio || 1;
+
+  // Округление размера до целого числа для предотвращения артефактов
+  size = Math.floor(size);
 
   CTX.setTransform(1, 0, 0, 1, 0, 0);
 
