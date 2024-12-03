@@ -236,8 +236,6 @@ function showNotification(message, type = 'info') {
     notification.classList.add('notification-info');
   }
 
-  notification.innerText = message;
-
   document.body.appendChild(notification);
 
   setTimeout(() => {
@@ -409,7 +407,6 @@ function startPolling() {
 }
 
 // SERVER REQUEST CODE
-
 function onLoad() {
     CANVAS = document.getElementById("board");
     CTX = CANVAS.getContext("2d");
@@ -449,16 +446,16 @@ function applyMove(boardState, move) {
 // CLICK HANDLING CODE
 function addEventListeners() {
   CANVAS.addEventListener("click", onClick);
-  window.addEventListener("resize", adjustScreen);
+  window.addEventListener("resize", onResize);
 }
 
 function onClick(evt) {
     if (currentView !== null) return;
     evt.preventDefault();
-    let rect = CANVAS.getBoundingClientRect();
+
     let loc = {
-        x: evt.clientX - rect.left,
-        y: evt.clientY - rect.top,
+        x: evt.offsetX,
+        y: evt.offsetY,
     };
     let coords = getCoordinates(loc);
     if (coords.x === -1 || coords.y === -1) return;
@@ -483,6 +480,10 @@ function onClick(evt) {
     }
 }
 
+function onResize() {
+    adjustScreen();
+}
+
 function getPieceAt(x, y) {
   for (let piece of pieces) {
     if (piece.x === x && piece.y === y) {
@@ -496,9 +497,34 @@ function getPieceAt(x, y) {
 
 // RENDER CODE
 function adjustScreen() {
-  const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
-  CANVAS.width = size + LABEL_PADDING * 2;
-  CANVAS.height = size + LABEL_PADDING * 2;
+  const screenWidth = window.innerWidth;
+  let size;
+
+  if (screenWidth <= 1024) {
+      size = Math.min(window.innerWidth * 0.65, window.innerHeight * 0.65);
+      LABEL_PADDING = 30;
+  } else if (screenWidth <= 1080) {
+      size = Math.min(window.innerWidth * 0.65, window.innerHeight * 0.65);
+      LABEL_PADDING = 36;
+  } else if (screenWidth <= 1440) {
+      size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
+      LABEL_PADDING = 36;
+  } else {
+      size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.8);
+      LABEL_PADDING = 36;
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+
+  CTX.setTransform(1, 0, 0, 1, 0, 0);
+
+  CANVAS.width = (size + LABEL_PADDING * 2) * dpr;
+  CANVAS.height = (size + LABEL_PADDING * 2) * dpr;
+
+  CANVAS.style.width = `${size + LABEL_PADDING * 2}px`;
+  CANVAS.style.height = `${size + LABEL_PADDING * 2}px`;
+
+  CTX.scale(dpr, dpr);
 
   CELL_SIZE = size / 8;
 

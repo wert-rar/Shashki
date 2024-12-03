@@ -8,6 +8,13 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: inherit;
 }
 
 .header {
@@ -96,12 +103,13 @@ body {
 }
 
 canvas#board {
+    display: block;
     background-color: #222831;
     border: 5px solid #00ADB5;
     border-radius: 15px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: auto;
 }
 
 .moves-sidebar {
@@ -459,39 +467,6 @@ canvas#board {
     .modal-content {
         width: 380px;
     }
-    canvas#board {
-        max-width: 90%;
-        max-height: 90%;
-    }
-}
-
-@media (max-width: 1080px) {
-    .sidebar, .moves-sidebar {
-        width: 200px;
-        padding: 12px;
-    }
-    .board-container {
-        margin-left: 200px;
-        margin-right: 200px;
-    }
-    .sidebar h2, .moves-sidebar h2 {
-        font-size: 1.5em;
-        margin-bottom: 22px;
-    }
-    .sidebar button {
-        padding: 11px;
-        font-size: 0.92em;
-    }
-    .moves-list li {
-        padding: 9px;
-    }
-    .modal-content {
-        width: 350px;
-    }
-    canvas#board {
-        max-width: 80%;
-        max-height: 80%;
-    }
 }
 
 @media (max-width: 1024px) {
@@ -500,8 +475,8 @@ canvas#board {
         padding: 10px;
     }
     .board-container {
-        margin-left: 180px;
-        margin-right: 180px;
+        margin-left: 160px;
+        margin-right: 160px;
     }
     .sidebar h2, .moves-sidebar h2 {
         font-size: 1.4em;
@@ -515,11 +490,7 @@ canvas#board {
         padding: 8px;
     }
     .modal-content {
-        width: 320px;
-    }
-    canvas#board {
-        max-width: 80%;
-        max-height: 80%;
+        width: 330px;
     }
 }
 
