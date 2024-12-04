@@ -33,6 +33,12 @@ body {
     animation: pulse 2s infinite;
 }
 
+@-webkit-keyframes pulse {
+    0% { color: #00ADB5; }
+    50% { color: #FFF; }
+    100% { color: #00ADB5; }
+}
+
 @keyframes pulse {
     0% { color: #00ADB5; }
     50% { color: #FFF; }
@@ -185,6 +191,28 @@ canvas#board {
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
+@-webkit-keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .moves-list li:hover {
     background-color: #4a4a4a;
     transform: translateY(-2px);
@@ -222,17 +250,6 @@ canvas#board {
     color: #EEEEEE;
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 .moves-list .move-player {
     font-weight: bold;
     color: #00ADB5;
@@ -257,6 +274,11 @@ canvas#board {
     animation: fadeIn 0.5s ease forwards;
 }
 
+@-webkit-keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -274,6 +296,17 @@ canvas#board {
     border-radius: 15px;
     position: relative;
     animation: zoomIn 0.5s ease forwards;
+}
+
+@-webkit-keyframes zoomIn {
+    from {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 @keyframes zoomIn {
@@ -317,6 +350,15 @@ canvas#board {
     color: #FFFFFF;
 }
 
+.modal .modal-content h2 {
+    color: #FF4C4C;
+}
+
+.modal .modal-content button {
+    background-color: #FF4C4C;
+    color: #FFFFFF;
+}
+
 .notification {
     position: fixed;
     top: 20px;
@@ -342,17 +384,6 @@ canvas#board {
     opacity: 0;
 }
 
-.modal .modal-content h2 {
-    color: #FF4C4C;
-}
-
-.modal .modal-content button {
-    background-color: #FF4C4C;
-    color: #FFFFFF;
-}
-
-/* Ходы игроков */
-
 .moves-list li.selected {
     position: relative;
     z-index: 1;
@@ -364,18 +395,13 @@ canvas#board {
     background-color: inherit;
 }
 
-.moves-list li:focus,
-.moves-list li:active {
-    outline: none;
-    border-color: transparent;
-    box-shadow: none;
-    background-color: inherit;
-}
-
-.moves-list li {
-    border: none;
-    background-color: #393E46;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+@-webkit-keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
+    }
 }
 
 @keyframes pulse-border {
@@ -396,12 +422,21 @@ canvas#board {
     transform: none;
 }
 
+.moves-list li:focus,
+.moves-list li:active {
+    outline: none;
+    border-color: transparent;
+    box-shadow: none;
+    background-color: inherit;
+}
+
 .moves-list li {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    border: none;
+    background-color: #393E46;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
-/*Просмотр истории ходов */
 
 #history-view-indicator {
     position: fixed;
@@ -442,6 +477,68 @@ canvas#board {
     background-color: #393E46;
     color: #FFFFFF;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+@-webkit-keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@-webkit-keyframes zoomIn {
+    from {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes zoomIn {
+    from {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@-webkit-keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
+    }
+}
+
+@keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
+    }
+}
+
+@-webkit-keyframes pulse {
+    0% { color: #00ADB5; }
+    50% { color: #FFF; }
+    100% { color: #00ADB5; }
+}
+
+@keyframes pulse {
+    0% { color: #00ADB5; }
+    50% { color: #FFF; }
+    100% { color: #00ADB5; }
 }
 
 @media (max-width: 1440px) {
