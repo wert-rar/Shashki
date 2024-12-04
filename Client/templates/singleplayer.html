@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Игра в шашки - Одиночная</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <span class="status" id="status">Ход белых</span>
+    </div>
+
+    <div class="board-container">
+        <canvas id="board"></canvas>
+    </div>
+
+    <div class="sidebar">
+        <h2>Меню</h2>
+        <button id="give-up-button" onclick="give_up()">Сдаться</button>
+    </div>
+
+    <div class="moves-sidebar">
+        <h2>Ходы игроков</h2>
+        <div class="moves-container">
+            <ul class="moves-list"></ul>
+        </div>
+    </div>
+
+    <div id="surrender-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Подтверждение сдачи</h2>
+            <p>Вы уверены, что хотите сдаться? Это будет считаться поражением.</p>
+            <button onclick="confirmSurrender()">Сдаться</button>
+            <button onclick="closeModal('surrender-modal')">Отмена</button>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="game-over-title">Игра окончена</h2>
+            <p id="game-over-message"></p>
+            <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+        </div>
+    </div>
+
+    <script>
+        const user_login = "{{ user_login }}";
+        const user_color = "{{ user_color }}";
+    </script>
+
+    <script src="/static/client.js"></script>
+</body>
+</html>

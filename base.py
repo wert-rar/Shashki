@@ -1,22 +1,24 @@
 import sqlite3
-
+import logging
 
 def create_tables():
-    con = sqlite3.connect("DataBase.db")
-    cur = con.cursor()
+    try:
+        with sqlite3.connect("DataBase.db") as con:
+            cur = con.cursor()
 
-    cur.execute("""
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS player(
                     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     login TEXT UNIQUE,
                     password TEXT,
-                    rang BIGINT,
+                    rang BIGINT DEFAULT 0,
                     wins INTEGER DEFAULT 0,
-                    losses INTEGER DEFAULT 0
+                    losses INTEGER DEFAULT 0,
+                    draws INTEGER DEFAULT 0
                 )
             """)
 
-    cur.execute("""
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS game(
                     game_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     status TEXT,
@@ -28,23 +30,24 @@ def create_tables():
                 )
             """)
 
-    con.commit()
+            cur.execute("PRAGMA table_info(game)")
+            columns = [column[1] for column in cur.fetchall()]
+            if 'start_time' not in columns:
+                cur.execute("ALTER TABLE game ADD COLUMN start_time TIMESTAMP")
+                logging.info("Добавлен столбец 'start_time' в таблицу 'game'.")
 
-    cur.execute("PRAGMA table_info(game)")
-    columns = [column[1] for column in cur.fetchall()]
-    if 'start_time' not in columns:
-        cur.execute("ALTER TABLE game ADD COLUMN start_time TIMESTAMP")
+            cur.execute("SELECT COUNT(*) FROM game")
+            if cur.fetchone()[0] == 0:
+                cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")
+                con.commit()
+                logging.info("Таблица 'game' инициализирована первичной записью.")
 
-    cur.execute("SELECT COUNT(*) FROM game")
-    if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")
-        con.commit()
-
-    con.close()
-
+            logging.info("Функция create_tables завершена успешно.")
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при создании таблиц: {e}")
 
 def connect_db():
-    con = sqlite3.connect('../DataBase.db')
+    con = sqlite3.connect("DataBase.db")
     con.row_factory = sqlite3.Row
     return con
 
@@ -84,8 +87,24 @@ def get_user_by_login(username):
     return user
 
 
-if __name__ == "__main__":
-    create_tables()
-    input_login = input("Введите логин пользователя: ")
-    input_password = input("Введите пароль пользователя: ")
-    register_user(input_login, input_password)
+def update_user_rank(user_login, points):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("UPDATE player SET rang = rang + ? WHERE login = ?", (points, user_login))
+    con.commit()
+    con.close()
+
+
+# Обновление статистики пользователя
+def update_user_stats(user_login, wins=0, losses=0, draws=0):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("""
+        UPDATE player
+        SET wins = wins + ?,
+            losses = losses + ?,
+            draws = draws + ?
+        WHERE login = ?
+    """, (wins, losses, draws, user_login))
+    con.commit()
+    con.close()

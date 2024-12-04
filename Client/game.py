@@ -40,6 +40,11 @@ class Game:
         self.pieces = [piece.copy() for piece in pieces]
         self.current_player = "w"
         self.status = "w1"
+        self.rank_updated = False
+        self.must_capture_piece = None
+        self.draw_offer = None
+        self.draw_response = None
+        self.move_history = []
 
     def user_color(self, user_login):
         if user_login == self.f_user:
