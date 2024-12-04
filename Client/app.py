@@ -231,11 +231,14 @@ def get_board(game_id, user_login):
     if not user_color:
         abort(403)
 
+    opponent_login = game.c_user if user_login == game.f_user else game.f_user
+
     return render_template(
         'board.html',
         user_login=user_login,
         game_id=game_id,
         user_color=user_color,
+        opponent_login=opponent_login,
         f_user=game.f_user,
         c_user=game.c_user
     )
@@ -281,13 +284,34 @@ def profile(username):
 
     if user:
         total_games = user['wins'] + user['losses'] + user['draws']
+
+        current_user = session.get('user')
+        is_own_profile = (username == current_user)
+        in_game = False
+        game_id = None
+
+        if current_user and session.get('game_id'):
+            try:
+                game_id_int = int(session.get('game_id'))
+                game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
+                if game and current_user in [game.f_user, game.c_user]:
+                    in_game = True
+                    game_id = game_id_int
+            except (ValueError, TypeError):
+                app.logger.warning(f"Некорректный game_id в сессии: {session.get('game_id')}")
+                in_game = False
+
         return render_template('profile.html',
-                               user_login=user['login'],
+                               profile_user_login=user['login'],
                                rang=user['rang'],
                                total_games=total_games,
                                wins=user['wins'],
                                losses=user['losses'],
-                               draws=user['draws'])
+                               draws=user['draws'],
+                               is_own_profile=is_own_profile,
+                               in_game=in_game,
+                               game_id=game_id,
+                               current_user_login=current_user)
     else:
         abort(404)
 
@@ -329,18 +353,26 @@ def start_game():
 
     game_id = session.get('game_id')
     if game_id:
-        game = current_games.get(int(game_id)) or unstarted_games.get(int(game_id))
+        try:
+            game_id_int = int(game_id)
+        except (ValueError, TypeError):
+            session.pop('game_id', None)
+            session.pop('color', None)
+            app.logger.warning(f"Некорректный game_id в сессии: {game_id}")
+            game_id_int = None
+
+        game = current_games.get(game_id_int) or unstarted_games.get(game_id_int) if game_id_int else None
         if game and user_login in [game.f_user, game.c_user]:
             if game.status in ['w3', 'b3', 'n']:
                 session.pop('game_id', None)
                 session.pop('color', None)
-                if int(game_id) in current_games:
-                    del current_games[int(game_id)]
+                if game_id_int in current_games:
+                    del current_games[game_id_int]
             else:
                 if game.f_user and game.c_user:
-                    return redirect(url_for('get_board', game_id=game_id, user_login=user_login))
+                    return redirect(url_for('get_board', game_id=game_id_int, user_login=user_login))
                 else:
-                    return render_template('waiting.html', game_id=game_id, user_login=user_login)
+                    return render_template('waiting.html', game_id=game_id_int, user_login=user_login)
 
     game = find_waiting_game(unstarted_games)
 
@@ -378,10 +410,16 @@ def check_game_status_route():
     if not game_id:
         return jsonify({"status": "no_game"}), 404
 
-    game_status = get_game_status(game_id, current_games, unstarted_games)
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
+        return jsonify({"status": "invalid_game_id"}), 400
+
+    game_status = get_game_status(game_id_int, current_games, unstarted_games)
     if game_status:
         game_status['current_user'] = user_login
-        game_status['game_id'] = game_id
+        game_status['game_id'] = game_id_int
         return jsonify(game_status)
     else:
         return jsonify({"status": "game_not_found"}), 404
@@ -392,10 +430,18 @@ def move():
     data = request.json
     selected_piece = data.get("selected_piece")
     new_pos = data.get("new_pos")
-    game_id = int(data.get("game_id"))
+    game_id = data.get("game_id")
     user_login = session.get('user')
 
-    game = current_games.get(game_id)
+    if game_id is None:
+        return jsonify({"error": "Game ID is required"}), 400
+
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    game = current_games.get(game_id_int)
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
@@ -415,7 +461,7 @@ def move():
         return jsonify({"error": "Invalid move"}), 400
 
     move_record = {
-        'player': current_player,
+        'player': game.f_user if current_player == 'w' else game.c_user,
         'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
         'to': {'x': new_pos['x'], 'y': new_pos['y']},
         'captured': result['captured'],
@@ -426,7 +472,7 @@ def move():
     if result['move_result'] == 'continue_capture':
         game.pieces = result['new_pieces']
         game.status = f"{current_player}4"
-        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history, "multiple_capture": True})
     elif result['move_result'] == 'valid':
         game.pieces = result['new_pieces']
         game.moves_count += 1
@@ -466,7 +512,15 @@ def update_board():
         game_id = data.get("game_id")
         user_login = session.get('user')
 
-        game = current_games.get(int(game_id))
+        if game_id is None:
+            return jsonify({"error": "Game ID is required"}), 400
+
+        try:
+            game_id_int = int(game_id)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid game ID"}), 400
+
+        game = current_games.get(game_id_int)
         if game is None:
             return jsonify({"error": "Invalid game ID"}), 400
 
@@ -534,13 +588,18 @@ def update_board():
 def give_up_route():
     try:
         data = request.get_json()
-        game_id = int(data.get("game_id"))
+        game_id = data.get("game_id")
         user_login = data.get("user_login")
 
         if not game_id or not user_login:
             return jsonify({"error": "Недостаточно данных для сдачи"}), 400
 
-        game = current_games.get(game_id) or unstarted_games.get(game_id)
+        try:
+            game_id_int = int(game_id)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid game ID"}), 400
+
+        game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
         if not game:
             return jsonify({"error": "Игра не найдена"}), 404
 
@@ -589,9 +648,12 @@ def leave_game():
     if not game_id or not user_login:
         return jsonify({"error": "No game to leave"}), 400
 
-    game_id = int(game_id)
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
 
-    game = current_games.get(game_id) or unstarted_games.get(game_id)
+    game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
     if not game:
         return jsonify({"error": "Game not found"}), 404
 
@@ -603,10 +665,10 @@ def leave_game():
         abort(403)
 
     if game.f_user is None and game.c_user is None:
-        if game_id in current_games:
-            del current_games[game_id]
-        elif game_id in unstarted_games:
-            del unstarted_games[game_id]
+        if game_id_int in current_games:
+            del current_games[game_id_int]
+        elif game_id_int in unstarted_games:
+            del unstarted_games[game_id_int]
 
     session.pop('game_id', None)
     session.pop('color', None)
@@ -617,10 +679,18 @@ def leave_game():
 @app.route("/offer_draw", methods=["POST"])
 def offer_draw():
     data = request.json
-    game_id = int(data.get("game_id"))
+    game_id = data.get("game_id")
     user_login = session.get('user')
 
-    game = current_games.get(game_id) or unstarted_games.get(game_id)
+    if game_id is None:
+        return jsonify({"error": "Game ID is required"}), 400
+
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
     if not game:
         return jsonify({"error": "Игра не найдена"}), 404
 
@@ -633,7 +703,7 @@ def offer_draw():
         return jsonify({"error": "Партия уже на рассмотрении"}), 400
 
     game.draw_offer = user_color
-    app.logger.debug(f"Пользователь {user_login} предложил ничью в игре {game_id}")
+    app.logger.debug(f"Пользователь {user_login} предложил ничью в игре {game_id_int}")
 
     return jsonify({"message": "Предложение ничьей отправлено"}), 200
 
@@ -641,11 +711,19 @@ def offer_draw():
 @app.route("/respond_draw", methods=["POST"])
 def respond_draw_route():
     data = request.json
-    game_id = int(data.get("game_id"))
+    game_id = data.get("game_id")
     user_login = session.get('user')
     response = data.get("response")
 
-    game = current_games.get(game_id) or unstarted_games.get(game_id)
+    if game_id is None:
+        return jsonify({"error": "Game ID is required"}), 400
+
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
     if not game:
         return jsonify({"error": "Игра не найдена"}), 404
 
@@ -663,7 +741,7 @@ def respond_draw_route():
     if response == "accept":
         game.status = "n"
         game.draw_response = {'response': 'accept', 'to': game.draw_offer}
-        app.logger.debug(f"Пользователь {user_login} принял ничью в игре {game_id}")
+        app.logger.debug(f"Пользователь {user_login} принял ничью в игре {game_id_int}")
         update_user_rank(user_login, 5)
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
         update_user_rank(opponent_login, 5)
@@ -672,7 +750,7 @@ def respond_draw_route():
         game.draw_offer = None
     elif response == "decline":
         game.draw_response = {'response': 'decline', 'to': game.draw_offer}
-        app.logger.debug(f"Пользователь {user_login} отклонил ничью в игре {game_id}")
+        app.logger.debug(f"Пользователь {user_login} отклонил ничью в игре {game_id_int}")
         game.draw_offer = None
     else:
         return jsonify({"error": "Неверный ответ"}), 400
@@ -684,10 +762,18 @@ def respond_draw_route():
 def get_possible_moves_route():
     data = request.json
     selected_piece = data.get("selected_piece")
-    game_id = int(data.get("game_id"))
+    game_id = data.get("game_id")
     user_login = session.get('user')
 
-    game = current_games.get(game_id)
+    if game_id is None:
+        return jsonify({"error": "Game ID is required"}), 400
+
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    game = current_games.get(game_id_int)
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
@@ -713,6 +799,22 @@ def get_possible_moves_route():
         moves = valid_moves.get((x, y), [])
 
     return jsonify({"moves": moves})
+
+
+@app.route('/api/profile/<username>')
+def api_profile(username):
+    user = get_user_by_login(username)
+    if user:
+        return jsonify({
+            "user_login": user['login'],
+            "rang": user['rang'],
+            "wins": user['wins'],
+            "losses": user['losses'],
+            "draws": user['draws'],
+            "total_games": user['wins'] + user['losses'] + user['draws']
+        })
+    else:
+        return jsonify({"error": "User not found"}), 404
 
 
 if __name__ == "__main__":

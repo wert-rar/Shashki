@@ -13,8 +13,6 @@ let lastMoveCount = 0;
 let boardStates = [];
 let currentView = null;
 
-console.log(user_color);
-console.log(user_login, game_id);
 
 let status = {
   w1: "Ход белых",
@@ -493,8 +491,6 @@ function getPieceAt(x, y) {
   return null;
 }
 
-// CLICK HANDLING CODE
-
 // RENDER CODE
 function adjustScreen() {
   const screenWidth = window.innerWidth;
@@ -503,9 +499,6 @@ function adjustScreen() {
   if (screenWidth <= 1024) {
       size = Math.min(window.innerWidth * 0.65, window.innerHeight * 0.65);
       LABEL_PADDING = 30;
-  } else if (screenWidth <= 1080) {
-      size = Math.min(window.innerWidth * 0.65, window.innerHeight * 0.65);
-      LABEL_PADDING = 36;
   } else if (screenWidth <= 1440) {
       size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
       LABEL_PADDING = 36;
@@ -516,7 +509,6 @@ function adjustScreen() {
 
   const dpr = window.devicePixelRatio || 1;
 
-  // Округление размера до целого числа для предотвращения артефактов
   size = Math.floor(size);
 
   CTX.setTransform(1, 0, 0, 1, 0, 0);
@@ -675,25 +667,8 @@ function update() {
   render_Pieces();
   window.requestAnimationFrame(update);
 }
-// RENDER CODE END
 
-function getCoordinates(loc) {
-  let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
-  let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
-
-  if (
-    gridX >= 0 &&
-    gridX < 8 &&
-    gridY >= 0 &&
-    gridY < 8 &&
-    (gridX + gridY) % 2 === 1
-  ) {
-    return { x: gridX, y: gridY };
-  }
-  return { x: -1, y: -1 };
-}
-
-// MOVE LIST
+// CLICK HANDLING CODE
 
 function convertCoordinatesToNotation(x, y) {
   const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -721,8 +696,8 @@ function updateMovesList(moveHistory) {
             move.to = {x: 7 - move.to.x, y: 7 - move.to.y};
         }
 
-        let isPlayerMove = move.player === (user_color === 'w' ? 'w' : 'b');
-        let player = isPlayerMove ? 'Вы' : 'Противник';
+        let isPlayerMove = move.player === user_login;
+        let player = isPlayerMove ? `<span class="player-name blue" data-username="${user_login}">${user_login}</span>` : `<span class="player-name red" data-username="${opponent_login}">${opponent_login}</span>`;
         let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
         let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
         let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
@@ -735,7 +710,7 @@ function updateMovesList(moveHistory) {
 
         let playerLabel = document.createElement('span');
         playerLabel.classList.add('move-player');
-        playerLabel.textContent = player;
+        playerLabel.innerHTML = player;
 
         let moveDescription = document.createElement('span');
         moveDescription.classList.add('move-description');
@@ -767,6 +742,8 @@ function updateMovesList(moveHistory) {
     if (hasNewMoves) {
         movesContainer.scrollTop = movesContainer.scrollHeight;
     }
+
+    addProfileClickListeners();
 }
 
 function viewBoardState(moveIndex) {
@@ -792,3 +769,295 @@ function showHistoryViewIndicator() {
     if (!indicator) return;
     indicator.style.display = 'block';
 }
+
+function addProfileClickListeners() {
+    const playerNames = document.querySelectorAll('.player-name');
+    playerNames.forEach(name => {
+        name.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const username = name.getAttribute('data-username');
+
+            const movesContainer = document.querySelector('.moves-container');
+            const movesRect = movesContainer.getBoundingClientRect();
+
+            const rect = name.getBoundingClientRect();
+
+            const x = movesRect.left + window.scrollX;
+            const y = rect.top + window.scrollY;
+
+            showContextMenu(x, y, username);
+        });
+    });
+}
+
+function showContextMenu(x, y, username) {
+    const menu = document.getElementById('context-menu');
+    if (!menu) return;
+
+    menu.style.top = `${y}px`;
+    menu.style.left = `${x}px`;
+    menu.style.display = 'block';
+
+    menu.querySelector('#view-stats').onclick = null;
+    menu.querySelector('#go-to-profile').onclick = null;
+
+    menu.querySelector('#view-stats').addEventListener('click', () => {
+        fetchProfile(username);
+        menu.style.display = 'none';
+    });
+
+    menu.querySelector('#go-to-profile').addEventListener('click', () => {
+        window.location.href = `/profile/${username}`;
+        menu.style.display = 'none';
+    });
+}
+
+
+function createContextMenu() {
+    let menu = document.createElement('div');
+    menu.id = 'context-menu';
+    menu.classList.add('context-menu');
+    menu.innerHTML = `
+        <ul>
+            <li id="view-stats">Просмотреть статистику</li>
+            <li id="go-to-profile">Перейти в профиль</li>
+        </ul>
+    `;
+    document.body.appendChild(menu);
+
+    document.addEventListener('click', function(event) {
+        if (!menu.contains(event.target)) {
+            menu.style.display = 'none';
+        }
+    });
+
+    menu.addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+}
+
+createContextMenu();
+
+function fetchProfile(username) {
+    fetch(`/api/profile/${username}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+        } else {
+            displayProfileModal(data);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Произошла ошибка при загрузке профиля.');
+    });
+}
+
+function displayProfileModal(profileData) {
+    let modal = document.getElementById("profile-modal");
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = "profile-modal";
+        modal.classList.add('modal');
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2>Профиль игрока</h2>
+                <p><strong>Имя пользователя:</strong> <span id="profile-username"></span></p>
+                <p><strong>Рейтинг:</strong> <span id="profile-rang"></span></p>
+                <p><strong>Игр сыграно:</strong> <span id="profile-total-games"></span></p>
+                <p><strong>Победы:</strong> <span id="profile-wins"></span></p>
+                <p><strong>Ничьих:</strong> <span id="profile-draws"></span></p>
+                <p><strong>Поражения:</strong> <span id="profile-losses"></span></p>
+                <button onclick="closeModal('profile-modal')">Закрыть</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    document.getElementById('profile-username').textContent = profileData.user_login;
+    document.getElementById('profile-rang').textContent = profileData.rang;
+    document.getElementById('profile-total-games').textContent = profileData.total_games;
+    document.getElementById('profile-wins').textContent = profileData.wins;
+    document.getElementById('profile-draws').textContent = profileData.draws;
+    document.getElementById('profile-losses').textContent = profileData.losses;
+
+    modal.style.display = 'block';
+}
+
+// SERVER REQUEST CODE
+function server_move_request(selected_piece, new_pos) {
+  let data = {
+    selected_piece: selected_piece,
+    new_pos: new_pos,
+    user_login: user_login,
+    game_id: game_id,
+  };
+
+  if (user_color == "b") {
+    data.selected_piece = translate([selected_piece])[0];
+    data.new_pos = {
+      x: 7 - new_pos.x,
+      y: 7 - new_pos.y
+    };
+  }
+
+  fetch('/move', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) {
+      showError(data.error);
+      server_update_request(CURRENT_STATUS, pieces);
+    } else {
+      update_data(data);
+      let movedPiece = getPieceAt(new_pos.x, new_pos.y);
+      if (movedPiece && data.multiple_capture) {
+        IS_SELECTED = true;
+        SELECTED_PIECE = movedPiece;
+        server_get_possible_moves(SELECTED_PIECE, function(moves) {
+          possibleMoves = moves;
+        });
+      } else {
+        IS_SELECTED = false;
+        SELECTED_PIECE = null;
+        possibleMoves = [];
+      }
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showError('Произошла ошибка при отправке хода.');
+  });
+}
+
+function server_update_request(status, pieces) {
+  let body = {
+    status_: status,
+    pieces: pieces,
+    user_login: user_login,
+    game_id: game_id,
+  };
+
+  fetch('/update_board', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+  .then(response => response.json())
+  .then(data => {
+    update_data(data);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+}
+
+function server_get_possible_moves(selected_piece, callback) {
+  let data = {
+    selected_piece: selected_piece,
+    game_id: game_id,
+    user_login: user_login,
+  };
+
+  if (user_color == "b") {
+    data.selected_piece = translate([selected_piece])[0];
+  }
+
+  fetch('/get_possible_moves', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.json().then(errData => Promise.reject(errData));
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (user_color == "b") {
+      data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+    }
+    callback(data.moves);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showError(error.error || 'Произошла ошибка при получении возможных ходов.');
+    IS_SELECTED = false;
+    SELECTED_PIECE = null;
+    possibleMoves = [];
+  });
+}
+
+function startPolling() {
+  setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
+}
+
+// SERVER REQUEST CODE
+function onLoad() {
+    CANVAS = document.getElementById("board");
+    CTX = CANVAS.getContext("2d");
+    HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
+    if (user_color == "b") {
+        pieces = translate(pieces);
+    }
+    boardStates = [JSON.parse(JSON.stringify(pieces))];
+    adjustScreen();
+    update();
+    addEventListeners();
+    startPolling();
+}
+
+function applyMove(boardState, move) {
+    let newState = boardState.map(piece => ({...piece}));
+    let movingPiece = newState.find(p => p.x === move.from.x && p.y === move.from.y);
+    if (movingPiece) {
+        movingPiece.x = move.to.x;
+        movingPiece.y = move.to.y;
+        if (move.captured) {
+            let capturedX = Math.floor((move.from.x + move.to.x) / 2);
+            let capturedY = Math.floor((move.from.y + move.to.y) / 2);
+            let capturedPieceIndex = newState.findIndex(p => p.x === capturedX && p.y === capturedY);
+            if (capturedPieceIndex !== -1) {
+                newState.splice(capturedPieceIndex, 1);
+            }
+        }
+        if (move.promotion) {
+            movingPiece.mode = 'k';
+        }
+    }
+    return newState;
+}
+
+
+// CLICK HANDLING CODE
+
+// RENDER CODE END
+
+function getCoordinates(loc) {
+  let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
+  let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
+
+  if (
+    gridX >= 0 &&
+    gridX < 8 &&
+    gridY >= 0 &&
+    gridY < 8 &&
+    (gridX + gridY) % 2 === 1
+  ) {
+    return { x: gridX, y: gridY };
+  }
+  return { x: -1, y: -1 };
+}
+
+// MOVE LIST

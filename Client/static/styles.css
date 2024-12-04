@@ -99,7 +99,7 @@ body {
 
 .board-container {
     margin-left: 240px;
-    margin-right: 240px;
+    margin-right: 270px;
     flex: 1;
     display: flex;
     justify-content: center;
@@ -250,9 +250,18 @@ canvas#board {
     color: #EEEEEE;
 }
 
+.player-name.blue {
+    color: #00ADB5;
+    cursor: pointer;
+}
+
+.player-name.red {
+    color: #ff4d4d;
+    cursor: pointer;
+}
+
 .moves-list .move-player {
     font-weight: bold;
-    color: #00ADB5;
     margin-right: 10px;
 }
 
@@ -541,6 +550,134 @@ canvas#board {
     100% { color: #00ADB5; }
 }
 
+.context-menu {
+    position: absolute;
+    background-color: #393E46;
+    border: 1px solid #00ADB5;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    width: 200px;
+    z-index: 1000;
+    display: none;
+}
+
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 10px 0;
+}
+
+.context-menu ul li {
+    padding: 10px 20px;
+    cursor: pointer;
+    color: #FFFFFF;
+    transition: background-color 0.3s;
+}
+
+.context-menu ul li:hover {
+    background-color: #00ADB5;
+    color: #222831;
+}
+
+.context-menu ul li:not(:last-child) {
+    border-bottom: 1px solid #00ADB5;
+}
+
+
+.profile-container {
+    margin: 50px auto;
+    padding: 20px;
+    max-width: 600px;
+    background-color: #1F1F1F;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.profile-container p {
+    font-size: 1.2em;
+    margin: 10px 0;
+}
+
+.sidebar {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    width: 240px;
+    height: calc(100% - 60px);
+    background: #1F1F1F;
+    color: #FFFFFF;
+    box-shadow: inset -1px 0 0 #333;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 20px 40px 20px;
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #00ADB5;
+    position: relative;
+}
+
+.sidebar h2::after {
+    content: '';
+    width: 50%;
+    height: 2px;
+    background: #00ADB5;
+    position: absolute;
+    left: 25%;
+    bottom: -10px;
+}
+
+.sidebar button {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 20px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #FFFFFF;
+    background-color: #393E46;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.sidebar button:hover {
+    background-color: #00ADB5;
+    transform: translateY(-3px);
+}
+
+.profile-container {
+    margin-left: 240px;
+    padding: 20px;
+    color: #FFFFFF;
+}
+
+.profile-buttons {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.profile-buttons button {
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: bold;
+    color: #FFFFFF;
+    background-color: #00ADB5;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.profile-buttons button:hover {
+    background-color: #393E46;
+    transform: translateY(-2px);
+}
+
 @media (max-width: 1440px) {
     .sidebar, .moves-sidebar {
         width: 220px;
@@ -548,7 +685,7 @@ canvas#board {
     }
     .board-container {
         margin-left: 220px;
-        margin-right: 220px;
+        margin-right: 270px;
     }
     .sidebar h2, .moves-sidebar h2 {
         font-size: 1.6em;
@@ -564,16 +701,29 @@ canvas#board {
     .modal-content {
         width: 380px;
     }
+    .context-menu {
+        width: 160px;
+    }
+
+    .context-menu ul li {
+        padding: 8px 16px;
+        font-size: 0.95em;
+    }
 }
 
 @media (max-width: 1024px) {
-    .sidebar, .moves-sidebar {
-        width: 180px;
+    .sidebar {
+        width: 170px;
+        padding: 10px;
+    }
+
+    .moves-sidebar {
+        width: 220px;
         padding: 10px;
     }
     .board-container {
-        margin-left: 160px;
-        margin-right: 160px;
+        justify-content: center;
+        align-items: center;
     }
     .sidebar h2, .moves-sidebar h2 {
         font-size: 1.4em;
@@ -589,18 +739,26 @@ canvas#board {
     .modal-content {
         width: 330px;
     }
+    .context-menu {
+        width: 140px;
+    }
+
+    .context-menu ul li {
+        padding: 8px 16px;
+        font-size: 0.95em;
+    }
 }
 
-/* Надо сделать, не ебу какое придумать*/
-
-@media (max-width: 768px) {
+.player-name {
+    font-weight: bold;
 }
 
-@media (max-width: 425px) {
+.player-name.blue {
+    color: #00ADB5;
+    cursor: pointer;
 }
 
-@media (max-width: 375px) {
-}
-
-@media (max-width: 320px) {
+.player-name.red {
+    color: #ff4d4d;
+    cursor: pointer;
 }

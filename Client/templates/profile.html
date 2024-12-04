@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль игрока</title>
+    <title>Профиль {{ profile_user_login }}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
@@ -180,7 +182,7 @@
             padding: 12px 25px;
             font-size: 1rem;
             font-weight: bold;
-            color: white;
+            color: #FFFFFF;
             border: none;
             border-radius: 20px;
             cursor: pointer;
@@ -205,6 +207,26 @@
         .home-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(46, 204, 113, 0.6);
+        }
+
+        .return-button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #FFFFFF;
+            background-color: #f1c40f;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+            flex: 1 1 120px;
+            max-width: 200px;
+        }
+
+        .return-button:hover {
+            background-color: #f39c12;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(241, 196, 15, 0.6);
         }
 
         .footer {
@@ -233,7 +255,8 @@
             }
 
             .logout-button,
-            .home-button {
+            .home-button,
+            .return-button {
                 flex: 1 1 100%;
             }
         }
@@ -243,7 +266,7 @@
     <div class="container">
         <h1>Профиль игрока</h1>
         <div class="user-info">
-            <div><strong>Имя пользователя:</strong> {{ user_login }}</div>
+            <div><strong>Имя пользователя:</strong> {{ profile_user_login }}</div>
             <div><strong>Рейтинг:</strong> {{ rang }}</div>
         </div>
 
@@ -275,8 +298,19 @@
         </div>
 
         <div class="buttons">
-            <button class="logout-button" onclick="logout()">Выйти</button>
-            <button class="home-button" onclick="goHome()">На главную</button>
+            {% if is_own_profile %}
+                <button class="home-button" onclick="goHome()">Вернуться на главное меню</button>
+                <button class="logout-button" onclick="logout()">Выйти</button>
+                {% if in_game %}
+                    <button class="return-button" onclick="returnToGame()">Вернуться в игру</button>
+                {% endif %}
+            {% else %}
+                {% if in_game %}
+                    <button class="return-button" onclick="returnToGame()">Вернуться в игру</button>
+                {% else %}
+                    <button class="home-button" onclick="goHome()">Вернуться на главное меню</button>
+                {% endif %}
+            {% endif %}
         </div>
 
         <div class="footer">
@@ -294,7 +328,12 @@
             window.location.href = '/';
         }
 
-        // Инициализация диаграммы
+        function returnToGame() {
+            const gameId = "{{ game_id }}";
+            const userLogin = "{{ current_user_login }}";
+            window.location.href = `/board/${gameId}/${userLogin}`;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('statsChart').getContext('2d');
             const statsChart = new Chart(ctx, {

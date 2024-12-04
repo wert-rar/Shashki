@@ -45,6 +45,19 @@
         </div>
     </div>
 
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <h2>Профиль игрока</h2>
+            <p><strong>Имя пользователя:</strong> <span id="profile-username"></span></p>
+            <p><strong>Рейтинг:</strong> <span id="profile-rang"></span></p>
+            <p><strong>Игр сыграно:</strong> <span id="profile-total-games"></span></p>
+            <p><strong>Победы:</strong> <span id="profile-wins"></span></p>
+            <p><strong>Ничьих:</strong> <span id="profile-draws"></span></p>
+            <p><strong>Поражения:</strong> <span id="profile-losses"></span></p>
+            <button onclick="closeModal('profile-modal')">Закрыть</button>
+        </div>
+    </div>
+
     <div class="moves-sidebar">
         <h2>Ходы игроков</h2>
         <div class="moves-container">
@@ -73,6 +86,7 @@
         const user_login = "{{ user_login }}";
         const game_id = "{{ game_id }}";
         const user_color = "{{ user_color }}";
+        const opponent_login = "{{ opponent_login }}";
     </script>
     <script src="/static/script.js"></script>
 </body>
