@@ -404,21 +404,6 @@ function startPolling() {
   setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
 }
 
-// SERVER REQUEST CODE
-function onLoad() {
-    CANVAS = document.getElementById("board");
-    CTX = CANVAS.getContext("2d");
-    HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
-    if (user_color == "b") {
-        pieces = translate(pieces);
-    }
-    boardStates = [JSON.parse(JSON.stringify(pieces))];
-    adjustScreen();
-    update();
-    addEventListeners();
-    startPolling();
-}
-
 function applyMove(boardState, move) {
     let newState = boardState.map(piece => ({...piece}));
     let movingPiece = newState.find(p => p.x === move.from.x && p.y === move.from.y);
@@ -494,17 +479,18 @@ function getPieceAt(x, y) {
 // RENDER CODE
 function adjustScreen() {
   const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
   let size;
 
   if (screenWidth <= 1024) {
-      size = Math.min(window.innerWidth * 0.65, window.innerHeight * 0.65);
-      LABEL_PADDING = 30;
+    size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
+    LABEL_PADDING = 30;
   } else if (screenWidth <= 1440) {
-      size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.8);
-      LABEL_PADDING = 36;
+    size = Math.min(screenWidth * 0.9, screenHeight * 0.8);
+    LABEL_PADDING = 36;
   } else {
-      size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.8);
-      LABEL_PADDING = 36;
+    size = Math.min(screenWidth * 0.95, screenHeight * 0.8);
+    LABEL_PADDING = 36;
   }
 
   const dpr = window.devicePixelRatio || 1;
@@ -526,7 +512,8 @@ function adjustScreen() {
   BOARD_OFFSET_X = LABEL_PADDING;
   BOARD_OFFSET_Y = LABEL_PADDING;
 
-  CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
+  CTX.clearRect(0, 0, CANVAS.width / dpr, CANVAS.height / dpr);
+
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
@@ -598,7 +585,7 @@ function draw_possible_moves() {
 
 function render_Board() {
   CTX.fillStyle = "#121212";
-  CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
+  CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
 
   let step = user_color === "b" ? 1 : 0;
   for (let i = 0; i < 8; i++) {
@@ -662,7 +649,7 @@ function render_Pieces() {
 }
 
 function update() {
-  CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
+  CTX.clearRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
   render_Board();
   render_Pieces();
   window.requestAnimationFrame(update);
@@ -886,118 +873,6 @@ function displayProfileModal(profileData) {
 }
 
 // SERVER REQUEST CODE
-function server_move_request(selected_piece, new_pos) {
-  let data = {
-    selected_piece: selected_piece,
-    new_pos: new_pos,
-    user_login: user_login,
-    game_id: game_id,
-  };
-
-  if (user_color == "b") {
-    data.selected_piece = translate([selected_piece])[0];
-    data.new_pos = {
-      x: 7 - new_pos.x,
-      y: 7 - new_pos.y
-    };
-  }
-
-  fetch('/move', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      showError(data.error);
-      server_update_request(CURRENT_STATUS, pieces);
-    } else {
-      update_data(data);
-      let movedPiece = getPieceAt(new_pos.x, new_pos.y);
-      if (movedPiece && data.multiple_capture) {
-        IS_SELECTED = true;
-        SELECTED_PIECE = movedPiece;
-        server_get_possible_moves(SELECTED_PIECE, function(moves) {
-          possibleMoves = moves;
-        });
-      } else {
-        IS_SELECTED = false;
-        SELECTED_PIECE = null;
-        possibleMoves = [];
-      }
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError('Произошла ошибка при отправке хода.');
-  });
-}
-
-function server_update_request(status, pieces) {
-  let body = {
-    status_: status,
-    pieces: pieces,
-    user_login: user_login,
-    game_id: game_id,
-  };
-
-  fetch('/update_board', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(response => response.json())
-  .then(data => {
-    update_data(data);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-  });
-}
-
-function server_get_possible_moves(selected_piece, callback) {
-  let data = {
-    selected_piece: selected_piece,
-    game_id: game_id,
-    user_login: user_login,
-  };
-
-  if (user_color == "b") {
-    data.selected_piece = translate([selected_piece])[0];
-  }
-
-  fetch('/get_possible_moves', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  })
-  .then(response => {
-    if (!response.ok) {
-      return response.json().then(errData => Promise.reject(errData));
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (user_color == "b") {
-      data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
-    }
-    callback(data.moves);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError(error.error || 'Произошла ошибка при получении возможных ходов.');
-    IS_SELECTED = false;
-    SELECTED_PIECE = null;
-    possibleMoves = [];
-  });
-}
 
 function startPolling() {
   setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
@@ -1016,27 +891,6 @@ function onLoad() {
     update();
     addEventListeners();
     startPolling();
-}
-
-function applyMove(boardState, move) {
-    let newState = boardState.map(piece => ({...piece}));
-    let movingPiece = newState.find(p => p.x === move.from.x && p.y === move.from.y);
-    if (movingPiece) {
-        movingPiece.x = move.to.x;
-        movingPiece.y = move.to.y;
-        if (move.captured) {
-            let capturedX = Math.floor((move.from.x + move.to.x) / 2);
-            let capturedY = Math.floor((move.from.y + move.to.y) / 2);
-            let capturedPieceIndex = newState.findIndex(p => p.x === capturedX && p.y === capturedY);
-            if (capturedPieceIndex !== -1) {
-                newState.splice(capturedPieceIndex, 1);
-            }
-        }
-        if (move.promotion) {
-            movingPiece.mode = 'k';
-        }
-    }
-    return newState;
 }
 
 
