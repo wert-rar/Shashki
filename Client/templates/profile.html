@@ -4,263 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Профиль {{ profile_user_login }}</title>
-    <link rel="stylesheet" href="/static/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
-
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2ecc71;
-            --danger-color: #e74c3c;
-            --warning-color: #f1c40f;
-            --dark-bg: #0f0f0f;
-            --light-bg: rgba(0, 0, 0, 0.85);
-            --text-color: #ecf0f1;
-            --shadow-color: rgba(0, 0, 0, 0.6);
-            --transition-speed: 0.3s;
-            --border-radius: 15px;
-            --container-padding: 25px 20px;
-            --container-max-width: 700px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, var(--dark-bg), #1f1f1f);
-            color: var(--text-color);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        body::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
-            animation: rotateBg 30s linear infinite;
-            z-index: -1;
-        }
-
-        @keyframes rotateBg {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .container {
-            background: var(--light-bg);
-            padding: var(--container-padding);
-            border-radius: var(--border-radius);
-            box-shadow: 0 8px 30px var(--shadow-color);
-            text-align: center;
-            width: 90%;
-            max-width: var(--container-max-width);
-            transition: box-shadow var(--transition-speed), background-color var(--transition-speed);
-            overflow: hidden;
-        }
-
-        .container:hover {
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
-            background-color: rgba(0, 0, 0, 0.9);
-        }
-
-        h1 {
-            margin-bottom: 15px;
-            font-size: 2.2rem;
-            color: var(--text-color);
-            position: relative;
-        }
-
-        h1::after {
-            content: '';
-            position: absolute;
-            width: 50px;
-            height: 3px;
-            background: var(--primary-color);
-            left: 50%;
-            bottom: -10px;
-            transform: translateX(-50%);
-            border-radius: 2px;
-        }
-
-        .user-info {
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            font-size: 1.1rem;
-        }
-
-        .user-info div {
-            flex: 1 1 150px;
-            margin: 5px 0;
-        }
-
-        .total-games {
-            margin-bottom: 25px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: var(--warning-color);
-        }
-
-        .stats-chart {
-            margin-bottom: 25px;
-            width: 100%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .stats-chart canvas {
-            width: 100% !important;
-            height: auto !important;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .stat {
-            background: linear-gradient(135deg, var(--primary-color), #2980b9);
-            padding: 20px 15px;
-            border-radius: var(--border-radius);
-            text-align: center;
-            color: white;
-            font-size: 1rem;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-            flex: 1 1 120px;
-            position: relative;
-        }
-
-        .stat:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.6);
-        }
-
-        .stat p {
-            margin: 8px 0;
-            font-size: 0.9rem;
-            font-weight: bold;
-        }
-
-        .stat .icon {
-            font-size: 1.2rem;
-            margin-top: 8px;
-            display: block;
-        }
-
-        .buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .logout-button,
-        .home-button {
-            padding: 12px 25px;
-            font-size: 1rem;
-            font-weight: bold;
-            color: #FFFFFF;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-            flex: 1 1 120px;
-            max-width: 200px;
-        }
-
-        .logout-button {
-            background: linear-gradient(135deg, var(--danger-color), #c0392b);
-        }
-
-        .logout-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.6);
-        }
-
-        .home-button {
-            background: linear-gradient(135deg, var(--secondary-color), #27ae60);
-        }
-
-        .home-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(46, 204, 113, 0.6);
-        }
-
-        .return-button {
-            padding: 12px 25px;
-            font-size: 1rem;
-            font-weight: bold;
-            color: #FFFFFF;
-            background-color: #f1c40f;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-            flex: 1 1 120px;
-            max-width: 200px;
-        }
-
-        .return-button:hover {
-            background-color: #f39c12;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(241, 196, 15, 0.6);
-        }
-
-        .footer {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #bdc3c7;
-        }
-
-        .footer p {
-            margin: 0;
-        }
-
-        @media (max-width: 600px) {
-            .user-info {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .buttons {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .stat {
-                flex: 1 1 100%;
-            }
-
-            .logout-button,
-            .home-button,
-            .return-button {
-                flex: 1 1 100%;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style_profile.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -273,7 +19,6 @@
         <div class="total-games">
             Игр сыграно: <strong>{{ total_games }}</strong>
         </div>
-
 
         <div class="stats-chart">
             <canvas id="statsChart"></canvas>
@@ -313,72 +58,23 @@
             {% endif %}
         </div>
 
-        <div class="footer">
+        <div class="footer" data-aos="fade-up">
             <p>© 2024 Шашечный клуб "The БЫК"</p>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        function logout() {
-            window.location.href = '/logout';
-        }
-
-        function goHome() {
-            window.location.href = '/';
-        }
-
-        function returnToGame() {
-            const gameId = "{{ game_id }}";
-            const userLogin = "{{ current_user_login }}";
-            window.location.href = `/board/${gameId}/${userLogin}`;
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('statsChart').getContext('2d');
-            const statsChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['Победы', 'Ничьих', 'Поражений'],
-                    datasets: [{
-                        data: [{{ wins }}, {{ draws }}, {{ losses }}],
-                        backgroundColor: [
-                            'rgba(46, 204, 113, 0.7)',
-                            'rgba(241, 196, 15, 0.7)',
-                            'rgba(231, 76, 60, 0.7)'
-                        ],
-                        borderColor: [
-                            'rgba(46, 204, 113, 1)',
-                            'rgba(241, 196, 15, 1)',
-                            'rgba(231, 76, 60, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Статистика Игры',
-                            font: {
-                                size: 18
-                            },
-                            color: 'white'
-                        }
-                    }
-                },
-            });
-        });
+        const profileData = {
+            gameId: "{{ game_id }}",
+            currentUserLogin: "{{ current_user_login }}",
+            wins: {{ wins }},
+            draws: {{ draws }},
+            losses: {{ losses }}
+        };
     </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script src="/static/script_profile.js"></script>
 </body>
 </html>

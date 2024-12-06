@@ -1,0 +1,218 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2ecc71;
+    --danger-color: #e74c3c;
+    --warning-color: #f1c40f;
+    --dark-bg: #0f0f0f;
+    --light-bg: rgba(0, 0, 0, 0.85);
+    --text-color: #ecf0f1;
+    --shadow-color: rgba(0, 0, 0, 0.6);
+    --transition-speed: 0.3s;
+    --border-radius: 15px;
+    --container-padding: 25px 20px;
+    --container-max-width: 700px;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+html, body {
+    overflow-x: hidden;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, var(--dark-bg), #1f1f1f);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+    position: relative;
+}
+
+.container {
+    background: var(--light-bg);
+    padding: var(--container-padding);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 30px var(--shadow-color);
+    text-align: center;
+    width: 90%;
+    max-width: var(--container-max-width);
+    transition: box-shadow var(--transition-speed), background-color var(--transition-speed);
+    overflow: hidden;
+}
+
+.container:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+h1 {
+    margin-bottom: 15px;
+    font-size: 2.2rem;
+    color: var(--text-color);
+    position: relative;
+}
+
+h1::after {
+    content: '';
+    position: absolute;
+    width: 50px;
+    height: 3px;
+    background: var(--primary-color);
+    left: 50%;
+    bottom: -10px;
+    transform: translateX(-50%);
+    border-radius: 2px;
+}
+
+.user-info {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    font-size: 1.1rem;
+}
+
+.user-info div {
+    flex: 1 1 150px;
+    margin: 5px 0;
+}
+
+.total-games {
+    margin-bottom: 25px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--warning-color);
+}
+
+.stats-chart {
+    margin-bottom: 25px;
+    width: 100%;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.stats-chart canvas {
+    width: 100% !important;
+    height: auto !important;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat {
+    background: linear-gradient(135deg, var(--primary-color), #2980b9);
+    padding: 20px 15px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    color: white;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    flex: 1 1 120px;
+    position: relative;
+}
+
+.stat:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(52, 152, 219, 0.6);
+}
+
+.stat p {
+    margin: 8px 0;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.stat .icon {
+    font-size: 1.2rem;
+    margin-top: 8px;
+    display: block;
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.logout-button,
+.home-button {
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    flex: 1 1 120px;
+    max-width: 200px;
+}
+
+.logout-button {
+    background: linear-gradient(135deg, var(--danger-color), #c0392b);
+}
+
+.logout-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(231, 76, 60, 0.6);
+}
+
+.home-button {
+    background: linear-gradient(135deg, var(--secondary-color), #27ae60);
+}
+
+.home-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(46, 204, 113, 0.6);
+}
+
+.return-button {
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #FFFFFF;
+    background-color: #f1c40f;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    flex: 1 1 120px;
+    max-width: 200px;
+}
+
+.return-button:hover {
+    background-color: #f39c12;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(241, 196, 15, 0.6);
+}
+
+.footer {
+    margin-top: 20px;
+    font-size: 0.8rem;
+    color: #bdc3c7;
+}
+
+.footer p {
+    margin: 0;
+}

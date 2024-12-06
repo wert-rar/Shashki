@@ -3,6 +3,8 @@ from base import check_user_exists, \
     register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
+import subprocess
+import hmac, hashlib
 
 current_games = {}
 unstarted_games = {}
@@ -816,6 +818,30 @@ def api_profile(username):
     else:
         return jsonify({"error": "User not found"}), 404
 
+
+@app.route('/hook', methods=['POST'])
+def webhook():
+    payload = request.data
+    signature = request.headers.get('X-Hub-Signature-256', '')
+    SECRET = b'superpupersecretkey'
+
+    if not signature.startswith('sha256='):
+        return "Invalid signature header", 400
+
+    sha_name, signature_hash = signature.split('=')
+    computed_hash = hmac.new(SECRET, payload, hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(signature_hash, computed_hash):
+        return "Invalid secret", 403
+
+    try:
+        output = subprocess.check_output(
+            ["git", "-C", "/home/j/j0mutyp2/thesashki.ru", "pull", "origin", "main"],
+            stderr=subprocess.STDOUT
+        )
+        return "OK: " + output.decode('utf-8'), 200
+    except subprocess.CalledProcessError as e:
+        return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
