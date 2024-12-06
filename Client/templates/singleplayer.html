@@ -40,15 +40,11 @@
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
             <p id="game-over-message"></p>
-            <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+            <button onclick="returnToMainMenu()">Главное меню</button>
+            <button onclick="newGame()">Новая игра</button>
         </div>
     </div>
 
-    <script>
-        const user_login = "{{ user_login }}";
-        const user_color = "{{ user_color }}";
-    </script>
-
-    <script src="/static/client.js"></script>
+    <script src="/static/singleplayer.js"></script>
 </body>
 </html>

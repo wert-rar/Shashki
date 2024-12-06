@@ -863,5 +863,11 @@ def webhook():
     except subprocess.CalledProcessError as e:
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
+
+@app.route("/singleplayer/<username>")
+def singleplayer(username):
+    return render_template("singleplayer.html", username=username)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
