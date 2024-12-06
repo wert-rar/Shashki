@@ -9,7 +9,17 @@
 <body onload="onLoad()">
 
     <div class="header">
-        <span class="status" id="status">Загрузка...</span>
+        <div class="timers">
+            <div class="timer-container">
+                <span class="timer-label">Белые</span>
+                <span id="white-timer" class="timer-display">15:00</span>
+            </div>
+            <span class="status" id="status">Загрузка...</span>
+            <div class="timer-container">
+                <span class="timer-label">Черные</span>
+                <span id="black-timer" class="timer-display">15:00</span>
+            </div>
+        </div>
     </div>
 
     <div class="board-container">

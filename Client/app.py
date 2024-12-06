@@ -471,6 +471,17 @@ def move():
     }
     game.move_history.append(move_record)
 
+    game.update_timers()
+
+    if game.status in ['w3', 'b3', 'n']:
+        return jsonify({
+            "status_": game.status,
+            "pieces": game.pieces,
+            "white_time": max(int(game.white_time_remaining), 0),
+            "black_time": max(int(game.black_time_remaining), 0),
+            "move_history": game.move_history
+        })
+
     if result['move_result'] == 'continue_capture':
         game.pieces = result['new_pieces']
         game.status = f"{current_player}4"
@@ -527,7 +538,16 @@ def update_board():
             return jsonify({"error": "Invalid game ID"}), 400
 
         user_color = game.user_color(user_login)
-        response_data = {"status_": game.status, "pieces": game.pieces}
+
+        game.update_timers()
+
+        response_data = {
+            "status_": game.status,
+            "pieces": game.pieces,
+            "white_time": max(int(game.white_time_remaining), 0),
+            "black_time": max(int(game.black_time_remaining), 0),
+            "move_history": game.move_history
+        }
 
         if game.draw_offer:
             response_data["draw_offer"] = game.draw_offer

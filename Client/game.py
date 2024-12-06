@@ -1,5 +1,4 @@
-import itertools
-import random
+import itertools, random, time
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -46,6 +45,26 @@ class Game:
         self.draw_response = None
         self.move_history = []
 
+        self.white_time_remaining = 900
+        self.black_time_remaining = 900
+        self.last_update_time = time.time()
+
+    def update_timers(self):
+        now = time.time()
+        elapsed = now - self.last_update_time
+        self.last_update_time = now
+
+        if self.current_player == 'w':
+            self.white_time_remaining -= elapsed
+            if self.white_time_remaining <= 0:
+                self.white_time_remaining = 0
+                self.status = 'b3'
+        else:
+            self.black_time_remaining -= elapsed
+            if self.black_time_remaining <= 0:
+                self.black_time_remaining = 0
+                self.status = 'w3'
+
     def user_color(self, user_login):
         if user_login == self.f_user:
             return 'w'
@@ -68,6 +87,7 @@ class Game:
     def switch_turn(self):
         self.current_player = 'b' if self.current_player == 'w' else 'w'
         self.update_status()
+        self.last_update_time = time.time()
 
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"

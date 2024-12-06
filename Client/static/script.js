@@ -78,6 +78,9 @@ function translate(pieces_data) {
 
 function update_data(data) {
     CURRENT_STATUS = data.status_;
+    if (data.white_time !== undefined && data.black_time !== undefined) {
+        updateTimersDisplay(data.white_time, data.black_time);
+    }
     CURRENT_PLAYER = data.current_player;
     let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
@@ -126,6 +129,22 @@ function update_data(data) {
         updateMovesList(data.move_history);
     }
 }
+
+function updateTimersDisplay(whiteSeconds, blackSeconds) {
+    function formatTime(s) {
+        let m = Math.floor(s / 60);
+        let sec = Math.floor(s % 60);
+        let mm = m < 10 ? '0' + m : m;
+        let ss = sec < 10 ? '0' + sec : sec;
+        return mm + ':' + ss;
+    }
+
+    document.getElementById('white-timer').textContent = formatTime(whiteSeconds);
+    document.getElementById('black-timer').textContent = formatTime(blackSeconds);
+
+    // Можно добавить визуальные эффекты, например, мигание, если <= 10 секунд и т.д.
+}
+
 
 function displayGameOverMessage(data) {
   let modal = document.getElementById("game-over-modal");
@@ -482,10 +501,10 @@ function adjustScreen() {
         size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
         LABEL_PADDING = 30;
     } else if (screenWidth <= 1440) {
-        size = Math.min(screenWidth * 0.9, screenHeight * 0.8);
+        size = Math.min(screenWidth * 0.75, screenHeight * 0.75);
         LABEL_PADDING = 36;
     } else {
-        size = Math.min(screenWidth * 0.95, screenHeight * 0.8);
+        size = Math.min(screenWidth * 0.75, screenHeight * 0.75);
         LABEL_PADDING = 36;
     }
 
