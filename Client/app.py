@@ -460,64 +460,65 @@ def move():
         logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
         return jsonify({"error": "Not your turn"}), 403
 
-    result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
-    logging.debug(f"Validate move result: {result}")
+    with game.lock:
+        result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
+        logging.debug(f"Validate move result: {result}")
 
-    if result['move_result'] == 'invalid':
-        return jsonify({"error": "Invalid move"}), 400
+        if result['move_result'] == 'invalid':
+            return jsonify({"error": "Invalid move"}), 400
 
-    move_record = {
-        'player': game.f_user if current_player == 'w' else game.c_user,
-        'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
-        'to': {'x': new_pos['x'], 'y': new_pos['y']},
-        'captured': result['captured'],
-        'captured_pieces': result.get('captured_pieces', []),
-        'promotion': result.get('promotion', False)
-    }
-    game.move_history.append(move_record)
+        move_record = {
+            'player': game.f_user if current_player == 'w' else game.c_user,
+            'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
+            'to': {'x': new_pos['x'], 'y': new_pos['y']},
+            'captured': result['captured'],
+            'captured_pieces': result.get('captured_pieces', []),
+            'promotion': result.get('promotion', False)
+        }
+        game.move_history.append(move_record)
 
-    game.update_timers()
+        game.update_timers()
 
-    if game.status in ['w3', 'b3', 'n']:
-        return jsonify({
-            "status_": game.status,
-            "pieces": game.pieces,
-            "white_time": max(int(game.white_time_remaining), 0),
-            "black_time": max(int(game.black_time_remaining), 0),
-            "move_history": game.move_history
-        })
+        if game.status in ['w3', 'b3', 'n']:
+            return jsonify({
+                "status_": game.status,
+                "pieces": game.pieces,
+                "white_time": max(int(game.white_time_remaining), 0),
+                "black_time": max(int(game.black_time_remaining), 0),
+                "move_history": game.move_history
+            })
 
-    if result['move_result'] == 'continue_capture':
-        game.pieces = result['new_pieces']
-        game.status = f"{current_player}4"
-        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history, "multiple_capture": True})
-    elif result['move_result'] == 'valid':
-        game.pieces = result['new_pieces']
-        game.moves_count += 1
-        game.switch_turn()
-    else:
-        return jsonify({"error": "Invalid move"}), 400
+        if result['move_result'] == 'continue_capture':
+            game.pieces = result['new_pieces']
+            game.status = f"{current_player}4"
+            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history, "multiple_capture": True})
+        elif result['move_result'] == 'valid':
+            game.pieces = result['new_pieces']
+            game.moves_count += 1
+            game.switch_turn()
+        else:
+            return jsonify({"error": "Invalid move"}), 400
 
-    if is_all_kings(game.pieces):
-        game.status = "n"
+        if is_all_kings(game.pieces):
+            game.status = "n"
+            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+
+        if check_draw(game.pieces):
+            game.status = "n"
+            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+
+        opponent_color = 'b' if current_player == 'w' else 'w'
+        opponent_pieces = [p for p in game.pieces if p['color'] == (0 if opponent_color == 'w' else 1)]
+
+        if not opponent_pieces:
+            game.status = f"{current_player}3"
+            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+
+        if not can_player_move(game.pieces, 0 if opponent_color == 'w' else 1):
+            game.status = "n"
+            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+
         return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
-
-    if check_draw(game.pieces):
-        game.status = "n"
-        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
-
-    opponent_color = 'b' if current_player == 'w' else 'w'
-    opponent_pieces = [p for p in game.pieces if p['color'] == (0 if opponent_color == 'w' else 1)]
-
-    if not opponent_pieces:
-        game.status = f"{current_player}3"
-        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
-
-    if not can_player_move(game.pieces, 0 if opponent_color == 'w' else 1):
-        game.status = "n"
-        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
-
-    return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
 
 @app.route("/update_board", methods=["POST"])

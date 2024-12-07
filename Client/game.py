@@ -1,4 +1,4 @@
-import itertools, random, time
+import itertools, random, time, threading
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -48,6 +48,8 @@ class Game:
         self.white_time_remaining = 900
         self.black_time_remaining = 900
         self.last_update_time = time.time()
+
+        self.lock = threading.Lock()
 
     def update_timers(self):
         now = time.time()
