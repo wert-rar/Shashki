@@ -356,28 +356,35 @@ function server_move_request(selected_piece, new_pos) {
   });
 }
 
-function server_update_request(status, pieces) {
-  let body = {
-    status_: status,
-    pieces: pieces,
-    user_login: user_login,
-    game_id: game_id,
-  };
+let isUpdating = false;
 
-  fetch('/update_board', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(response => response.json())
-  .then(data => {
-    update_data(data);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-  });
+function server_update_request(status, pieces) {
+    if (isUpdating) return;
+    isUpdating = true;
+
+    let body = {
+        status_: status,
+        pieces: pieces,
+        user_login: user_login,
+        game_id: game_id,
+    };
+
+    fetch('/update_board', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    })
+    .then(response => response.json())
+    .then(data => {
+        update_data(data);
+        isUpdating = false;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        isUpdating = false;
+    });
 }
 
 function server_get_possible_moves(selected_piece, callback) {
@@ -901,7 +908,7 @@ function startPolling() {
 function onLoad() {
     CANVAS = document.getElementById("board");
     CTX = CANVAS.getContext("2d");
-    CTX.imageSmoothingEnabled = true; // Включение сглаживания
+    CTX.imageSmoothingEnabled = true;
     HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
     if (user_color == "b") {
         pieces = translate(pieces);
