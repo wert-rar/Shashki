@@ -769,11 +769,6 @@ def respond_draw_route():
         game.status = "n"
         game.draw_response = {'response': 'accept', 'to': game.draw_offer}
         app.logger.debug(f"Пользователь {user_login} принял ничью в игре {game_id_int}")
-        update_user_rank(user_login, 5)
-        opponent_login = game.f_user if game.f_user != user_login else game.c_user
-        update_user_rank(opponent_login, 5)
-        update_user_stats(user_login, draws=1)
-        update_user_stats(opponent_login, draws=1)
         game.draw_offer = None
     elif response == "decline":
         game.draw_response = {'response': 'decline', 'to': game.draw_offer}
