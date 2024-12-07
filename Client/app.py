@@ -180,6 +180,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
             current_x += dx
             current_y += dy
 
+    promotion_occurred = False
+
     for piece in new_pieces:
         if piece['x'] == x and piece['y'] == y:
             piece['x'] = dest_x
@@ -190,6 +192,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                         piece['color'] == 1 and piece['y'] == 7):
                     piece['is_king'] = True
                     piece['mode'] = 'k'
+                    promotion_occurred = True
             break
 
     if captured:
@@ -213,7 +216,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'new_pieces': new_pieces,
         'captured': captured,
         'captured_pieces': captured_pieces,
-        'multiple_capture': False
+        'multiple_capture': False,
+        'promotion': promotion_occurred
     }
 
 
@@ -467,7 +471,8 @@ def move():
         'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
         'to': {'x': new_pos['x'], 'y': new_pos['y']},
         'captured': result['captured'],
-        'captured_pieces': result.get('captured_pieces', [])
+        'captured_pieces': result.get('captured_pieces', []),
+        'promotion': result.get('promotion', False)
     }
     game.move_history.append(move_record)
 
