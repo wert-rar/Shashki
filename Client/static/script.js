@@ -13,6 +13,9 @@ let lastMoveCount = 0;
 let boardStates = [];
 let currentView = null;
 
+let gameFoundSoundPlayed = false;
+let victorySoundPlayed = false;
+let defeatSoundPlayed = false;
 
 let status = {
   w1: "Ход белых",
@@ -90,6 +93,16 @@ function update_data(data) {
     }
     document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
+    if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
+        let gameFoundSound = document.getElementById('sound-game-found');
+        if (gameFoundSound) {
+            gameFoundSound.play().catch(error => {
+                console.error('Ошибка при воспроизведении звука нахождения игры:', error);
+            });
+            gameFoundSoundPlayed = true;
+        }
+    }
+
     if (data.draw_response && data.draw_response !== null) {
         if (data.draw_response === 'accept') {
             displayGameOverMessage(data);
@@ -145,215 +158,231 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
     // Можно добавить визуальные эффекты, например, мигание, если <= 10 секунд и т.д.
 }
 
-
 function displayGameOverMessage(data) {
-  let modal = document.getElementById("game-over-modal");
-  let title = document.getElementById("game-over-title");
-  let message = document.getElementById("game-over-message");
+    let modal = document.getElementById("game-over-modal");
+    if (modal.style.display === "block") return;
 
-  let resultText = "";
-  if (data.result === "win") {
-    resultText = "Вы победили!";
-  } else if (data.result === "lose") {
-    resultText = "Вы проиграли.";
-  } else if (data.result === "draw") {
-    resultText = "Ничья.";
-  }
+    let title = document.getElementById("game-over-title");
+    let message = document.getElementById("game-over-message");
 
-  let points_gained = data.points_gained || 0;
+    let resultText = "";
+    let isVictory = false;
+    let isDefeat = false;
 
-  title.innerText = "Игра окончена";
-  message.innerHTML = `
-    ${resultText}<br>
-    Вы получили ${points_gained} очков к рангу.
-  `;
+    if (data.result === "win") {
+        resultText = "Вы победили!";
+        isVictory = true;
+    } else if (data.result === "lose") {
+        resultText = "Вы проиграли.";
+        isDefeat = true;
+    } else if (data.result === "draw") {
+        resultText = "Ничья.";
+    }
 
-  modal.style.display = "block";
+    let points_gained = data.points_gained || 0;
+
+    title.innerText = "Игра окончена";
+    message.innerHTML = `
+        ${resultText}<br>
+        Вы получили ${points_gained} очков к рангу.
+    `;
+
+    modal.style.display = "block";
+
+    if (isVictory && !victorySoundPlayed) {
+        playVictorySound();
+        victorySoundPlayed = true;
+    } else if (isDefeat && !defeatSoundPlayed) {
+        playDefeatSound();
+        defeatSoundPlayed = true;
+    }
 }
 
+
 function returnToMainMenu() {
-  var xhr = new XMLHttpRequest();
-  xhr.open("POST", "/leave_game", true);
-  xhr.setRequestHeader("Content-type", "application/json");
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      window.location.href = "/";
-    }
-  };
-  xhr.send(JSON.stringify({}));
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/leave_game", true);
+    xhr.setRequestHeader("Content-type", "application/json");
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            window.location.href = "/";
+        }
+    };
+    xhr.send(JSON.stringify({}));
 }
 
 function give_up() {
-  document.getElementById('surrender-modal').style.display = 'block';
+    document.getElementById('surrender-modal').style.display = 'block';
 }
 
 function confirmSurrender() {
-  closeModal('surrender-modal');
+    closeModal('surrender-modal');
 
-  var xhr = new XMLHttpRequest();
-  xhr.open("POST", "/give_up", true);
-  xhr.setRequestHeader("Content-type", "application/json");
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === XMLHttpRequest.DONE) {
-      if (xhr.status === 200) {
-        let response = JSON.parse(xhr.responseText);
-        displayGameOverMessage(response);
-      } else {
-        showError('Произошла ошибка при попытке сдаться.');
-      }
-    }
-  };
-  xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}));
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/give_up", true);
+    xhr.setRequestHeader("Content-type", "application/json");
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+                let response = JSON.parse(xhr.responseText);
+                displayGameOverMessage(response);
+            } else {
+                showError('Произошла ошибка при попытке сдаться.');
+            }
+        }
+    };
+    xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}));
 }
 
 function give_draw() {
-  document.getElementById('offer-draw-modal').style.display = 'block';
+    document.getElementById('offer-draw-modal').style.display = 'block';
 }
 
 function confirmOfferDraw() {
-  closeModal('offer-draw-modal');
+    closeModal('offer-draw-modal');
 
-  let body = {
-    game_id: game_id
-  };
+    let body = {
+        game_id: game_id
+    };
 
-  fetch('/offer_draw', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      showError(data.error);
-    } else {
-      showNotification('Предложение ничьей отправлено.');
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError('Произошла ошибка при отправке предложения ничьей.');
-  });
+    fetch('/offer_draw', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+        } else {
+            showNotification('Предложение ничьей отправлено.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Произошла ошибка при отправке предложения ничьей.');
+    });
 }
 
 function closeModal(modalId) {
-  document.getElementById(modalId).style.display = 'none';
+    document.getElementById(modalId).style.display = 'none';
 }
 
 function showNotification(message, type = 'info') {
-  let notification = document.createElement('div');
-  notification.classList.add('notification');
-  notification.innerText = message;
+    let notification = document.createElement('div');
+    notification.classList.add('notification');
+    notification.innerText = message;
 
-  if (type === 'error') {
-    notification.classList.add('notification-error');
-  } else {
-    notification.classList.add('notification-info');
-  }
+    if (type === 'error') {
+        notification.classList.add('notification-error');
+    } else {
+        notification.classList.add('notification-info');
+    }
 
-  document.body.appendChild(notification);
+    document.body.appendChild(notification);
 
-  setTimeout(() => {
-    notification.classList.add('fade-out');
-  }, 3000);
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+    }, 3000);
 
-  notification.addEventListener('transitionend', () => {
-    notification.remove();
-  });
+    notification.addEventListener('transitionend', () => {
+        notification.remove();
+    });
 }
 
 function showError(message) {
-  let errorModal = document.createElement('div');
-  errorModal.classList.add('modal');
-  errorModal.innerHTML = `
-      <div class="modal-content">
-          <h2>Ошибка</h2>
-          <p>${message}</p>
-          <button onclick="this.parentElement.parentElement.style.display='none'">Закрыть</button>
-      </div>
-  `;
-  document.body.appendChild(errorModal);
-  errorModal.style.display = 'block';
+    let errorModal = document.createElement('div');
+    errorModal.classList.add('modal');
+    errorModal.innerHTML = `
+        <div class="modal-content">
+            <h2>Ошибка</h2>
+            <p>${message}</p>
+            <button onclick="this.parentElement.parentElement.style.display='none'">Закрыть</button>
+        </div>
+    `;
+    document.body.appendChild(errorModal);
+    errorModal.style.display = 'block';
 }
 
 function respond_draw(response) {
-  let body = {
-    game_id: game_id,
-    response: response
-  };
+    let body = {
+        game_id: game_id,
+        response: response
+    };
 
-  fetch('/respond_draw', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      showError(data.error);
-    } else {
-      document.getElementById("draw-offer-modal").style.display = "none";
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError('Произошла ошибка при ответе на предложение ничьей.');
-  });
+    fetch('/respond_draw', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+        } else {
+            document.getElementById("draw-offer-modal").style.display = "none";
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Произошла ошибка при ответе на предложение ничьей.');
+    });
 }
 
 // SERVER REQUEST CODE
 function server_move_request(selected_piece, new_pos) {
-  let data = {
-    selected_piece: selected_piece,
-    new_pos: new_pos,
-    user_login: user_login,
-    game_id: game_id,
-  };
-
-  if (user_color == "b") {
-    data.selected_piece = translate([selected_piece])[0];
-    data.new_pos = {
-      x: 7 - new_pos.x,
-      y: 7 - new_pos.y
+    let data = {
+        selected_piece: selected_piece,
+        new_pos: new_pos,
+        user_login: user_login,
+        game_id: game_id,
     };
-  }
 
-  fetch('/move', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      showError(data.error);
-      server_update_request(CURRENT_STATUS, pieces);
-    } else {
-      update_data(data);
-      let movedPiece = getPieceAt(new_pos.x, new_pos.y);
-      if (movedPiece && data.multiple_capture) {
-        IS_SELECTED = true;
-        SELECTED_PIECE = movedPiece;
-        server_get_possible_moves(SELECTED_PIECE, function(moves) {
-          possibleMoves = moves;
-        });
-      } else {
-        IS_SELECTED = false;
-        SELECTED_PIECE = null;
-        possibleMoves = [];
-      }
+    if (user_color == "b") {
+        data.selected_piece = translate([selected_piece])[0];
+        data.new_pos = {
+            x: 7 - new_pos.x,
+            y: 7 - new_pos.y
+        };
     }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError('Произошла ошибка при отправке хода.');
-  });
+
+    fetch('/move', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+            server_update_request(CURRENT_STATUS, pieces);
+        } else {
+            update_data(data);
+            playMoveSound();
+            let movedPiece = getPieceAt(new_pos.x, new_pos.y);
+            if (movedPiece && data.multiple_capture) {
+                IS_SELECTED = true;
+                SELECTED_PIECE = movedPiece;
+                server_get_possible_moves(SELECTED_PIECE, function(moves) {
+                    possibleMoves = moves;
+                });
+            } else {
+                IS_SELECTED = false;
+                SELECTED_PIECE = null;
+                possibleMoves = [];
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Произошла ошибка при отправке хода.');
+    });
 }
 
 let isUpdating = false;
@@ -388,42 +417,42 @@ function server_update_request(status, pieces) {
 }
 
 function server_get_possible_moves(selected_piece, callback) {
-  let data = {
-    selected_piece: selected_piece,
-    game_id: game_id,
-    user_login: user_login,
-  };
+    let data = {
+        selected_piece: selected_piece,
+        game_id: game_id,
+        user_login: user_login,
+    };
 
-  if (user_color == "b") {
-    data.selected_piece = translate([selected_piece])[0];
-  }
-
-  fetch('/get_possible_moves', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  })
-  .then(response => {
-    if (!response.ok) {
-      return response.json().then(errData => Promise.reject(errData));
-    }
-    return response.json();
-  })
-  .then(data => {
     if (user_color == "b") {
-      data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+        data.selected_piece = translate([selected_piece])[0];
     }
-    callback(data.moves);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError(error.error || 'Произошла ошибка при получении возможных ходов.');
-    IS_SELECTED = false;
-    SELECTED_PIECE = null;
-    possibleMoves = [];
-  });
+
+    fetch('/get_possible_moves', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(errData => Promise.reject(errData));
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (user_color == "b") {
+            data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+        }
+        callback(data.moves);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError(error.error || 'Произошла ошибка при получении возможных ходов.');
+        IS_SELECTED = false;
+        SELECTED_PIECE = null;
+        possibleMoves = [];
+    });
 }
 
 function applyMove(boardState, move) {
@@ -450,8 +479,8 @@ function applyMove(boardState, move) {
 
 // CLICK HANDLING CODE
 function addEventListeners() {
-  CANVAS.addEventListener("click", onClick);
-  window.addEventListener("resize", onResize);
+    CANVAS.addEventListener("click", onClick);
+    window.addEventListener("resize", onResize);
 }
 
 function onClick(evt) {
@@ -490,12 +519,12 @@ function onResize() {
 }
 
 function getPieceAt(x, y) {
-  for (let piece of pieces) {
-    if (piece.x === x && piece.y === y) {
-      return piece;
+    for (let piece of pieces) {
+        if (piece.x === x && piece.y === y) {
+            return piece;
+        }
     }
-  }
-  return null;
+    return null;
 }
 
 // RENDER CODE
@@ -540,18 +569,18 @@ function adjustScreen() {
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
-  CTX.beginPath();
-  CTX.arc(x, y, r, 0, 2 * Math.PI, false);
-  if (fillColor) {
-    CTX.fillStyle = fillColor;
-    CTX.fill();
-  }
-  if (strokeColor) {
-    CTX.strokeStyle = strokeColor;
-    CTX.lineWidth = width;
-    CTX.stroke();
-  }
-  CTX.closePath();
+    CTX.beginPath();
+    CTX.arc(x, y, r, 0, 2 * Math.PI, false);
+    if (fillColor) {
+        CTX.fillStyle = fillColor;
+        CTX.fill();
+    }
+    if (strokeColor) {
+        CTX.strokeStyle = strokeColor;
+        CTX.lineWidth = width;
+        CTX.stroke();
+    }
+    CTX.closePath();
 }
 
 function draw_piece(piece, user_color) {
@@ -592,42 +621,41 @@ function draw_piece(piece, user_color) {
     }
 }
 
-
 function draw_possible_moves() {
-  CTX.save();
-  CTX.lineWidth = 4;
-  CTX.strokeStyle = 'rgba(0, 162, 255, 0.8)';
-  CTX.shadowColor = 'rgba(0, 162, 255, 0.8)';
-  CTX.shadowBlur = 10;
-  for (let move of possibleMoves) {
-    const X = BOARD_OFFSET_X + CELL_SIZE * move.x;
-    const Y = BOARD_OFFSET_Y + CELL_SIZE * move.y;
-    CTX.strokeRect(X, Y, CELL_SIZE, CELL_SIZE);
-  }
-  CTX.restore();
+    CTX.save();
+    CTX.lineWidth = 4;
+    CTX.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+    CTX.shadowColor = 'rgba(0, 162, 255, 0.8)';
+    CTX.shadowBlur = 10;
+    for (let move of possibleMoves) {
+        const X = BOARD_OFFSET_X + CELL_SIZE * move.x;
+        const Y = BOARD_OFFSET_Y + CELL_SIZE * move.y;
+        CTX.strokeRect(X, Y, CELL_SIZE, CELL_SIZE);
+    }
+    CTX.restore();
 }
 
 function render_Board() {
-  CTX.fillStyle = "#121212";
-  CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
+    CTX.fillStyle = "#121212";
+    CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
 
-  let step = user_color === "b" ? 1 : 0;
-  for (let i = 0; i < 8; i++) {
-    for (let j = 0; j < 8; j++) {
-      if ((i + j) % 2 === 1) {
-        CTX.fillStyle = b_colors[step % 2];
-        CTX.fillRect(
-          BOARD_OFFSET_X + CELL_SIZE * j,
-          BOARD_OFFSET_Y + CELL_SIZE * i,
-          CELL_SIZE,
-          CELL_SIZE
-        );
-      }
-      step++;
+    let step = user_color === "b" ? 1 : 0;
+    for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+            if ((i + j) % 2 === 1) {
+                CTX.fillStyle = b_colors[step % 2];
+                CTX.fillRect(
+                    BOARD_OFFSET_X + CELL_SIZE * j,
+                    BOARD_OFFSET_Y + CELL_SIZE * i,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
+            }
+            step++;
+        }
+        step++;
     }
-    step++;
-  }
-  drawLabels();
+    drawLabels();
 }
 
 function drawLabels() {
@@ -666,34 +694,34 @@ function drawLabels() {
 }
 
 function render_Pieces() {
-  for (let i = 0; i < pieces.length; i++) {
-    draw_piece(pieces[i], user_color);
-  }
-  if (IS_SELECTED) {
-    draw_possible_moves();
-  }
+    for (let i = 0; i < pieces.length; i++) {
+        draw_piece(pieces[i], user_color);
+    }
+    if (IS_SELECTED) {
+        draw_possible_moves();
+    }
 }
 
 function update() {
-  CTX.clearRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
-  render_Board();
-  render_Pieces();
-  window.requestAnimationFrame(update);
+    CTX.clearRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
+    render_Board();
+    render_Pieces();
+    window.requestAnimationFrame(update);
 }
 
 // CLICK HANDLING CODE
 
 function convertCoordinatesToNotation(x, y) {
-  const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-  if (user_color == 'w') {
-    let file = letters[x];
-    let rank = 8 - y;
-    return file + rank;
-  } else {
-    let file = letters[7 - x];
-    let rank = y + 1;
-    return file + rank;
-  }
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    if (user_color == 'w') {
+        let file = letters[x];
+        let rank = 8 - y;
+        return file + rank;
+    } else {
+        let file = letters[7 - x];
+        let rank = y + 1;
+        return file + rank;
+    }
 }
 
 function updateMovesList(moveHistory) {
@@ -753,6 +781,7 @@ function updateMovesList(moveHistory) {
     lastMoveCount = moveHistory.length;
 
     if (hasNewMoves) {
+        playMoveSound();
         movesContainer.scrollTop = movesContainer.scrollHeight;
     }
 
@@ -901,7 +930,7 @@ function displayProfileModal(profileData) {
 // SERVER REQUEST CODE
 
 function startPolling() {
-  setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
+    setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
 }
 
 // SERVER REQUEST CODE
@@ -918,6 +947,14 @@ function onLoad() {
     update();
     addEventListeners();
     startPolling();
+
+    let gameFoundSound = document.getElementById('sound-game-found');
+    if (gameFoundSound) {
+        gameFoundSound.volume = 0.35;
+        gameFoundSound.play().catch(error => {
+            console.error('Ошибка при воспроизведении звука нахождения игры:', error);
+        });
+    }
 }
 
 
@@ -926,19 +963,52 @@ function onLoad() {
 // RENDER CODE END
 
 function getCoordinates(loc) {
-  let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
-  let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
+    let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
+    let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
 
-  if (
-    gridX >= 0 &&
-    gridX < 8 &&
-    gridY >= 0 &&
-    gridY < 8 &&
-    (gridX + gridY) % 2 === 1
-  ) {
-    return { x: gridX, y: gridY };
-  }
-  return { x: -1, y: -1 };
+    if (
+        gridX >= 0 &&
+        gridX < 8 &&
+        gridY >= 0 &&
+        gridY < 8 &&
+        (gridX + gridY) % 2 === 1
+    ) {
+        return { x: gridX, y: gridY };
+    }
+    return { x: -1, y: -1 };
 }
 
 // MOVE LIST
+
+function playMoveSound() {
+    const moveSound = document.getElementById('sound-move');
+    if (moveSound) {
+        moveSound.volume = 0.3;
+        moveSound.currentTime = 0;
+        moveSound.play().catch(error => {
+            console.error('Ошибка при воспроизведении звука хода:', error);
+        });
+    }
+}
+
+function playVictorySound() {
+    const victorySound = document.getElementById('sound-victory');
+    if (victorySound) {
+        victorySound.volume = 0.35;
+        victorySound.currentTime = 0;
+        victorySound.play().catch(error => {
+            console.error('Ошибка при воспроизведении звука победы:', error);
+        });
+    }
+}
+
+function playDefeatSound() {
+    const defeatSound = document.getElementById('sound-defeat');
+    if (defeatSound) {
+        defeatSound.volume = 0.35;
+        defeatSound.currentTime = 0;
+        defeatSound.play().catch(error => {
+            console.error('Ошибка при воспроизведении звука поражения:', error);
+        });
+    }
+}
