@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
-from base import check_user_exists, \
-    register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
+from base import check_user_exists, register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
 import subprocess
@@ -8,6 +7,7 @@ import hmac, hashlib
 
 current_games = {}
 unstarted_games = {}
+completed_games = {}
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -143,6 +143,51 @@ def is_all_kings(pieces):
     return True
 
 
+def finalize_game(game, user_login):
+    if game.status == 'w3':
+        winner_color = 'w'
+    elif game.status == 'b3':
+        winner_color = 'b'
+    elif game.status == 'n':
+        winner_color = None
+    else:
+        winner_color = None
+
+    user_color = game.user_color(user_login)
+
+    if winner_color is None:
+        result_move = 'draw'
+        points_gained = 5
+    else:
+        if winner_color == user_color:
+            result_move = 'win'
+            points_gained = 10
+        else:
+            result_move = 'lose'
+            points_gained = 0
+
+    if not getattr(game, 'rank_updated', False):
+        opponent_login = game.f_user if game.f_user != user_login else game.c_user
+        if result_move == 'win':
+            update_user_rank(user_login, points_gained)
+            update_user_stats(user_login, wins=1)
+            update_user_stats(opponent_login, losses=1)
+        elif result_move == 'lose':
+            update_user_stats(user_login, losses=1)
+        elif result_move == 'draw':
+            update_user_rank(user_login, points_gained)
+            update_user_rank(opponent_login, points_gained)
+            update_user_stats(user_login, draws=1)
+            update_user_stats(opponent_login, draws=1)
+        game.rank_updated = True
+
+    remove_game(game.game_id)
+    session.pop('game_id', None)
+    session.pop('color', None)
+
+    return result_move, points_gained
+
+
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
     x, y = selected_piece['x'], selected_piece['y']
     dest_x, dest_y = new_pos['x'], new_pos['y']
@@ -221,6 +266,15 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     }
 
 
+def remove_game(game_id):
+    if game_id in current_games:
+        completed_games[game_id] = current_games.pop(game_id)
+        app.logger.debug(f"Игра {game_id} перемещена из current_games в completed_games.")
+    elif game_id in unstarted_games:
+        completed_games[game_id] = unstarted_games.pop(game_id)
+        app.logger.debug(f"Игра {game_id} перемещена из unstarted_games в completed_games.")
+
+
 @app.route("/")
 def home():
     return render_template('home.html')
@@ -229,7 +283,7 @@ def home():
 @app.route('/board/<int:game_id>/<user_login>')
 def get_board(game_id, user_login):
     app.logger.debug(f"Game ID received: {game_id}")
-    game = current_games.get(game_id)
+    game = current_games.get(game_id) or completed_games.get(game_id) or unstarted_games.get(game_id)
     if not game:
         abort(404)
 
@@ -299,7 +353,7 @@ def profile(username):
         if current_user and session.get('game_id'):
             try:
                 game_id_int = int(session.get('game_id'))
-                game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
+                game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
                 if game and current_user in [game.f_user, game.c_user]:
                     in_game = True
                     game_id = game_id_int
@@ -326,6 +380,7 @@ def profile(username):
 def logout():
     session.pop('user', None)
     session.pop('game_id', None)
+    session.pop('color', None)
     session['flash'] = 'Вы вышли из системы.'
     return redirect(url_for('home'))
 
@@ -367,13 +422,13 @@ def start_game():
             app.logger.warning(f"Некорректный game_id в сессии: {game_id}")
             game_id_int = None
 
-        game = current_games.get(game_id_int) or unstarted_games.get(game_id_int) if game_id_int else None
+        game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int) if game_id_int else None
         if game and user_login in [game.f_user, game.c_user]:
             if game.status in ['w3', 'b3', 'n']:
+                # Игра завершена
                 session.pop('game_id', None)
                 session.pop('color', None)
-                if game_id_int in current_games:
-                    del current_games[game_id_int]
+                return redirect(url_for('profile', username=user_login))
             else:
                 if game.f_user and game.c_user:
                     return redirect(url_for('get_board', game_id=game_id_int, user_login=user_login))
@@ -422,13 +477,29 @@ def check_game_status_route():
         app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
         return jsonify({"status": "invalid_game_id"}), 400
 
-    game_status = get_game_status(game_id_int, current_games, unstarted_games)
-    if game_status:
-        game_status['current_user'] = user_login
-        game_status['game_id'] = game_id_int
-        return jsonify(game_status)
-    else:
+    game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
+    if not game:
         return jsonify({"status": "game_not_found"}), 404
+
+    if game.status in ['w3', 'b3', 'n']:
+        response = {
+            'status': game.status,
+            'current_user': user_login,
+            'game_id': game_id_int
+        }
+    else:
+        response = get_game_status(game_id_int, current_games, unstarted_games)
+        if response['status'] == 'active':
+            response['current_user'] = user_login
+            response['game_id'] = game_id_int
+        elif response['status'] == 'waiting':
+            response['current_user'] = user_login
+            response['game_id'] = game_id_int
+        else:
+            response['current_user'] = user_login
+            response['game_id'] = game_id_int
+
+    return jsonify(response)
 
 
 @app.route("/move", methods=["POST"])
@@ -480,13 +551,17 @@ def move():
         game.update_timers()
 
         if game.status in ['w3', 'b3', 'n']:
-            return jsonify({
+            result_move, points_gained = finalize_game(game, user_login)
+            response_data = {
                 "status_": game.status,
                 "pieces": game.pieces,
                 "white_time": max(int(game.white_time_remaining), 0),
                 "black_time": max(int(game.black_time_remaining), 0),
-                "move_history": game.move_history
-            })
+                "move_history": game.move_history,
+                "result": result_move,
+                "points_gained": points_gained
+            }
+            return jsonify(response_data)
 
         if result['move_result'] == 'continue_capture':
             game.pieces = result['new_pieces']
@@ -501,22 +576,34 @@ def move():
 
         if is_all_kings(game.pieces):
             game.status = "n"
-            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+            result_move, points_gained = finalize_game(game, user_login)
+            response_data = {"status_": "n", "pieces": game.pieces, "move_history": game.move_history,
+                             "result": result_move, "points_gained": points_gained}
+            return jsonify(response_data)
 
         if check_draw(game.pieces):
             game.status = "n"
-            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+            result_move, points_gained = finalize_game(game, user_login)
+            response_data = {"status_": "n", "pieces": game.pieces, "move_history": game.move_history,
+                             "result": result_move, "points_gained": points_gained}
+            return jsonify(response_data)
 
         opponent_color = 'b' if current_player == 'w' else 'w'
         opponent_pieces = [p for p in game.pieces if p['color'] == (0 if opponent_color == 'w' else 1)]
 
         if not opponent_pieces:
             game.status = f"{current_player}3"
-            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+            result_move, points_gained = finalize_game(game, user_login)
+            response_data = {"status_": game.status, "pieces": game.pieces, "move_history": game.move_history,
+                             "result": result_move, "points_gained": points_gained}
+            return jsonify(response_data)
 
         if not can_player_move(game.pieces, 0 if opponent_color == 'w' else 1):
             game.status = "n"
-            return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
+            result_move, points_gained = finalize_game(game, user_login)
+            response_data = {"status_": "n", "pieces": game.pieces, "move_history": game.move_history,
+                             "result": result_move, "points_gained": points_gained}
+            return jsonify(response_data)
 
         return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
 
@@ -537,14 +624,14 @@ def update_board():
         try:
             game_id_int = int(game_id)
         except (ValueError, TypeError):
+            app.logger.warning(f"Некорректный game_id: {game_id}")
             return jsonify({"error": "Invalid game ID"}), 400
 
-        game = current_games.get(game_id_int)
-        if game is None:
+        game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
+        if not game:
             return jsonify({"error": "Invalid game ID"}), 400
 
         user_color = game.user_color(user_login)
-
         game.update_timers()
 
         response_data = {
@@ -563,48 +650,10 @@ def update_board():
                 response_data['draw_response'] = game.draw_response['response']
                 game.draw_response = None
 
-        response_data["move_history"] = game.move_history
-
         if game.status in ['w3', 'b3', 'n']:
-            user_color = game.user_color(user_login)
-            if game.status == 'w3':
-                winner_color = 'w'
-            elif game.status == 'b3':
-                winner_color = 'b'
-            else:
-                winner_color = None
-
-            if winner_color is None:
-                result = 'draw'
-                points_gained = 5
-            elif winner_color == user_color:
-                result = 'win'
-                points_gained = 10
-            else:
-                result = 'lose'
-                points_gained = 0
-
-            if not getattr(game, 'rank_updated', False):
-                if result == 'win':
-                    update_user_rank(user_login, points_gained)
-                    update_user_stats(user_login, wins=1)
-                    opponent_login = game.f_user if game.f_user != user_login else game.c_user
-                    update_user_stats(opponent_login, losses=1)
-                elif result == 'lose':
-                    update_user_stats(user_login, losses=1)
-                elif result == 'draw':
-                    update_user_rank(user_login, points_gained)
-                    opponent_login = game.f_user if game.f_user != user_login else game.c_user
-                    update_user_rank(opponent_login, points_gained)
-                    update_user_stats(user_login, draws=1)
-                    update_user_stats(opponent_login, draws=1)
-                game.rank_updated = True
-
-            session.pop('game_id', None)
-            session.pop('color', None)
-
+            result_move, points_gained = finalize_game(game, user_login)
             response_data['points_gained'] = points_gained
-            response_data['result'] = result
+            response_data['result'] = result_move
 
         return jsonify(response_data)
     except Exception as e:
@@ -635,30 +684,19 @@ def give_up_route():
             abort(403)
 
         user_color = 'w' if user_login == game.f_user else 'b'
-        opponent_login = game.c_user if user_login == game.f_user else game.f_user
 
+        # Устанавливаем статус игры в зависимости от того, кто сдается
         if user_color == 'w':
-            game.status = 'b3'
+            game.status = 'b3'  # Черные выигрывают
         else:
-            game.status = 'w3'
+            game.status = 'w3'  # Белые выигрывают
 
-        if not getattr(game, 'rank_updated', False):
-            if opponent_login:
-                update_user_stats(user_login, losses=1)
-                update_user_stats(opponent_login, wins=1)
-
-                update_user_rank(opponent_login, 10)
-
-            game.rank_updated = True
-
-        session.pop('game_id', None)
-        session.pop('color', None)
-
+        result_move, points_gained = finalize_game(game, user_login)
         response = {
             "status_": game.status,
             "pieces": game.pieces,
-            "result": "lose",
-            "points_gained": 0
+            "result": result_move,
+            "points_gained": points_gained
         }
 
         return jsonify(response), 200
@@ -693,10 +731,7 @@ def leave_game():
         abort(403)
 
     if game.f_user is None and game.c_user is None:
-        if game_id_int in current_games:
-            del current_games[game_id_int]
-        elif game_id_int in unstarted_games:
-            del unstarted_games[game_id_int]
+        remove_game(game_id_int)
 
     session.pop('game_id', None)
     session.pop('color', None)
@@ -778,6 +813,16 @@ def respond_draw_route():
     else:
         return jsonify({"error": "Неверный ответ"}), 400
 
+    if game.status == "n":
+        result_move, points_gained = finalize_game(game, user_login)
+        response_data = {
+            "status_": game.status,
+            "pieces": game.pieces,
+            "result": result_move,
+            "points_gained": points_gained
+        }
+        return jsonify(response_data), 200
+
     return jsonify({"status_": game.status, "pieces": game.pieces}), 200
 
 
@@ -798,7 +843,12 @@ def get_possible_moves_route():
 
     game = current_games.get(game_id_int)
     if game is None:
-        return jsonify({"error": "Invalid game ID"}), 400
+        game = completed_games.get(game_id_int)
+        if game is None:
+            return jsonify({"error": "Invalid game ID"}), 400
+        else:
+            return jsonify({"error": "Game has already ended"}), 400
+
     if user_login not in [game.f_user, game.c_user]:
         abort(403)
 
