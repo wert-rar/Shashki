@@ -162,7 +162,7 @@ canvas#board {
     margin-top: 10px;
     padding-right: 20px;
     padding-left: 15px;
-    padding-bottom: 20px;
+    padding-bottom: 30px;
 }
 
 .moves-container::-webkit-scrollbar {
@@ -687,12 +687,10 @@ canvas#board {
     transition: box-shadow 0.3s ease;
 }
 
-/* Тень при наведении на контейнер */
 #history-view-container:hover {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.5);
 }
 
-/* Надпись слева от кнопки */
 .history-view-label {
     color: #00ADB5;
     margin-right: 10px;
@@ -700,7 +698,6 @@ canvas#board {
     font-weight: bold;
 }
 
-/* Кнопка */
 .history-view-button {
     padding: 10px 15px;
     background-color: #00ADB5;
@@ -714,7 +711,6 @@ canvas#board {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
-/* Стили при наведении на кнопку */
 .history-view-button:hover {
     background-color: #393E46;
     color: #FFFFFF;

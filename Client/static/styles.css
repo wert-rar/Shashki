@@ -159,7 +159,7 @@ canvas#board {
     margin-top: 10px;
     padding-right: 20px;
     padding-left: 15px;
-    padding-bottom: 20px;
+    padding-bottom: 35px;
 }
 
 .moves-container::-webkit-scrollbar {

@@ -428,7 +428,7 @@ def internal_server_error(e):
 @app.route('/start_game')
 def start_game():
     user_login = session.get('user')
-    if not user_login:
+    if not user_login or user_login.startswith('ghost'):
         return redirect(url_for('login'))
 
     game_id = session.get('game_id')
