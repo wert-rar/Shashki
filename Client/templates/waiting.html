@@ -196,6 +196,11 @@
                     document.getElementById('status').innerText = 'Ждем соперника...';
                 } else if (data.status === 'no_game') {
                     document.getElementById('status').innerText = 'Игра не назначена.';
+                } else if (data.status === 'w3' || data.status === 'b3' || data.status === 'n') {
+                    document.getElementById('status').innerText = 'Игра завершена. Перезапускаем поиск...';
+                    setTimeout(() => {
+                        window.location.href = '/start_game';
+                    }, 3000);
                 } else {
                     document.getElementById('status').innerText = 'Неизвестный статус.';
                 }

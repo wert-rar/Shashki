@@ -428,10 +428,18 @@ def start_game():
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int) if game_id_int else None
         if game and user_login in [game.f_user, game.c_user]:
             if game.status in ['w3', 'b3', 'n']:
-                # Игра завершена
                 session.pop('game_id', None)
                 session.pop('color', None)
-                return redirect(url_for('profile', username=user_login))
+
+                new_game_id = create_new_game(user_login, unstarted_games, current_games)
+                if new_game_id:
+                    session['game_id'] = new_game_id
+                    session['color'] = 'w'
+                    app.logger.debug(f"New game created after finished game: {new_game_id} for {user_login}")
+                    return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
+                else:
+                    session['flash'] = 'Не удалось начать новую игру.'
+                    return redirect(url_for('home'))
             else:
                 if game.f_user and game.c_user:
                     return redirect(url_for('get_board', game_id=game_id_int, user_login=user_login))
@@ -445,22 +453,32 @@ def start_game():
         try:
             updated = update_game_with_user(game.game_id, user_login, color, current_games, unstarted_games)
             if not updated:
-                session['flash'] = 'Не удалось присоединиться к игре.'
-                return redirect(url_for('profile', username=user_login))
+                new_game_id = create_new_game(user_login, unstarted_games, current_games)
+                if new_game_id:
+                    session['game_id'] = new_game_id
+                    session['color'] = 'w'
+                    app.logger.debug(f"New game created after failed join: {new_game_id} for {user_login}")
+                    return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
+                else:
+                    session['flash'] = 'Не удалось создать или присоединиться к игре.'
+                    return redirect(url_for('home'))
             session['game_id'] = game.game_id
             session['color'] = color
         except ValueError as e:
             session['flash'] = str(e)
-            return redirect(url_for('profile', username=user_login))
+            return redirect(url_for('home'))
     else:
         game_id = create_new_game(user_login, unstarted_games, current_games)
+        if not game_id:
+            session['flash'] = 'Не удалось создать игру.'
+            return redirect(url_for('home'))
         session['game_id'] = game_id
         session['color'] = 'w'
 
     app.logger.debug(f"Game created or joined: {session['game_id']} by {user_login} with color {session['color']}")
 
     game = current_games.get(session['game_id']) or unstarted_games.get(session['game_id'])
-    if game.f_user and game.c_user:
+    if game and game.f_user and game.c_user:
         return redirect(url_for('get_board', game_id=session['game_id'], user_login=user_login))
     else:
         return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
