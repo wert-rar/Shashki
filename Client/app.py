@@ -355,8 +355,11 @@ def profile(username):
                 game_id_int = int(session.get('game_id'))
                 game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
                 if game and current_user in [game.f_user, game.c_user]:
-                    in_game = True
-                    game_id = game_id_int
+                    if game.f_user and game.c_user and game.status not in ['w3', 'b3', 'n']:
+                        in_game = True
+                        game_id = game_id_int
+                    else:
+                        in_game = False
             except (ValueError, TypeError):
                 app.logger.warning(f"Некорректный game_id в сессии: {session.get('game_id')}")
                 in_game = False
