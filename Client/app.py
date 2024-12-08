@@ -4,10 +4,15 @@ from game import find_waiting_game, update_game_with_user, get_game_status, crea
 import logging
 import subprocess
 import hmac, hashlib
+import itertools
+import threading
 
 current_games = {}
 unstarted_games = {}
 completed_games = {}
+
+ghost_counter = itertools.count(1)
+ghost_lock = threading.Lock()
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -277,7 +282,13 @@ def remove_game(game_id):
 
 @app.route("/")
 def home():
-    return render_template('home.html')
+    user_login = session.get('user')
+    user_is_registered = False
+    if user_login and not user_login.startswith('ghost'):
+        user = get_user_by_login(user_login)
+        if user:
+            user_is_registered = True
+    return render_template('home.html', user_is_registered=user_is_registered)
 
 
 @app.route('/board/<int:game_id>/<user_login>')
@@ -310,6 +321,10 @@ def register():
         user_login = request.form['login']
         user_password = request.form['password']
 
+        if user_login.startswith('ghost'):
+            session['flash'] = 'Невозможно использовать имя, начинающееся с ghost.'
+            return redirect(url_for('register'))
+
         if not check_user_exists(user_login):
             register_user(user_login, user_password)
             session['flash'] = 'Пользователь успешно зарегистрирован!'
@@ -341,7 +356,8 @@ def login():
 @app.route('/profile/<username>')
 def profile(username):
     user = get_user_by_login(username)
-
+    if username.startswith('ghost'):
+        abort(403)
     if user:
         total_games = user['wins'] + user['losses'] + user['draws']
 
@@ -935,10 +951,25 @@ def webhook():
     except subprocess.CalledProcessError as e:
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
+@app.route("/start_singleplayer")
+def start_singleplayer():
+    user_login = session.get('user')
+    if not user_login:
+        with ghost_lock:
+            ghost_num = next(ghost_counter)
+            ghost_username = f"ghost{ghost_num}"
+        # Assign ghost username to the session
+        session['user'] = ghost_username
+        session['is_ghost'] = True  # Flag to identify ghost users
+    else:
+        session['is_ghost'] = False  # Existing logged-in user
+    return redirect(url_for('singleplayer', username=session['user']))
 
 @app.route("/singleplayer/<username>")
 def singleplayer(username):
-    return render_template("singleplayer.html", username=username)
+    # If the user is a ghost, set up the game against a bot
+    is_ghost = session.get('is_ghost', False)
+    return render_template("singleplayer.html", username=username, is_ghost=is_ghost)
 
 
 if __name__ == "__main__":

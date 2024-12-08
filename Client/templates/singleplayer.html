@@ -48,7 +48,10 @@
             <button onclick="newGame()">Новая игра</button>
         </div>
     </div>
-
+    <script>
+        window.username = "{{ username }}";
+        window.is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
+    </script>
     <script src="/static/singleplayer.js"></script>
 </body>
 </html>
