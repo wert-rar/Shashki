@@ -154,8 +154,6 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
 
     document.getElementById('white-timer').textContent = formatTime(whiteSeconds);
     document.getElementById('black-timer').textContent = formatTime(blackSeconds);
-
-    // Можно добавить визуальные эффекты, например, мигание, если <= 10 секунд и т.д.
 }
 
 function displayGameOverMessage(data) {
@@ -169,13 +167,24 @@ function displayGameOverMessage(data) {
     let isVictory = false;
     let isDefeat = false;
 
-    if (data.result === "win") {
+    let gameResult = data.result;
+    if (!gameResult) {
+        if (CURRENT_STATUS === 'w3') {
+            gameResult = (user_color === 'w') ? 'win' : 'lose';
+        } else if (CURRENT_STATUS === 'b3') {
+            gameResult = (user_color === 'b') ? 'win' : 'lose';
+        } else if (CURRENT_STATUS === 'n') {
+            gameResult = 'draw';
+        }
+    }
+
+    if (gameResult === "win") {
         resultText = "Вы победили!";
         isVictory = true;
-    } else if (data.result === "lose") {
+    } else if (gameResult === "lose") {
         resultText = "Вы проиграли.";
         isDefeat = true;
-    } else if (data.result === "draw") {
+    } else if (gameResult === "draw") {
         resultText = "Ничья.";
     }
 
@@ -197,7 +206,6 @@ function displayGameOverMessage(data) {
         defeatSoundPlayed = true;
     }
 }
-
 
 function returnToMainMenu() {
     var xhr = new XMLHttpRequest();
@@ -333,7 +341,6 @@ function respond_draw(response) {
     });
 }
 
-// SERVER REQUEST CODE
 function server_move_request(selected_piece, new_pos) {
     let data = {
         selected_piece: selected_piece,
@@ -476,8 +483,6 @@ function applyMove(boardState, move) {
     return newState;
 }
 
-
-// CLICK HANDLING CODE
 function addEventListeners() {
     CANVAS.addEventListener("click", onClick);
     window.addEventListener("resize", onResize);
@@ -527,7 +532,6 @@ function getPieceAt(x, y) {
     return null;
 }
 
-// RENDER CODE
 function adjustScreen() {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
@@ -709,8 +713,6 @@ function update() {
     window.requestAnimationFrame(update);
 }
 
-// CLICK HANDLING CODE
-
 function convertCoordinatesToNotation(x, y) {
     const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     if (user_color == 'w') {
@@ -854,7 +856,6 @@ function showContextMenu(x, y, username) {
     });
 }
 
-
 function createContextMenu() {
     let menu = document.createElement('div');
     menu.id = 'context-menu';
@@ -927,13 +928,10 @@ function displayProfileModal(profileData) {
     modal.style.display = 'block';
 }
 
-// SERVER REQUEST CODE
-
 function startPolling() {
     setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
 }
 
-// SERVER REQUEST CODE
 function onLoad() {
     CANVAS = document.getElementById("board");
     CTX = CANVAS.getContext("2d");
@@ -957,11 +955,6 @@ function onLoad() {
     }
 }
 
-
-// CLICK HANDLING CODE
-
-// RENDER CODE END
-
 function getCoordinates(loc) {
     let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
     let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
@@ -977,8 +970,6 @@ function getCoordinates(loc) {
     }
     return { x: -1, y: -1 };
 }
-
-// MOVE LIST
 
 function playMoveSound() {
     const moveSound = document.getElementById('sound-move');
