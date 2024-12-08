@@ -44,6 +44,82 @@ let botFrom=null,botTo=null;
 let selected_pos=null;
 let LABEL_PADDING=36;
 
+let historyViewMode = false;
+let currentPiecesSnapshot = null;
+
+function copyPieces(pcs) {
+    return pcs.map(p => ({...p}));
+}
+
+function saveGameState() {
+    let state = {
+        pieces: pieces.map(p => ({...p})),
+        current_player,
+        must_capture_piece,
+        game_over,
+        difficulty,
+        lastFrom,
+        lastTo,
+        botFrom,
+        botTo,
+        user_color,
+        movesList
+    };
+    localStorage.setItem('checkers_game_state', JSON.stringify(state));
+}
+
+function loadGameState() {
+    let stateStr = localStorage.getItem('checkers_game_state');
+    if(stateStr) {
+        let state = JSON.parse(stateStr);
+        pieces = state.pieces;
+        current_player = state.current_player;
+        must_capture_piece = state.must_capture_piece;
+        game_over = state.game_over;
+        difficulty = state.difficulty || 'medium';
+        lastFrom = state.lastFrom;
+        lastTo = state.lastTo;
+        botFrom = state.botFrom;
+        botTo = state.botTo;
+        user_color = state.user_color || 'w';
+        movesList = state.movesList || [];
+
+        document.getElementById('status').textContent=(current_player==='w'?'Ход белых':'Ход черных');
+        restoreMovesHistory();
+
+        if(!game_over && current_player==='b'){
+            setTimeout(makeBotMove,1000);
+        }
+    } else {
+        movesList = [];
+    }
+}
+
+function restoreMovesHistory(){
+    const movesContainer = document.querySelector('.moves-list');
+    movesContainer.innerHTML = '';
+    for (let i=0;i<movesList.length;i++) {
+        let move = movesList[i];
+        let li = document.createElement('li');
+        li.classList.add(move.player === 'w' ? 'player-move' : 'opponent-move');
+        li.setAttribute('data-move-index', i);
+        let div = document.createElement('div');
+        div.classList.add('move-content');
+        let sp1 = document.createElement('span');
+        sp1.classList.add('move-player');
+        sp1.textContent = move.player === 'w' ? 'Белые' : 'Бот Vovan(ГАУ)';
+        let sp2 = document.createElement('span');
+        sp2.classList.add('move-description');
+        sp2.textContent = `${convertPosToNotation(move.from)} -> ${convertPosToNotation(move.to)}`;
+        div.appendChild(sp1); div.appendChild(sp2);
+        li.appendChild(div);
+        movesContainer.appendChild(li);
+        li.addEventListener('click', onMoveClick);
+    }
+    let movesCont=document.querySelector('.moves-container');
+    movesCont.scrollTop=movesCont.scrollHeight;
+}
+
 function get_piece_at(pcs,x,y){return pcs.find(p=>p.x===x&&p.y===y)||null;}
 
 function can_capture(piece,pcs){
@@ -126,9 +202,9 @@ function get_possible_moves(pcs,color,must_capture=null){
     return all_moves;
 }
 
-function validate_move(selected_piece,new_pos,player,pcs){
+function validate_move(selected_piece,new_pos,player,pcs,mustCapturePieceLoc){
     let color=(player==='w'?0:1);
-    let valid_moves=must_capture_piece?get_possible_moves(pcs,color,must_capture_piece):get_possible_moves(pcs,color);
+    let valid_moves=get_possible_moves(pcs,color,mustCapturePieceLoc);
     let piece_moves=valid_moves[`${selected_piece.x},${selected_piece.y}`]||[];
     if(!piece_moves.some(m=>m.x===new_pos.x&&m.y===new_pos.y)){return{move_result:'invalid'};}
     let new_pieces=pcs.map(p=>({...p}));
@@ -162,19 +238,40 @@ function validate_move(selected_piece,new_pos,player,pcs){
             break;
         }
     }
+
+    let newMustCapture=null;
     if(captured){
         let cap_moves=can_capture(moved_piece,new_pieces);
         if(cap_moves.length>0){
-            must_capture_piece={...moved_piece};
-            return{move_result:'continue_capture',new_pieces,captured:true,captured_pieces,multiple_capture:true};
-        }else{must_capture_piece=null;}
-    }else{must_capture_piece=null;}
-    return{move_result:'valid',new_pieces,captured,captured_pieces,multiple_capture:false};
+            newMustCapture={...moved_piece};
+            return{
+                move_result:'continue_capture',
+                new_pieces,
+                captured:true,
+                captured_pieces,
+                multiple_capture:true,
+                newMustCapture
+            };
+        }else{
+            newMustCapture=null;
+        }
+    }else{
+        newMustCapture=null;
+    }
+
+    return{
+        move_result:'valid',
+        new_pieces,
+        captured,
+        captured_pieces,
+        multiple_capture:false,
+        newMustCapture
+    };
 }
 
 function switchTurn(){
     current_player=(current_player==='w'?'b':'w');
-    document.getElementById('status').textContent=(current_player==='w'?'Ход белых':'Ход черных');
+    document.getElementById('status').textContent=(current_player==='w'?'Ход белых':'Ход чёрных');
 }
 
 function isGameOver(){
@@ -218,12 +315,15 @@ function endGame(forceStatus=null){
 
     document.getElementById('game-over-message').textContent=msg;
     document.getElementById('game-over-modal').style.display='block';
+    saveGameState();
 }
 
 function returnToMainMenu(){
     window.location.href='/';
+    localStorage.removeItem('checkers_game_state');
 }
 function newGame(){
+    localStorage.removeItem('checkers_game_state');
     location.reload();
 }
 function give_up(){document.getElementById('surrender-modal').style.display='block';}
@@ -234,66 +334,182 @@ function confirmSurrender(){
 }
 
 function afterPlayerMove(result){
-    addMoveToHistory(result);
+    addMoveToHistory(result,true);
     if(isGameOver()){endGame();return;}
     if(result.move_result==='continue_capture'){
+        must_capture_piece=result.newMustCapture;
         document.getElementById('status').textContent=(current_player==='w'?'Белые продолжают ход':'Чёрные продолжают ход');
         updatePossibleMoves();
     }else{
+        must_capture_piece=null;
         switchTurn();
         if(isGameOver()){endGame();return;}
         if(current_player==='b'){setTimeout(makeBotMove,1000);}
     }
+    saveGameState();
 }
 
 function afterBotMove(result){
     addMoveToHistory(result,false);
     if(isGameOver()){endGame();return;}
     if(result.move_result==='continue_capture'){
+        must_capture_piece=result.newMustCapture;
         document.getElementById('status').textContent=(current_player==='w'?'Белые продолжают ход':'Чёрные продолжают ход');
         setTimeout(makeBotMove,1000);
     }else{
+        must_capture_piece=null;
         switchTurn();
         if(isGameOver())endGame();
     }
+    saveGameState();
 }
 
-function makeBotMove(){
-    if(current_player!=='b'||game_over)return;
-    let color=1;
-    let moves=get_possible_moves(pieces,color,must_capture_piece);
-    let all_moves=[];
-    for(let key in moves){
-        let[px,py]=key.split(',').map(Number);
-        let m=moves[key];
-        for(let mm of m){
-            all_moves.push({from:{x:px,y:py},to:mm});
+function evaluatePosition(pcs) {
+    let score = 0;
+    for (let p of pcs) {
+        let val = (p.is_king ? 2 : 1);
+        if (p.color === 1) score += val; else score -= val;
+    }
+    return score;
+}
+
+function generateAllMoves(pcs, color, mustCapturePieceLoc=null) {
+    let moves = [];
+    let vm = get_possible_moves(pcs, color, mustCapturePieceLoc);
+    for (let key in vm) {
+        let [px, py] = key.split(',').map(Number);
+        let piece = get_piece_at(pcs, px, py);
+        for (let m of vm[key]) {
+            moves.push({from: {x: px, y: py}, to: m, piece: piece});
         }
     }
-    if(all_moves.length===0){endGame();return;}
+    return moves;
+}
 
-    let captures=all_moves.filter(m=>Math.abs(m.to.x - m.from.x)>1);
-    let chosen_move;
-    if(captures.length>0){
-        chosen_move=captures[Math.floor(Math.random()*captures.length)];
-    } else {
-        chosen_move=all_moves[Math.floor(Math.random()*all_moves.length)];
+function applyMove(pcs, move, currentColor, mustCapturePieceLoc) {
+    let selected_piece = get_piece_at(pcs, move.from.x, move.from.y);
+    let res = validate_move(selected_piece, move.to, currentColor === 0 ? 'w' : 'b', pcs, mustCapturePieceLoc);
+    let newPcs = res.new_pieces;
+    let newMustCapture = res.newMustCapture;
+    return {newPcs, newMustCapture, move_result: res.move_result};
+}
+
+function isTerminalNode(pcs, mustCapturePieceLoc, maximizingPlayer) {
+    let color = maximizingPlayer ? 1 : 0;
+    let moves = generateAllMoves(pcs, color, mustCapturePieceLoc);
+    let opponentColor = maximizingPlayer ? 0 : 1;
+    let oppPieces = pcs.filter(p => p.color === opponentColor);
+    if (moves.length === 0 || oppPieces.length === 0) {
+        return true;
+    }
+    return false;
+}
+
+function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc) {
+    if (depth === 0 || isTerminalNode(pcs, mustCapturePieceLoc, maximizingPlayer)) {
+        return {score: evaluatePosition(pcs)};
     }
 
+    let color = maximizingPlayer ? 1 : 0;
+    let moves = generateAllMoves(pcs, color, mustCapturePieceLoc);
+
+    if (moves.length === 0) {
+        return {score: evaluatePosition(pcs)};
+    }
+
+    let value = maximizingPlayer ? -Infinity : Infinity;
+    let bestMove = null;
+
+    for (let move of moves) {
+        let pcsCopy = pcs.map(p => ({...p}));
+        let res = applyMove(pcsCopy, move, color, mustCapturePieceLoc);
+        let nextMustCapture = res.newMustCapture;
+        let nextPlayer = maximizingPlayer;
+
+        if (res.move_result === 'continue_capture') {
+            let result = minimax(res.newPcs, depth - 1, alpha, beta, nextPlayer, nextMustCapture);
+
+            if (maximizingPlayer) {
+                if (result.score > value) {
+                    value = result.score;
+                    bestMove = move;
+                }
+                alpha = Math.max(alpha, value);
+                if (alpha >= beta) break;
+            } else {
+                if (result.score < value) {
+                    value = result.score;
+                    bestMove = move;
+                }
+                beta = Math.min(beta, value);
+                if (beta <= alpha) break;
+            }
+
+        } else {
+            let result = minimax(res.newPcs, depth - 1, alpha, beta, !maximizingPlayer, null);
+
+            if (maximizingPlayer) {
+                if (result.score > value) {
+                    value = result.score;
+                    bestMove = move;
+                }
+                alpha = Math.max(alpha, value);
+                if (alpha >= beta) break;
+            } else {
+                if (result.score < value) {
+                    value = result.score;
+                    bestMove = move;
+                }
+                beta = Math.min(beta, value);
+                if (beta <= alpha) break;
+            }
+        }
+    }
+
+    return {score: value, move: bestMove};
+}
+
+function makeBotMove() {
+    if (current_player !== 'b' || game_over) return;
+    let depth = 3;
+    let result = minimax(pieces.map(p => ({...p})), depth, -Infinity, Infinity, true, must_capture_piece);
+    let chosen_move = result.move;
+    if (!chosen_move) {
+        endGame();
+        return;
+    }
+
+    botFrom={x: chosen_move.from.x,y: chosen_move.from.y};
+    botTo={x: chosen_move.to.x,y: chosen_move.to.y};
     let sel_piece=get_piece_at(pieces,chosen_move.from.x,chosen_move.from.y);
-    botFrom={x:chosen_move.from.x,y:chosen_move.from.y};
-    botTo={x:chosen_move.to.x,y:chosen_move.to.y};
-    let res=validate_move(sel_piece,chosen_move.to,'b',pieces);
-    if(res.move_result==='invalid'){console.error("Бот выбрал неверный ход");endGame();return;}
+    let res=validate_move(sel_piece,chosen_move.to,'b',pieces,must_capture_piece);
+    if(res.move_result==='invalid'){
+        console.error("Бот выбрал неверный ход");
+        endGame();
+        return;
+    }
     pieces=res.new_pieces;
+    if(res.move_result==='continue_capture'){
+        must_capture_piece = res.newMustCapture;
+    }else{
+        must_capture_piece = null;
+    }
     afterBotMove(res);
+    saveGameState();
 }
 
 function addMoveToHistory(result,playerMove=true){
     if(playerMove){
         if(lastFrom&&lastTo){
+            movesList.push({
+                player:'w',
+                from:lastFrom,
+                to:lastTo,
+                piecesSnapshot: copyPieces(pieces)
+            });
             let li=document.createElement('li');
             li.classList.add('player-move');
+            li.setAttribute('data-move-index', movesList.length-1);
             let div=document.createElement('div');
             div.classList.add('move-content');
             let sp1=document.createElement('span');
@@ -305,11 +521,19 @@ function addMoveToHistory(result,playerMove=true){
             div.appendChild(sp1);div.appendChild(sp2);
             li.appendChild(div);
             document.querySelector('.moves-list').appendChild(li);
+            li.addEventListener('click', onMoveClick);
         }
     }else{
         if(botFrom&&botTo){
+            movesList.push({
+                player:'b',
+                from:botFrom,
+                to:botTo,
+                piecesSnapshot: copyPieces(pieces)
+            });
             let li=document.createElement('li');
             li.classList.add('opponent-move');
+            li.setAttribute('data-move-index', movesList.length-1);
             let div=document.createElement('div');
             div.classList.add('move-content');
             let sp1=document.createElement('span');
@@ -321,10 +545,12 @@ function addMoveToHistory(result,playerMove=true){
             div.appendChild(sp1);div.appendChild(sp2);
             li.appendChild(div);
             document.querySelector('.moves-list').appendChild(li);
+            li.addEventListener('click', onMoveClick);
         }
     }
     let movesCont=document.querySelector('.moves-container');
     movesCont.scrollTop=movesCont.scrollHeight;
+    saveGameState();
 }
 
 function convertPosToNotation(pos){
@@ -335,7 +561,7 @@ function convertPosToNotation(pos){
 }
 
 function onClick(evt){
-    if(game_over||current_player==='b')return;
+    if(game_over||current_player==='b'||historyViewMode)return;
     let loc={x:evt.offsetX,y:evt.offsetY};
     let coords=getCoordinates(loc);
     if(coords.x===-1||coords.y===-1)return;
@@ -348,15 +574,17 @@ function onClick(evt){
             lastFrom={x:selected_piece.x,y:selected_piece.y};
             lastTo={x:coords.x,y:coords.y};
             selected_pos={x:coords.x,y:coords.y};
-            let res=validate_move(selected_piece,move,'w',pieces);
+            let res=validate_move(selected_piece,move,'w',pieces,must_capture_piece);
             if(res.move_result==='invalid'){selected_piece=null;IS_SELECTED=false;possibleMoves=[];return;}
             pieces=res.new_pieces;
             if(res.move_result==='continue_capture'){
+                must_capture_piece = res.newMustCapture;
                 selected_piece=get_piece_at(pieces,coords.x,coords.y);
                 IS_SELECTED=true;
                 updatePossibleMoves();
                 afterPlayerMove(res);
             }else if(res.move_result==='valid'){
+                must_capture_piece = null;
                 selected_piece=null;IS_SELECTED=false;possibleMoves=[];
                 afterPlayerMove(res);
             }
@@ -364,6 +592,7 @@ function onClick(evt){
             selected_piece=null;IS_SELECTED=false;possibleMoves=[];
         }
     }
+    saveGameState();
 }
 
 function updatePossibleMoves(){
@@ -531,11 +760,85 @@ window.onload=function(){
     CTX=CANVAS.getContext("2d");
     CTX.imageSmoothingEnabled=true;
     adjustScreen();
+
+    loadGameState();
+
+    if(selected_piece) updatePossibleMoves();
+
     update();
     CANVAS.addEventListener('click',onClick);
     let diffSel=document.getElementById('difficulty-select');
     if(diffSel){
-        diffSel.value='medium';
-        diffSel.addEventListener('change',(e)=>{difficulty=e.target.value;});
+        diffSel.value=difficulty;
+        diffSel.addEventListener('change',(e)=>{difficulty=e.target.value;saveGameState();});
     }
 };
+
+function onMoveClick(evt){
+    if(!movesList || movesList.length===0)return;
+    const li = evt.currentTarget;
+    const index = parseInt(li.getAttribute('data-move-index'),10);
+    if(isNaN(index))return;
+    showHistoryState(index);
+}
+
+function showHistoryState(index) {
+    if (!historyViewMode) {
+        currentPiecesSnapshot = copyPieces(pieces);
+    }
+    historyViewMode = true;
+
+    let snapshot = movesList[index].piecesSnapshot;
+    pieces = copyPieces(snapshot);
+    IS_SELECTED = false;
+    selected_piece = null;
+    possibleMoves = [];
+    must_capture_piece = null;
+
+    let historyContainer = document.getElementById('history-view-container');
+    historyContainer.style.display = 'flex';
+
+    let historyLabel = document.getElementById('history-view-label');
+    historyLabel.style.display = 'inline';
+
+    showReturnToCurrentButton();
+
+    update();
+}
+
+
+function returnToCurrentState() {
+    if (!currentPiecesSnapshot) return;
+    historyViewMode = false;
+    pieces = copyPieces(currentPiecesSnapshot);
+    currentPiecesSnapshot = null;
+    must_capture_piece = null;
+    selected_piece = null;
+    IS_SELECTED = false;
+    possibleMoves = [];
+
+    let historyContainer = document.getElementById('history-view-container');
+    historyContainer.style.display = 'none';
+
+    let historyLabel = document.getElementById('history-view-label');
+    historyLabel.style.display = 'none';
+
+    hideReturnToCurrentButton();
+
+    updatePossibleMoves();
+    update();
+}
+
+
+function showReturnToCurrentButton() {
+    let btn = document.getElementById('history-view-button');
+    if (!btn) return;
+    btn.removeEventListener('click', returnToCurrentState);
+    btn.addEventListener('click', returnToCurrentState);
+    btn.style.display = 'block';
+}
+
+function hideReturnToCurrentButton() {
+    let btn = document.getElementById('history-view-button');
+    if (btn) btn.style.display = 'none';
+}
