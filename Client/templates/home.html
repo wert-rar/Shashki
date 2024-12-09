@@ -290,7 +290,7 @@
 <body>
 <nav>
     <div class="navigation-menu">
-        {% if 'user' in session %}
+        {% if 'user' in session and user_is_registered %}
             <a href="{{ url_for('profile', username=session['user']) }}">Профиль</a>
         {% else %}
             <a href="{{ url_for('login') }}">Вход</a>
@@ -346,12 +346,7 @@
     var game_id = "{{ session['game_id'] if 'game_id' in session else '' }}";
 
     function startSingleGame() {
-        if (user_login) {
-            window.location.href = '/singleplayer/' + user_login;
-        } else {
-            alert("Пожалуйста, войдите в систему для начала одиночной игры.");
-            window.location.href = '/login';
-        }
+        window.location.href = '/start_singleplayer';
     }
 
     function startMultiplayerGame() {
@@ -440,7 +435,7 @@
                 }
             })
             .then(data => {
-                if (data.status === 'active' || data.status === 'waiting') {
+                if (data.status === 'active') {
                     if (data.game_id) {
                         game_id = data.game_id;
                     }

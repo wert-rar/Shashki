@@ -95,7 +95,6 @@ def update_user_rank(user_login, points):
     con.close()
 
 
-# Обновление статистики пользователя
 def update_user_stats(user_login, wins=0, losses=0, draws=0):
     con = connect_db()
     cur = con.cursor()

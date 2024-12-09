@@ -9,12 +9,27 @@
 <body onload="onLoad()">
 
     <div class="header">
-        <span class="status" id="status">Загрузка...</span>
+        <div class="timers">
+            <div class="timer-container">
+                <span class="timer-label">Белые</span>
+                <span id="white-timer" class="timer-display">15:00</span>
+            </div>
+            <span class="status" id="status">Загрузка...</span>
+            <div class="timer-container">
+                <span class="timer-label">Черные</span>
+                <span id="black-timer" class="timer-display">15:00</span>
+            </div>
+        </div>
     </div>
 
     <div class="board-container">
         <canvas id="board"></canvas>
     </div>
+
+    <audio id="sound-game-found" src="{{ url_for('static', filename='sounds/game_found.mp3') }}" preload="auto"></audio>
+    <audio id="sound-move" src="{{ url_for('static', filename='sounds/move.mp3') }}" preload="auto"></audio>
+    <audio id="sound-victory" src="{{ url_for('static', filename='sounds/victory.mp3') }}" preload="auto"></audio>
+    <audio id="sound-defeat" src="{{ url_for('static', filename='sounds/defeat.mp3') }}" preload="auto"></audio>
 
     <div class="sidebar">
         <h2>Меню</h2>

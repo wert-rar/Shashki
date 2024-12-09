@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Игра в шашки - Одиночная</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles_singleplayer.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="header">
         <span class="status" id="status">Ход белых</span>
+        <div id="history-view-container" style="display:none;">
+            <span class="history-view-label" style="display:none;" id="history-view-label">Просмотр истории ходов</span>
+            <button id="history-view-button" class="history-view-button" style="display:none;" onclick="returnToCurrentState()">Вернуться к текущему состоянию</button>
+        </div>
     </div>
 
     <div class="board-container">
@@ -40,15 +44,14 @@
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
             <p id="game-over-message"></p>
-            <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+            <button onclick="returnToMainMenu()">Главное меню</button>
+            <button onclick="newGame()">Новая игра</button>
         </div>
     </div>
-
     <script>
-        const user_login = "{{ user_login }}";
-        const user_color = "{{ user_color }}";
+        window.username = "{{ username }}";
+        window.is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
     </script>
-
-    <script src="/static/client.js"></script>
+    <script src="/static/singleplayer.js"></script>
 </body>
 </html>
