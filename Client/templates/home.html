@@ -23,23 +23,13 @@
 
         body:before {
             content: '';
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 10%, transparent 70%);
-            animation: animateBg 8s infinite linear;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
             z-index: -1;
-        }
-
-        @keyframes animateBg {
-            from {
-                transform: translate(-25%, -25%) rotate(0deg);
-            }
-            to {
-                transform: translate(-25%, -25%) rotate(360deg);
-            }
         }
 
         .container {
@@ -300,6 +290,7 @@
 </nav>
 
 <div class="message">
+    <!--
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <ul>
@@ -309,6 +300,7 @@
             </ul>
         {% endif %}
     {% endwith %}
+    -->
 </div>
 
 <div class="container">

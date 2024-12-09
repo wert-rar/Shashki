@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, get_flashed_messages
 from base import check_user_exists, register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
@@ -321,16 +321,17 @@ def register():
         user_login = request.form['login']
         user_password = request.form['password']
 
-        if user_login.startswith('ghost'):
-            session['flash'] = 'Невозможно использовать имя, начинающееся с ghost.'
+        if user_login.lower().startswith('ghost'):
+            flash('Невозможно использовать имя, начинающееся с ghost.', 'error')
             return redirect(url_for('register'))
 
         if not check_user_exists(user_login):
             register_user(user_login, user_password)
-            session['flash'] = 'Пользователь успешно зарегистрирован!'
+            flash('Пользователь успешно зарегистрирован!', 'success')
             return redirect(url_for('login'))
         else:
-            session['flash'] = 'Такой пользователь уже зарегистрирован!'
+            flash('Такой пользователь уже зарегистрирован!', 'error')
+            return redirect(url_for('register'))
 
     return render_template('register.html')
 
@@ -344,14 +345,14 @@ def login():
         user = authenticate_user(user_login, user_password)
 
         if user:
-            session['flash'] = 'Успешный вход!'
             session['user'] = user_login
+            flash('Успешный вход!', 'success')
             return redirect(url_for('home'))
         else:
-            session['flash'] = 'Неправильное имя пользователя или пароль.'
+            flash('Неправильное имя пользователя или пароль.', 'error')
+            return redirect(url_for('login'))
 
     return render_template('login.html')
-
 
 @app.route('/profile/<username>')
 def profile(username):
@@ -722,11 +723,10 @@ def give_up_route():
 
         user_color = 'w' if user_login == game.f_user else 'b'
 
-        # Устанавливаем статус игры в зависимости от того, кто сдается
         if user_color == 'w':
-            game.status = 'b3'  # Черные выигрывают
+            game.status = 'b3'
         else:
-            game.status = 'w3'  # Белые выигрывают
+            game.status = 'w3'
 
         result_move, points_gained = finalize_game(game, user_login)
         response = {
@@ -958,16 +958,14 @@ def start_singleplayer():
         with ghost_lock:
             ghost_num = next(ghost_counter)
             ghost_username = f"ghost{ghost_num}"
-        # Assign ghost username to the session
         session['user'] = ghost_username
-        session['is_ghost'] = True  # Flag to identify ghost users
+        session['is_ghost'] = True
     else:
-        session['is_ghost'] = False  # Existing logged-in user
+        session['is_ghost'] = False
     return redirect(url_for('singleplayer', username=session['user']))
 
 @app.route("/singleplayer/<username>")
 def singleplayer(username):
-    # If the user is a ghost, set up the game against a bot
     is_ghost = session.get('is_ghost', False)
     return render_template("singleplayer.html", username=username, is_ghost=is_ghost)
 
