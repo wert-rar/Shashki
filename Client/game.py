@@ -47,11 +47,17 @@ class Game:
 
         self.white_time_remaining = 900
         self.black_time_remaining = 900
-        self.last_update_time = time.time()
+        self.last_update_time = None
 
         self.lock = threading.Lock()
 
+        self.f_player_loaded = False
+        self.c_player_loaded = False
+
     def update_timers(self):
+        if self.last_update_time is None:
+            return
+
         now = time.time()
         elapsed = now - self.last_update_time
         self.last_update_time = now

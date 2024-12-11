@@ -740,7 +740,6 @@ function updateMovesList(moveHistory) {
         }
 
         let isPlayerMove = move.player === user_login;
-        // Проверяем, является ли игрок ghost-пользователем
         let isGhost = isPlayerMove
             ? user_login.startsWith('ghost')
             : opponent_login.startsWith('ghost');
@@ -969,6 +968,7 @@ function onLoad() {
     if (user_login.startsWith('ghost')) {
         disableProfileFeatures();
     }
+    notify_player_loaded();
 }
 
 function disableProfileFeatures() {
@@ -1027,4 +1027,28 @@ function playDefeatSound() {
             console.error('Ошибка при воспроизведении звука поражения:', error);
         });
     }
+}
+
+function notify_player_loaded() {
+    fetch('/player_loaded', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            game_id: game_id,
+            user_login: user_login
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            console.error('Ошибка при уведомлении о загрузке:', data.error);
+        } else {
+            console.log('Уведомление о загрузке отправлено успешно.');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при отправке уведомления о загрузке:', error);
+    });
 }

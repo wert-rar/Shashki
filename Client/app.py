@@ -1,14 +1,7 @@
-import os
-
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, \
-    get_flashed_messages, make_response, send_from_directory
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
 from base import check_user_exists, register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
-import logging
-import subprocess
-import hmac, hashlib
-import itertools
-import threading
+import logging, subprocess, hmac, hashlib, itertools, threading, time
 
 current_games = {}
 unstarted_games = {}
@@ -989,6 +982,36 @@ def start_singleplayer():
 def singleplayer(username):
     is_ghost = session.get('is_ghost', False)
     return render_template("singleplayer.html", username=username, is_ghost=is_ghost)
+
+@app.route('/player_loaded', methods=['POST'])
+def player_loaded():
+    data = request.json
+    game_id = data.get('game_id')
+    user_login = session.get('user')
+
+    if not game_id or not user_login:
+        return jsonify({"error": "Game ID and user login are required"}), 400
+
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
+    if not game:
+        return jsonify({"error": "Game not found"}), 404
+
+    if user_login == game.f_user:
+        game.f_player_loaded = True
+    elif user_login == game.c_user:
+        game.c_player_loaded = True
+    else:
+        return jsonify({"error": "User not part of the game"}), 403
+
+    if game.f_player_loaded and game.c_player_loaded and game.last_update_time is None:
+        game.last_update_time = time.time()
+
+    return jsonify({"message": "Player loaded status updated"}), 200
 
 
 if __name__ == "__main__":
