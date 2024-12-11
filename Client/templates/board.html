@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Игра в шашки</title>
+    <link rel="preload" href="/static/favicon.ico" as="image">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 </head>
@@ -102,6 +105,7 @@
         const game_id = "{{ game_id }}";
         const user_color = "{{ user_color }}";
         const opponent_login = "{{ opponent_login }}";
+        const is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
     </script>
     <script src="/static/script.js"></script>
 </body>

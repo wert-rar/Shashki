@@ -75,10 +75,11 @@ class Game:
         return None
 
     def update_pieces(self, new_pieces) -> bool:
-        if len(new_pieces) != len(self.pieces):
-            return False
-        self.pieces = new_pieces
-        return True
+        with self.lock:
+            if len(new_pieces) != len(self.pieces):
+                return False
+            self.pieces = new_pieces
+            return True
 
     def update_status(self):
         if self.current_player == "w":
@@ -103,33 +104,34 @@ def find_waiting_game(unstarted_games):
 
 
 def update_game_with_user(game_id, user_login, color, current_games, unstarted_games):
-    game = current_games.get(game_id) or unstarted_games.get(game_id)
-    if not game:
-        return False
+    with threading.Lock():
+        game = current_games.get(game_id) or unstarted_games.get(game_id)
+        if not game:
+            return False
 
-    if user_login in [game.f_user, game.c_user]:
-        return False
+        if user_login in [game.f_user, game.c_user]:
+            return False
 
-    if color == 'w':
-        if game.f_user is None:
-            game.f_user = user_login
-            if game.c_user:
-                current_games[game_id] = game
-                del unstarted_games[game_id]
-            return True
+        if color == 'w':
+            if game.f_user is None:
+                game.f_user = user_login
+                if game.c_user:
+                    current_games[game_id] = game
+                    del unstarted_games[game_id]
+                return True
+            else:
+                return False
+        elif color == 'b':
+            if game.c_user is None:
+                game.c_user = user_login
+                if game.f_user:
+                    current_games[game_id] = game
+                    del unstarted_games[game_id]
+                return True
+            else:
+                return False
         else:
             return False
-    elif color == 'b':
-        if game.c_user is None:
-            game.c_user = user_login
-            if game.f_user:
-                current_games[game_id] = game
-                del unstarted_games[game_id]
-            return True
-        else:
-            return False
-    else:
-        return False
 
 
 def create_new_game(user_login, unstarted_games, current_games):

@@ -740,7 +740,16 @@ function updateMovesList(moveHistory) {
         }
 
         let isPlayerMove = move.player === user_login;
-        let player = isPlayerMove ? `<span class="player-name blue" data-username="${user_login}">${user_login}</span>` : `<span class="player-name red" data-username="${opponent_login}">${opponent_login}</span>`;
+        // Проверяем, является ли игрок ghost-пользователем
+        let isGhost = isPlayerMove
+            ? user_login.startsWith('ghost')
+            : opponent_login.startsWith('ghost');
+
+        let playerClass = isPlayerMove ? 'blue' : 'red';
+        let playerNameClass = isGhost ? 'ghost-player' : '';
+        let player = isPlayerMove
+            ? `<span class="player-name ${playerClass} ${playerNameClass}" data-username="${user_login}">${user_login}</span>`
+            : `<span class="player-name ${playerClass} ${playerNameClass}" data-username="${opponent_login}">${opponent_login}</span>`;
         let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
         let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
         let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
@@ -817,20 +826,23 @@ function showHistoryViewIndicator() {
 function addProfileClickListeners() {
     const playerNames = document.querySelectorAll('.player-name');
     playerNames.forEach(name => {
-        name.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const username = name.getAttribute('data-username');
+        const username = name.getAttribute('data-username');
+        if (username && !username.startsWith('ghost')) {
+            name.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const username = name.getAttribute('data-username');
 
-            const movesContainer = document.querySelector('.moves-container');
-            const movesRect = movesContainer.getBoundingClientRect();
+                const movesContainer = document.querySelector('.moves-container');
+                const movesRect = movesContainer.getBoundingClientRect();
 
-            const rect = name.getBoundingClientRect();
+                const rect = name.getBoundingClientRect();
 
-            const x = movesRect.left + window.scrollX;
-            const y = rect.top + window.scrollY;
+                const x = movesRect.left + window.scrollX;
+                const y = rect.top + window.scrollY;
 
-            showContextMenu(x, y, username);
-        });
+                showContextMenu(x, y, username);
+            });
+        }
     });
 }
 
@@ -953,6 +965,19 @@ function onLoad() {
             console.error('Ошибка при воспроизведении звука нахождения игры:', error);
         });
     }
+
+    if (user_login.startsWith('ghost')) {
+        disableProfileFeatures();
+    }
+}
+
+function disableProfileFeatures() {
+    const ghostPlayers = document.querySelectorAll('.player-name[data-username^="ghost"]');
+    ghostPlayers.forEach(button => {
+        button.style.cursor = 'default';
+        button.style.opacity = '0.6';
+        button.style.userSelect = 'none';
+    });
 }
 
 function getCoordinates(loc) {

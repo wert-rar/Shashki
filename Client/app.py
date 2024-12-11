@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, get_flashed_messages
+import os
+
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, \
+    get_flashed_messages, make_response, send_from_directory
 from base import check_user_exists, register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging
@@ -173,17 +176,25 @@ def finalize_game(game, user_login):
 
     if not getattr(game, 'rank_updated', False):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
-        if result_move == 'win':
-            update_user_rank(user_login, points_gained)
-            update_user_stats(user_login, wins=1)
-            update_user_stats(opponent_login, losses=1)
-        elif result_move == 'lose':
-            update_user_stats(user_login, losses=1)
-        elif result_move == 'draw':
-            update_user_rank(user_login, points_gained)
-            update_user_rank(opponent_login, points_gained)
-            update_user_stats(user_login, draws=1)
-            update_user_stats(opponent_login, draws=1)
+        user_is_ghost = user_login.startswith('ghost')
+        opponent_is_ghost = opponent_login.startswith('ghost')
+
+        if not user_is_ghost:
+            if result_move == 'win':
+                update_user_rank(user_login, points_gained)
+                update_user_stats(user_login, wins=1)
+                if not opponent_is_ghost:
+                    update_user_stats(opponent_login, losses=1)
+            elif result_move == 'lose':
+                update_user_stats(user_login, losses=1)
+            elif result_move == 'draw':
+                update_user_rank(user_login, points_gained)
+                if not opponent_is_ghost:
+                    update_user_rank(opponent_login, points_gained)
+                update_user_stats(user_login, draws=1)
+                if not opponent_is_ghost:
+                    update_user_stats(opponent_login, draws=1)
+
         game.rank_updated = True
 
     remove_game(game.game_id)
@@ -429,8 +440,16 @@ def internal_server_error(e):
 @app.route('/start_game')
 def start_game():
     user_login = session.get('user')
-    if not user_login or user_login.startswith('ghost'):
-        return redirect(url_for('login'))
+    if not user_login:
+        with ghost_lock:
+            ghost_num = next(ghost_counter)
+            ghost_username = f"ghost{ghost_num}"
+        session['user'] = ghost_username
+        session['is_ghost'] = True
+    elif user_login.startswith('ghost'):
+        session['is_ghost'] = True
+    else:
+        session['is_ghost'] = False
 
     game_id = session.get('game_id')
     if game_id:
@@ -548,7 +567,7 @@ def move():
     game_id = data.get("game_id")
     user_login = session.get('user')
 
-    if game_id is None:
+    if not game_id:
         return jsonify({"error": "Game ID is required"}), 400
 
     try:
@@ -557,7 +576,7 @@ def move():
         return jsonify({"error": "Invalid game ID"}), 400
 
     game = current_games.get(game_id_int)
-    if game is None:
+    if not game:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
         abort(403)
@@ -911,8 +930,10 @@ def get_possible_moves_route():
     return jsonify({"moves": moves})
 
 
-@app.route('/api/profile/<username>')
+@app.route('/api/profile/<username>', methods=['GET'])
 def api_profile(username):
+    if username.startswith('ghost'):
+        return jsonify({"error": "Профиль не доступен"}), 403
     user = get_user_by_login(username)
     if user:
         return jsonify({
@@ -924,7 +945,7 @@ def api_profile(username):
             "total_games": user['wins'] + user['losses'] + user['draws']
         })
     else:
-        return jsonify({"error": "User not found"}), 404
+        return jsonify({"error": "Пользователь не найден"}), 404
 
 
 @app.route('/hook', methods=['POST'])
