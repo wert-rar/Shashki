@@ -780,3 +780,7 @@ canvas#board {
         font-size: 0.95em;
     }
 }
+
+@media (max-width: 768px) {
+
+}
