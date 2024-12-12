@@ -796,13 +796,27 @@ function updateMovesList(moveHistory) {
 
 function viewBoardState(moveIndex) {
   if (moveIndex < 0 || moveIndex > boardStates.length - 1) return;
-  pieces = boardStates[moveIndex].map(piece => ({...piece}));
+
+  let selectedState = boardStates[moveIndex].map(piece => ({...piece}));
+
+  if (user_color === "b") {
+    selectedState = translate(selectedState);
+  }
+
+  pieces = selectedState;
+
   currentView = moveIndex;
   showHistoryViewIndicator();
 }
 
 function returnToCurrentView() {
-  pieces = boardStates[boardStates.length - 1].map(piece => ({...piece}));
+  let currentState = boardStates[boardStates.length - 1].map(piece => ({...piece}));
+
+  if (user_color === "b") {
+    currentState = translate(currentState);
+  }
+
+  pieces = currentState;
   currentView = null;
   let indicator = document.getElementById('history-view-indicator');
   if (indicator) {
@@ -1048,3 +1062,5 @@ function notify_player_loaded() {
     console.error('Ошибка при отправке уведомления о загрузке:', error);
   });
 }
+
+window.addEventListener('load', onLoad);
