@@ -733,7 +733,7 @@ function updateMovesList(moveHistory) {
   let hasNewMoves = moveHistory.length > lastMoveCount;
 
   for (let i = lastMoveCount; i < moveHistory.length; i++) {
-    let move = {...moveHistory[i]};
+    let move = { ...moveHistory[i] };
 
     let isPlayerMove = move.player === user_login;
     let isGhost = isPlayerMove
@@ -742,9 +742,17 @@ function updateMovesList(moveHistory) {
 
     let playerClass = isPlayerMove ? 'blue' : 'red';
     let playerNameClass = isGhost ? 'ghost-player' : '';
+    let playerName = isPlayerMove ? user_login : opponent_login;
+
+    let crown = '';
+    if (playerName === 'WertRar') {
+      crown = ' <span class="crown" title="Лучший игрок">👑</span>';
+    }
+
     let player = isPlayerMove
-      ? `<span class="player-name ${playerClass} ${playerNameClass}" data-username="${user_login}">${user_login}</span>`
-      : `<span class="player-name ${playerClass} ${playerNameClass}" data-username="${opponent_login}">${opponent_login}</span>`;
+      ? `<span class="player-name ${playerClass} ${playerNameClass}" data-username="${user_login}">${playerName}${crown}</span>`
+      : `<span class="player-name ${playerClass} ${playerNameClass}" data-username="${opponent_login}">${playerName}${crown}</span>`;
+
     let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
     let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
     let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
@@ -939,7 +947,12 @@ function displayProfileModal(profileData) {
     document.body.appendChild(modal);
   }
 
-  document.getElementById('profile-username').textContent = profileData.user_login;
+  let crown = '';
+  if (profileData.user_login === 'WertRar') {
+    crown = ' <span class="crown" title="Лучший игрок">👑</span>';
+  }
+
+  document.getElementById('profile-username').innerHTML = `${profileData.user_login}${crown}`;
   document.getElementById('profile-rang').textContent = profileData.rang;
   document.getElementById('profile-total-games').textContent = profileData.total_games;
   document.getElementById('profile-wins').textContent = profileData.wins;

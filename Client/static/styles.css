@@ -710,6 +710,16 @@ canvas#board {
     cursor: pointer;
 }
 
+.crown {
+  display: inline-block;
+  margin-left: -3px;
+  color: gold;
+  font-size: 1.1em;
+  vertical-align: middle;
+  position: relative;
+  top: -3px;
+}
+
 @media (max-width: 1440px) {
     .sidebar, .moves-sidebar {
         width: 220px;
