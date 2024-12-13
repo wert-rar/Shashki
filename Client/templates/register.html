@@ -13,6 +13,25 @@
             box-sizing: border-box;
         }
 
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: #FFF;
+            user-select: none;
+            pointer-events: none;
+            z-index: 5;
+            font-size: 1em;
+            opacity: 0.8;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
         body {
@@ -25,6 +44,7 @@
             justify-content: center;
             color: white;
             position: relative;
+            overflow: hidden;
         }
 
         body:before {
@@ -211,8 +231,31 @@
         </div>
     </div>
 
+    <div id="snow-container"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        function createSnowflakes() {
+            const snowContainer = document.getElementById('snow-container');
+            const snowflakeCount = 50;
+
+            for (let i = 0; i < snowflakeCount; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.classList.add('snowflake');
+                snowflake.textContent = '❄';
+                snowflake.style.left = Math.random() * 100 + 'vw';
+                snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                snowflake.style.opacity = Math.random();
+                snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                snowflake.style.animationDelay = Math.random() * 10 + 's';
+                snowContainer.appendChild(snowflake);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createSnowflakes();
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             const registerForm = document.getElementById('registerForm');
 
