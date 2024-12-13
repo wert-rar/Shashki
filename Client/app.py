@@ -350,10 +350,10 @@ def login():
 
         if user:
             session['user'] = user_login
-            flash('Успешный вход!', 'success')  # Добавляем flash сообщение об успешном входе
+            flash('Успешный вход!', 'success')
             return redirect(url_for('home'))
         else:
-            flash('Неправильное имя пользователя или пароль.', 'error')  # Сообщение об ошибке
+            flash('Неправильное имя пользователя или пароль.', 'error')
             return redirect(url_for('login'))
 
     return render_template('login.html')

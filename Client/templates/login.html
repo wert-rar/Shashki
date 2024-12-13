@@ -13,19 +13,17 @@
             box-sizing: border-box;
         }
 
-        /* Стили для контейнера снегопада */
         #snow-container {
-            position: fixed; /* Фиксируем позицию контейнера относительно окна браузера */
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Чтобы клики проходили сквозь снежинки */
-            overflow: hidden; /* Отключаем прокрутку внутри контейнера */
-            z-index: 9999; /* Помещаем снежинки выше других элементов */
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 9999;
         }
 
-        /* Стили для снежинок */
         .snowflake {
             position: absolute;
             top: -10px;
@@ -35,7 +33,7 @@
             font-size: 1em;
             opacity: 0.8;
             animation: fall linear infinite;
-            z-index: 9999; /* Обеспечивает, что снежинки находятся выше других элементов */
+            z-index: 9999;
         }
 
         @keyframes fall {
@@ -57,7 +55,7 @@
             justify-content: center;
             color: white;
             position: relative;
-            overflow: hidden; /* Отключаем прокрутку */
+            overflow: hidden;
         }
 
         body:before {
@@ -235,7 +233,6 @@
         </div>
     </div>
 
-    <!-- Контейнер для снежинок -->
     <div id="snow-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -245,7 +242,7 @@
 
             function createSnowflakes() {
                 const snowContainer = document.getElementById('snow-container');
-                const snowflakeCount = 50; // Количество снежинок
+                const snowflakeCount = 50;
 
                 for (let i = 0; i < snowflakeCount; i++) {
                     const snowflake = document.createElement('div');
@@ -260,10 +257,8 @@
                 }
             }
 
-            // Инициализация снегопада
             createSnowflakes();
 
-            // Обработка формы входа
             loginForm.addEventListener('submit', function(event) {
                 const login = loginForm.login.value.trim();
                 const password = loginForm.password.value.trim();
