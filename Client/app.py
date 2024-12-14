@@ -1032,6 +1032,11 @@ def player_loaded():
 
     return jsonify({"message": "Player loaded status updated"}), 200
 
+@app.route('/favicon.ico')
+def favicon():
+    return redirect(url_for('static', filename='favicon.ico'))
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

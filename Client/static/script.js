@@ -84,6 +84,9 @@ function update_data(data) {
 
     if (data.error) {
         showError(data.error);
+        if (data.error === "Invalid game ID") {
+            window.location.href = "/";
+        }
         return;
     }
 
@@ -108,54 +111,54 @@ function update_data(data) {
 
     document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
-  if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
-    let gameFoundSound = document.getElementById('sound-game-found');
-    if (gameFoundSound) {
-      gameFoundSound.play().catch(error => {
-        console.error('Ошибка при воспроизведении звука нахождения игры:', error);
-      });
-      gameFoundSoundPlayed = true;
+    if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
+        let gameFoundSound = document.getElementById('sound-game-found');
+        if (gameFoundSound) {
+            gameFoundSound.play().catch(error => {
+                console.error('Ошибка при воспроизведении звука нахождения игры:', error);
+            });
+            gameFoundSoundPlayed = true;
+        }
     }
-  }
 
-  if (data.draw_response && data.draw_response !== null) {
-    if (data.draw_response === 'accept') {
-      displayGameOverMessage(data);
-    } else if (data.draw_response === 'decline') {
-      showNotification('Ваше предложение ничьей было отклонено.', 'error');
+    if (data.draw_response && data.draw_response !== null) {
+        if (data.draw_response === 'accept') {
+            displayGameOverMessage(data);
+        } else if (data.draw_response === 'decline') {
+            showNotification('Ваше предложение ничьей было отклонено.', 'error');
+        }
     }
-  }
 
-  if (data.draw_offer && data.draw_offer !== null) {
-    if (data.draw_offer !== user_color) {
-      let modal = document.getElementById("draw-offer-modal");
-      modal.style.display = "block";
-    }
-  } else {
-    document.getElementById("draw-offer-modal").style.display = "none";
-  }
-
-  if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
-    displayGameOverMessage(data);
-  }
-
-  if (previousSelectedPiece) {
-    SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
-    if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
-      IS_SELECTED = true;
-      server_get_possible_moves(SELECTED_PIECE, function(moves) {
-        possibleMoves = moves;
-      });
+    if (data.draw_offer && data.draw_offer !== null) {
+        if (data.draw_offer !== user_color) {
+            let modal = document.getElementById("draw-offer-modal");
+            modal.style.display = "block";
+        }
     } else {
-      IS_SELECTED = false;
-      SELECTED_PIECE = null;
-      possibleMoves = [];
+        document.getElementById("draw-offer-modal").style.display = "none";
     }
-  }
 
-  if (data.move_history) {
-    updateMovesList(data.move_history);
-  }
+    if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
+        displayGameOverMessage(data);
+    }
+
+    if (previousSelectedPiece) {
+        SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
+        if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
+            IS_SELECTED = true;
+            server_get_possible_moves(SELECTED_PIECE, function(moves) {
+                possibleMoves = moves;
+            });
+        } else {
+            IS_SELECTED = false;
+            SELECTED_PIECE = null;
+            possibleMoves = [];
+        }
+    }
+
+    if (data.move_history) {
+        updateMovesList(data.move_history);
+    }
 }
 
 function updateTimersDisplay(whiteSeconds, blackSeconds) {
@@ -364,11 +367,16 @@ function server_move_request(selected_piece, new_pos) {
   };
 
   if (user_color == "b") {
-    data.selected_piece = translate([selected_piece])[0];
-    data.new_pos = {
-      x: 7 - new_pos.x,
-      y: 7 - new_pos.y
-    };
+    if (selected_piece) {
+      data.selected_piece = translate([selected_piece])[0];
+      data.new_pos = {
+        x: 7 - new_pos.x,
+        y: 7 - new_pos.y
+      };
+    } else {
+      showError('Выбранная фигура не существует.');
+      return;
+    }
   }
 
   fetch('/move', {
@@ -382,7 +390,7 @@ function server_move_request(selected_piece, new_pos) {
   .then(data => {
     if (data.error) {
       showError(data.error);
-      server_update_request(CURRENT_STATUS, pieces);
+      server_update_request();
     } else {
       update_data(data);
       playMoveSound();
@@ -409,20 +417,20 @@ function server_move_request(selected_piece, new_pos) {
 let isUpdating = false;
 
 function server_update_request() {
-    if (isUpdating) return;
-    isUpdating = true;
+    if (isUpdating) return Promise.resolve();
 
     if (!game_id) {
         console.error("game_id не определён.");
-        isUpdating = false;
-        return;
+        return Promise.reject("game_id не определён.");
     }
+
+    isUpdating = true;
 
     let body = {
         game_id: game_id,
     };
 
-    fetch('/update_board', {
+    return fetch('/update_board', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -438,10 +446,14 @@ function server_update_request() {
     .then(data => {
         if (data.error) {
             showError(data.error);
+            if (data.error === "Invalid game ID") {
+                window.location.href = "/";
+            }
+            return Promise.reject(data.error);
         } else {
             update_data(data);
+            return Promise.resolve();
         }
-        isUpdating = false;
     })
     .catch(error => {
         console.error('Ошибка при отправке /update_board:', error);
@@ -450,11 +462,12 @@ function server_update_request() {
         } else {
             showError('Произошла непредвиденная ошибка.');
         }
+        return Promise.reject(error);
+    })
+    .finally(() => {
         isUpdating = false;
     });
 }
-
-
 
 function server_get_possible_moves(selected_piece, callback) {
   let data = {
@@ -464,7 +477,12 @@ function server_get_possible_moves(selected_piece, callback) {
   };
 
   if (user_color == "b") {
-    data.selected_piece = translate([selected_piece])[0];
+    if (selected_piece) {
+      data.selected_piece = translate([selected_piece])[0];
+    } else {
+      showError('Выбранная фигура не существует.');
+      return;
+    }
   }
 
   fetch('/get_possible_moves', {
@@ -481,6 +499,10 @@ function server_get_possible_moves(selected_piece, callback) {
     return response.json();
   })
   .then(data => {
+    if (data.error) {
+      showError(data.error);
+      return;
+    }
     if (user_color == "b") {
       data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
     }
@@ -1005,10 +1027,13 @@ function checkGameStatus() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'no_game') {
+            console.log('Игры нет.');
         } else if (data.status === 'invalid_game_id') {
             console.error('Некорректный game_id. Очистка сессии.');
+            window.location.href = "/";
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
+            window.location.href = "/";
         } else {
         }
     })
@@ -1021,7 +1046,7 @@ let pollingInterval = 1000;
 
 function startPolling() {
     setInterval(() => {
-        server_update_request(CURRENT_STATUS, pieces)
+        server_update_request()
             .then(() => {
                 pollingInterval = 1000; // Сбросить интервал при успешном запросе
             })
