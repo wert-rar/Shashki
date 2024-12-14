@@ -81,6 +81,12 @@ function translate(pieces_data) {
 
 function update_data(data) {
     console.log("Received data from server:", data);
+
+    if (data.error) {
+        showError(data.error);
+        return;
+    }
+
     CURRENT_STATUS = data.status_;
     if (data.white_time !== undefined && data.black_time !== undefined) {
         updateTimersDisplay(data.white_time, data.black_time);
@@ -89,10 +95,17 @@ function update_data(data) {
     let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
     if (currentView === null) {
-        pieces = data.pieces;
-        if (user_color == "b") pieces = translate(pieces);
-        console.log("Updated pieces:", pieces);
+        if (data.pieces) {
+            pieces = data.pieces;
+            if (user_color == "b") pieces = translate(pieces);
+            console.log("Updated pieces:", pieces);
+        } else {
+            console.error("data.pieces is undefined");
+            showError("Получены некорректные данные от сервера.");
+            return;
+        }
     }
+
     document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
   if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
@@ -347,7 +360,6 @@ function server_move_request(selected_piece, new_pos) {
   let data = {
     selected_piece: selected_piece,
     new_pos: new_pos,
-    user_login: user_login,
     game_id: game_id,
   };
 
@@ -396,7 +408,7 @@ function server_move_request(selected_piece, new_pos) {
 
 let isUpdating = false;
 
-function server_update_request(status, pieces) {
+function server_update_request() {
     if (isUpdating) return;
     isUpdating = true;
 
@@ -407,9 +419,6 @@ function server_update_request(status, pieces) {
     }
 
     let body = {
-        status_: status,
-        pieces: pieces,
-        user_login: user_login,
         game_id: game_id,
     };
 
@@ -427,14 +436,24 @@ function server_update_request(status, pieces) {
         return response.json();
     })
     .then(data => {
-        update_data(data);
+        if (data.error) {
+            showError(data.error);
+        } else {
+            update_data(data);
+        }
         isUpdating = false;
     })
     .catch(error => {
         console.error('Ошибка при отправке /update_board:', error);
+        if (error.error) {
+            showError(error.error);
+        } else {
+            showError('Произошла непредвиденная ошибка.');
+        }
         isUpdating = false;
     });
 }
+
 
 
 function server_get_possible_moves(selected_piece, callback) {
