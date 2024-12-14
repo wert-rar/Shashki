@@ -80,18 +80,20 @@ function translate(pieces_data) {
 }
 
 function update_data(data) {
-  CURRENT_STATUS = data.status_;
-  if (data.white_time !== undefined && data.black_time !== undefined) {
-    updateTimersDisplay(data.white_time, data.black_time);
-  }
-  CURRENT_PLAYER = data.current_player;
-  let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
+    console.log("Received data from server:", data);
+    CURRENT_STATUS = data.status_;
+    if (data.white_time !== undefined && data.black_time !== undefined) {
+        updateTimersDisplay(data.white_time, data.black_time);
+    }
+    CURRENT_PLAYER = data.current_player;
+    let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
-  if (currentView === null) {
-    pieces = data.pieces;
-    if (user_color == "b") pieces = translate(pieces);
-  }
-  document.getElementById("status").innerHTML = status[CURRENT_STATUS];
+    if (currentView === null) {
+        pieces = data.pieces;
+        if (user_color == "b") pieces = translate(pieces);
+        console.log("Updated pieces:", pieces);
+    }
+    document.getElementById("status").innerHTML = status[CURRENT_STATUS];
 
   if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
     let gameFoundSound = document.getElementById('sound-game-found');
@@ -395,33 +397,45 @@ function server_move_request(selected_piece, new_pos) {
 let isUpdating = false;
 
 function server_update_request(status, pieces) {
-  if (isUpdating) return;
-  isUpdating = true;
+    if (isUpdating) return;
+    isUpdating = true;
 
-  let body = {
-    status_: status,
-    pieces: pieces,
-    user_login: user_login,
-    game_id: game_id,
-  };
+    if (!game_id) {
+        console.error("game_id не определён.");
+        isUpdating = false;
+        return;
+    }
 
-  fetch('/update_board', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  })
-  .then(response => response.json())
-  .then(data => {
-    update_data(data);
-    isUpdating = false;
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    isUpdating = false;
-  });
+    let body = {
+        status_: status,
+        pieces: pieces,
+        user_login: user_login,
+        game_id: game_id,
+    };
+
+    fetch('/update_board', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(errData => Promise.reject(errData));
+        }
+        return response.json();
+    })
+    .then(data => {
+        update_data(data);
+        isUpdating = false;
+    })
+    .catch(error => {
+        console.error('Ошибка при отправке /update_board:', error);
+        isUpdating = false;
+    });
 }
+
 
 function server_get_possible_moves(selected_piece, callback) {
   let data = {
@@ -962,8 +976,43 @@ function displayProfileModal(profileData) {
   modal.style.display = 'block';
 }
 
+function checkGameStatus() {
+    fetch('/check_game_status', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'no_game') {
+        } else if (data.status === 'invalid_game_id') {
+            console.error('Некорректный game_id. Очистка сессии.');
+        } else if (data.status === 'game_not_found') {
+            console.error('Игра не найдена.');
+        } else {
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при проверке статуса игры:', error);
+    });
+}
+
+let pollingInterval = 1000;
+
 function startPolling() {
-  setInterval(() => server_update_request(CURRENT_STATUS, pieces), 1000);
+    setInterval(() => {
+        server_update_request(CURRENT_STATUS, pieces)
+            .then(() => {
+                pollingInterval = 1000; // Сбросить интервал при успешном запросе
+            })
+            .catch(() => {
+                pollingInterval = Math.min(pollingInterval * 2, 60000); // Увеличить интервал, максимум 60 секунд
+            });
+    }, pollingInterval);
+    if (game_id && user_login) {
+        setInterval(checkGameStatus, 5000); // Каждые 5 секунд
+    }
 }
 
 function onLoad() {
@@ -1053,27 +1102,31 @@ function playDefeatSound() {
 }
 
 function notify_player_loaded() {
-  fetch('/player_loaded', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      game_id: game_id,
-      user_login: user_login
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.error) {
-      console.error('Ошибка при уведомлении о загрузке:', data.error);
-    } else {
-      console.log('Уведомление о загрузке отправлено успешно.');
+    if (typeof game_id === 'undefined' || typeof user_login === 'undefined') {
+        console.error('Переменные game_id или user_login не определены.');
+        return;
     }
-  })
-  .catch(error => {
-    console.error('Ошибка при отправке уведомления о загрузке:', error);
-  });
+    fetch('/player_loaded', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            game_id: game_id,
+            user_login: user_login
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            console.error('Ошибка при уведомлении о загрузке:', data.error);
+        } else {
+            console.log('Уведомление о загрузке отправлено успешно.');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при отправке уведомления о загрузке:', error);
+    });
 }
 
 window.addEventListener('load', onLoad);

@@ -3,6 +3,8 @@ from base import check_user_exists, register_user, authenticate_user, get_user_b
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
 import logging, subprocess, hmac, hashlib, itertools, threading, time
 
+games_lock = threading.Lock()
+
 current_games = {}
 unstarted_games = {}
 completed_games = {}
@@ -202,6 +204,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     dest_x, dest_y = new_pos['x'], new_pos['y']
     color = 0 if current_player == 'w' else 1
 
+    app.logger.debug(f"Validating move from ({x}, {y}) to ({dest_x}, {dest_y}) for player {current_player}")
+
     if game.must_capture_piece:
         valid_moves = get_possible_moves(pieces, color, must_capture_piece=game.must_capture_piece)
     else:
@@ -210,6 +214,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     piece_moves = valid_moves.get((x, y), [])
 
     if not any(move['x'] == dest_x and move['y'] == dest_y for move in piece_moves):
+        app.logger.debug("Move is invalid")
         return {'move_result': 'invalid'}
 
     new_pieces = [piece.copy() for piece in pieces]
@@ -228,6 +233,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 new_pieces.remove(piece_at_square)
                 captured = True
                 captured_pieces.append({'x': current_x, 'y': current_y})
+                app.logger.debug(f"Captured piece at ({current_x}, {current_y})")
                 break
             elif piece_at_square:
                 break
@@ -247,16 +253,18 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                     piece['is_king'] = True
                     piece['mode'] = 'k'
                     promotion_occurred = True
+                    app.logger.debug(f"Piece promoted to king at ({dest_x}, {dest_y})")
             break
 
     if captured:
         capture_moves = can_capture(moved_piece, new_pieces)
         if capture_moves:
             game.must_capture_piece = moved_piece.copy()
+            app.logger.debug("Player must continue capturing")
             return {
                 'move_result': 'continue_capture',
                 'new_pieces': new_pieces,
-                'captured': True,
+                'captured': captured,
                 'captured_pieces': captured_pieces,
                 'multiple_capture': True
             }
@@ -264,6 +272,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
             game.must_capture_piece = None
     else:
         game.must_capture_piece = None
+
+    app.logger.debug(f"Move is valid, promotion occurred: {promotion_occurred}")
 
     return {
         'move_result': 'valid',
@@ -276,12 +286,13 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
 
 
 def remove_game(game_id):
-    if game_id in current_games:
-        completed_games[game_id] = current_games.pop(game_id)
-        app.logger.debug(f"Игра {game_id} перемещена из current_games в completed_games.")
-    elif game_id in unstarted_games:
-        completed_games[game_id] = unstarted_games.pop(game_id)
-        app.logger.debug(f"Игра {game_id} перемещена из unstarted_games в completed_games.")
+    with games_lock:
+        if game_id in current_games:
+            completed_games[game_id] = current_games.pop(game_id)
+            app.logger.debug(f"Игра {game_id} перемещена из current_games в completed_games.")
+        elif game_id in unstarted_games:
+            completed_games[game_id] = unstarted_games.pop(game_id)
+            app.logger.debug(f"Игра {game_id} перемещена из unstarted_games в completed_games.")
 
 
 @app.route("/")
@@ -519,7 +530,7 @@ def check_game_status_route():
     user_login = session.get('user')
 
     if not game_id:
-        return jsonify({"status": "no_game"}), 404
+        return jsonify({"status": "no_game"}), 200
 
     try:
         game_id_int = int(game_id)
@@ -662,13 +673,17 @@ def move():
 def update_board():
     try:
         if not request.is_json:
+            app.logger.debug("Запрос не является JSON.")
             return jsonify({"error": "Request data must be in JSON format"}), 400
 
         data = request.get_json()
+        app.logger.debug(f"Полученные данные: {data}")
+
         game_id = data.get("game_id")
         user_login = session.get('user')
 
         if game_id is None:
+            app.logger.debug("Необходимо поле game_id.")
             return jsonify({"error": "Game ID is required"}), 400
 
         try:
@@ -679,6 +694,7 @@ def update_board():
 
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
         if not game:
+            app.logger.debug(f"Игра с game_id={game_id_int} не найдена.")
             return jsonify({"error": "Invalid game ID"}), 400
 
         user_color = game.user_color(user_login)
@@ -989,12 +1005,15 @@ def player_loaded():
     game_id = data.get('game_id')
     user_login = session.get('user')
 
+    app.logger.debug(f"Получен запрос player_loaded с game_id: {game_id}, user_login: {user_login}")
+
     if not game_id or not user_login:
         return jsonify({"error": "Game ID and user login are required"}), 400
 
     try:
         game_id_int = int(game_id)
     except (ValueError, TypeError):
+        app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
         return jsonify({"error": "Invalid game ID"}), 400
 
     game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)

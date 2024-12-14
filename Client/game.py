@@ -1,5 +1,7 @@
 import itertools, random, time, threading
 
+games_lock = threading.Lock()
+
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
     {"color": 1, "x": 3, "y": 0, "mode": "p"},
@@ -141,11 +143,12 @@ def update_game_with_user(game_id, user_login, color, current_games, unstarted_g
 
 
 def create_new_game(user_login, unstarted_games, current_games):
-    game_id = random.randint(1, 99999999)
-    while game_id in current_games or game_id in unstarted_games:
+    with games_lock:
         game_id = random.randint(1, 99999999)
-    new_game = Game(f_user=user_login, c_user=None, game_id=game_id)
-    unstarted_games[game_id] = new_game
+        while game_id in current_games or game_id in unstarted_games:
+            game_id = random.randint(1, 99999999)
+        new_game = Game(f_user=user_login, c_user=None, game_id=game_id)
+        unstarted_games[game_id] = new_game
     return game_id
 
 
