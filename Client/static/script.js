@@ -1017,9 +1017,6 @@ function checkGameStatus() {
     .then(data => {
         if (data.status === 'no_game') {
             console.log('Игры нет.');
-        } else if (data.status === 'game_not_found') {
-            console.error('Игра не найдена.');
-            window.location.href = "/";
         } else {
         }
     })
