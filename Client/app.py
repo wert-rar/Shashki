@@ -589,8 +589,8 @@ def move():
     user_color = game.user_color(user_login)
 
     if user_color != current_player:
-        logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
-        return jsonify({"error": "Not your turn"}), 403
+        logging.debug(f"User {user_login} attempted to get moves, but it's {current_player}'s turn.")
+        return jsonify({"error": "Not your turn", "not_your_turn": True}), 403
 
     with game.lock:
         result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
@@ -720,6 +720,7 @@ def update_board():
             result_move, points_gained = finalize_game(game, user_login)
             response_data['points_gained'] = points_gained
             response_data['result'] = result_move
+            response_data['game_ended'] = True
 
         return jsonify(response_data)
     except Exception as e:
