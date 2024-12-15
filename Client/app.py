@@ -193,8 +193,6 @@ def finalize_game(game, user_login):
         game.rank_updated = True
 
     remove_game(game.game_id)
-    session.pop('game_id', None)
-    session.pop('color', None)
 
     return result_move, points_gained
 
@@ -460,16 +458,12 @@ def start_game():
         try:
             game_id_int = int(game_id)
         except (ValueError, TypeError):
-            session.pop('game_id', None)
-            session.pop('color', None)
             app.logger.warning(f"Некорректный game_id в сессии: {game_id}")
             game_id_int = None
 
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int) if game_id_int else None
         if game and user_login in [game.f_user, game.c_user]:
             if game.status in ['w3', 'b3', 'n']:
-                session.pop('game_id', None)
-                session.pop('color', None)
 
                 new_game_id = create_new_game(user_login, unstarted_games, current_games)
                 if new_game_id:
