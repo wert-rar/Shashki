@@ -17,6 +17,7 @@ let currentView = null;
 let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
+let gameEnded = false;
 
 let status = {
   w1: "Ход белых",
@@ -156,7 +157,24 @@ function update_data(data) {
     if (data.move_history) {
         updateMovesList(data.move_history);
     }
+
+    if (data.game_ended) {
+      gameEnded = true;
+      stopPolling();
+    }
 }
+
+function stopPolling() {
+    if (window.updateInterval) {
+        clearInterval(window.updateInterval);
+        window.updateInterval = null;
+    }
+    if (window.statusInterval) {
+        clearInterval(window.statusInterval);
+        window.statusInterval = null;
+    }
+}
+
 function updateTimersDisplay(whiteSeconds, blackSeconds) {
   function formatTime(s) {
     let m = Math.floor(s / 60);
@@ -1042,7 +1060,8 @@ function checkGameStatus() {
 let pollingInterval = 1000;
 
 function startPolling() {
-    setInterval(() => {
+    window.updateInterval = setInterval(() => {
+        if (gameEnded) return;
         server_update_request()
             .then(() => {
                 pollingInterval = 1000;
@@ -1051,10 +1070,15 @@ function startPolling() {
                 pollingInterval = Math.min(pollingInterval * 2, 60000);
             });
     }, pollingInterval);
+
     if (game_id && user_login) {
-        setInterval(checkGameStatus, 5000);
+        window.statusInterval = setInterval(() => {
+            if (gameEnded) return;
+            checkGameStatus();
+        }, 5000);
     }
 }
+
 
 function onLoad() {
   CANVAS = document.getElementById("board");
