@@ -17,8 +17,6 @@ let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
 
-let invalidGameIdErrorShown = false;
-
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -83,14 +81,6 @@ function translate(pieces_data) {
 
 function update_data(data) {
     console.log("Received data from server:", data);
-
-    if (data.error) {
-        showError(data.error);
-        if (data.error === "Invalid game ID") {
-            window.location.href = "/";
-        }
-        return;
-    }
 
     CURRENT_STATUS = data.status_;
     if (data.white_time !== undefined && data.black_time !== undefined) {
@@ -447,14 +437,7 @@ function server_update_request() {
     })
     .then(data => {
         if (data.error) {
-            if (data.error === "Invalid game ID") {
-                if (!invalidGameIdErrorShown) {
-                    showError(data.error);
-                    invalidGameIdErrorShown = true;
-                }
-            } else {
-                showError(data.error);
-            }
+            showError(data.error);
             return Promise.reject(data.error);
         } else {
             update_data(data);
@@ -465,15 +448,6 @@ function server_update_request() {
         console.error('Ошибка при отправке /update_board:', error);
         if (error.error) {
             showError(error.error);
-        } else if (typeof error === "string") {
-            if (error === "Invalid game ID") {
-                if (!invalidGameIdErrorShown) {
-                    showError(error);
-                    invalidGameIdErrorShown = true;
-                }
-            } else {
-                showError(error);
-            }
         } else {
             showError('Произошла непредвиденная ошибка.');
         }
@@ -1043,9 +1017,6 @@ function checkGameStatus() {
     .then(data => {
         if (data.status === 'no_game') {
             console.log('Игры нет.');
-        } else if (data.status === 'invalid_game_id') {
-            console.error('Некорректный game_id. Очистка сессии.');
-            window.location.href = "/";
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
             window.location.href = "/";
