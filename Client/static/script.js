@@ -442,7 +442,7 @@ function server_update_request() {
     .then(data => {
         if (data.error) {
             showError(data.error);
-            return Promise.reject(data.error);
+            return Promise.resolve();
         } else {
             update_data(data);
             return Promise.resolve();
@@ -1029,10 +1029,8 @@ function checkGameStatus() {
             console.log('Игры нет.');
         } else if (data.status === 'invalid_game_id') {
             console.error('Некорректный game_id. Очистка сессии.');
-            window.location.href = "/";
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
-            window.location.href = "/";
         } else {
         }
     })
