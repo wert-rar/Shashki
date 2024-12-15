@@ -981,23 +981,46 @@ def webhook():
     except subprocess.CalledProcessError as e:
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
-@app.route("/start_singleplayer")
-def start_singleplayer():
-    user_login = session.get('user')
-    if not user_login:
-        with ghost_lock:
-            ghost_num = next(ghost_counter)
-            ghost_username = f"ghost{ghost_num}"
-        session['user'] = ghost_username
-        session['is_ghost'] = True
-    else:
-        session['is_ghost'] = False
-    return redirect(url_for('singleplayer', username=session['user']))
-
-@app.route("/singleplayer/<username>")
-def singleplayer(username):
+@app.route("/singleplayer_easy/<username>")
+def singleplayer_easy(username):
     is_ghost = session.get('is_ghost', False)
-    return render_template("singleplayer.html", username=username, is_ghost=is_ghost)
+    return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost)
+
+@app.route("/singleplayer_medium/<username>")
+def singleplayer_medium_route(username):
+    is_ghost = session.get('is_ghost', False)
+    return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost)
+
+@app.route("/singleplayer_hard/<username>")
+def singleplayer_hard(username):
+    is_ghost = session.get('is_ghost', False)
+    return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost)
+
+@app.route("/start_singleplayer", methods=["GET", "POST"])
+def start_singleplayer():
+    if request.method == "POST":
+        difficulty = request.form.get("difficulty")
+        user_login = session.get('user')
+        if not user_login:
+            with ghost_lock:
+                ghost_num = next(ghost_counter)
+                ghost_username = f"ghost{ghost_num}"
+            session['user'] = ghost_username
+            session['is_ghost'] = True
+        else:
+            session['is_ghost'] = False
+
+        if difficulty == "easy":
+            return redirect(url_for('singleplayer_easy', username=session['user']))
+        elif difficulty == "medium":
+            return redirect(url_for('singleplayer_medium_route', username=session['user']))
+        elif difficulty == "hard":
+            return redirect(url_for('singleplayer_hard', username=session['user']))
+        else:
+            flash('Неизвестная сложность', 'error')
+            return redirect(url_for('home'))
+    else:
+        return redirect(url_for('home'))
 
 @app.route('/player_loaded', methods=['POST'])
 def player_loaded():
@@ -1035,7 +1058,6 @@ def player_loaded():
 @app.route('/favicon.ico')
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
-
 
 
 if __name__ == "__main__":

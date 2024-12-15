@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Игра в шашки - Одиночная (Средняя)</title>
+    <link rel="preload" href="/static/favicon.ico" as="image">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/static/styles_singleplayer.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <span class="status" id="status">Ход белых</span>
+        <div id="history-view-container" style="display:none;">
+            <span class="history-view-label" style="display:none;" id="history-view-label">Просмотр истории ходов</span>
+            <button id="history-view-button" class="history-view-button" style="display:none;" onclick="returnToCurrentState()">Вернуться к текущему состоянию</button>
+        </div>
+    </div>
+
+    <div class="board-container">
+        <canvas id="board"></canvas>
+    </div>
+
+    <div class="sidebar">
+        <h2>Меню</h2>
+        <button id="give-up-button" onclick="give_up()">Сдаться</button>
+    </div>
+
+    <div class="moves-sidebar">
+        <h2>Ходы игроков</h2>
+        <div class="moves-container">
+            <ul class="moves-list"></ul>
+        </div>
+    </div>
+
+    <div id="surrender-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Подтверждение сдачи</h2>
+            <p>Вы уверены, что хотите сдаться? Это будет считаться поражением.</p>
+            <button onclick="confirmSurrender()">Сдаться</button>
+            <button onclick="closeModal('surrender-modal')">Отмена</button>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="game-over-title">Игра окончена</h2>
+            <p id="game-over-message"></p>
+            <button onclick="returnToMainMenu()">Главное меню</button>
+            <button onclick="newGame()">Новая игра</button>
+        </div>
+    </div>
+    <script>
+        window.username = "{{ username }}";
+        window.is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
+    </script>
+    <script src="/static/singleplayer_medium.js"></script>
+</body>
+</html>

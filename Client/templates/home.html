@@ -35,7 +35,7 @@
 
         .container {
             position: relative;
-            background: rgb(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.85);
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             text-align: center;
@@ -96,6 +96,7 @@
             position: relative;
             overflow: hidden;
             z-index: 2;
+            transition: background-color 0.3s, transform 0.3s;
         }
 
         .button:before {
@@ -112,6 +113,11 @@
 
         .button:hover:before {
             left: 0;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
         }
 
         .navigation-menu {
@@ -166,6 +172,7 @@
             color: #e0e0e0;
             position: relative;
             z-index: 2;
+            transition: background 0.3s;
         }
 
         .message li:hover {
@@ -221,12 +228,11 @@
             z-index: 2;
         }
 
-        #return-to-game .leave-button {
+        #return-to-game .button.leave-button {
             background-color: #f44336;
-            z-index: 2;
         }
 
-        #return-to-game .leave-button:hover {
+        #return-to-game .button.leave-button:hover {
             background-color: #d32f2f;
         }
 
@@ -257,7 +263,7 @@
         }
 
         .modal-content {
-            background: rgba(0, 0, 0, 1);
+            background: rgba(0, 0, 0, 0.85);
             padding: 30px;
             border-radius: 20px;
             text-align: center;
@@ -297,12 +303,11 @@
             z-index: 4;
         }
 
-        #leave-game-modal .confirm-button {
+        #leave-game-modal .button.confirm-button {
             background-color: #f44336;
-            z-index: 4;
         }
 
-        #leave-game-modal .confirm-button:hover {
+        #leave-game-modal .button.confirm-button:hover {
             background-color: #d32f2f;
         }
 
@@ -328,9 +333,105 @@
                 opacity: 0;
             }
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content.difficulty-modal {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        .close {
+            color: #aaa;
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .difficulty-button {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 10px auto;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            border-radius: 30px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s, transform 0.3s;
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+        }
+
+        .difficulty-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: left 0.3s;
+            z-index: -1;
+        }
+
+        .difficulty-button:hover:before {
+            left: 0;
+        }
+
+        .difficulty-button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 600px) {
+            .button, .difficulty-button {
+                width: 90%;
+                max-width: 250px;
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
+
+    <div id="difficultyModal" class="modal">
+        <div class="modal-content difficulty-modal">
+            <span class="close" id="closeModal">&times;</span>
+            <h2>Выберите сложность бота</h2>
+            <form method="POST" action="/start_singleplayer">
+                <button type="submit" name="difficulty" value="easy" class="difficulty-button">Легкая</button>
+                <button type="submit" name="difficulty" value="medium" class="difficulty-button">Средняя</button>
+                <button type="submit" name="difficulty" value="hard" class="difficulty-button">Тяжелая</button>
+            </form>
+        </div>
+    </div>
     <nav>
         <div class="navigation-menu">
             {% if 'user' in session and user_is_registered %}
@@ -344,7 +445,7 @@
 
     <div class="container">
         <h1>Добро пожаловать в игру!</h1>
-        <button class="button" onclick="startSingleGame()">Одиночная игра</button>
+        <button class="button" id="singleplayer-button">Одиночная игра</button>
         <button class="button" onclick="startMultiplayerGame()">Сетевая игра</button>
     </div>
 
@@ -378,9 +479,22 @@
     <script>
         var user_login = "{{ session['user'] if 'user' in session else '' }}";
         var game_id = "{{ session['game_id'] if 'game_id' in session else '' }}";
+        var modal = document.getElementById("difficultyModal");
+        var btn = document.getElementById("singleplayer-button");
+        var span = document.getElementById("closeModal");
 
-        function startSingleGame() {
-            window.location.href = '/start_singleplayer';
+        btn.onclick = function() {
+            modal.style.display = "flex";
+        }
+
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
         }
 
         function startMultiplayerGame() {
