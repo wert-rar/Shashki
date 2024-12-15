@@ -6,11 +6,10 @@
     <link rel="preload" href="/static/favicon.ico" as="image">
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body onload="onLoad()">
-
+<body>
     <div class="header">
         <div class="timers">
             <div class="timer-container">
@@ -24,27 +23,22 @@
             </div>
         </div>
     </div>
-
     <div class="board-container">
         <canvas id="board"></canvas>
     </div>
-
     <audio id="sound-game-found" src="{{ url_for('static', filename='sounds/game_found.mp3') }}" preload="auto"></audio>
     <audio id="sound-move" src="{{ url_for('static', filename='sounds/move.mp3') }}" preload="auto"></audio>
     <audio id="sound-victory" src="{{ url_for('static', filename='sounds/victory.mp3') }}" preload="auto"></audio>
     <audio id="sound-defeat" src="{{ url_for('static', filename='sounds/defeat.mp3') }}" preload="auto"></audio>
-
     <div class="sidebar">
         <h2>Меню</h2>
         <button id="give-up-button" onclick="give_up()">Сдаться</button>
         <button id="give-draw-button" onclick="give_draw()">Предложить ничью</button>
     </div>
-
     <div id="history-view-indicator" class="history-indicator" style="display: none;">
         <span>Просмотр истории ходов</span>
         <button onclick="returnToCurrentView()">Вернуться к текущему состоянию</button>
     </div>
-
     <div id="surrender-modal" class="modal">
         <div class="modal-content">
             <h2>Подтверждение сдачи</h2>
@@ -53,7 +47,6 @@
             <button onclick="closeModal('surrender-modal')">Отмена</button>
         </div>
     </div>
-
     <div id="offer-draw-modal" class="modal">
         <div class="modal-content">
             <h2>Предложение ничьей</h2>
@@ -62,7 +55,6 @@
             <button onclick="closeModal('offer-draw-modal')">Отмена</button>
         </div>
     </div>
-
     <div id="profile-modal" class="modal">
         <div class="modal-content">
             <h2>Профиль игрока</h2>
@@ -75,14 +67,12 @@
             <button onclick="closeModal('profile-modal')">Закрыть</button>
         </div>
     </div>
-
     <div class="moves-sidebar">
         <h2>Ходы игроков</h2>
         <div class="moves-container">
             <ul class="moves-list"></ul>
         </div>
     </div>
-
     <div id="game-over-modal" class="modal">
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
@@ -90,7 +80,6 @@
             <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
         </div>
     </div>
-
     <div id="draw-offer-modal" class="modal">
         <div class="modal-content">
             <h2>Предложение ничьей</h2>
@@ -99,14 +88,19 @@
             <button onclick="respond_draw('decline')">Отклонить</button>
         </div>
     </div>
-
+    <div id="context-menu" class="context-menu" style="display:none;">
+        <ul>
+            <li id="view-stats">Просмотреть статистику</li>
+            <li id="go-to-profile">Перейти в профиль</li>
+        </ul>
+    </div>
     <script>
         const user_login = "{{ user_login }}";
-        const game_id = "{{ game_id }}";
+        const game_id = {{ game_id }};
         const user_color = "{{ user_color }}";
         const opponent_login = "{{ opponent_login }}";
         const is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
     </script>
-    <script src="/static/script.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

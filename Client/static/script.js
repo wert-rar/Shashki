@@ -9,6 +9,7 @@ let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
 let LABEL_PADDING = 36;
 let lastMoveCount = 0;
+let CURRENT_PLAYER = null;
 
 let boardStates = [];
 let currentView = null;
@@ -84,9 +85,6 @@ function update_data(data) {
 
     if (data.error) {
         showError(data.error);
-        if (data.error === "Invalid game ID") {
-            window.location.href = "/";
-        }
         return;
     }
 
@@ -94,7 +92,8 @@ function update_data(data) {
     if (data.white_time !== undefined && data.black_time !== undefined) {
         updateTimersDisplay(data.white_time, data.black_time);
     }
-    CURRENT_PLAYER = data.current_player;
+
+    CURRENT_PLAYER = data.current_user || CURRENT_PLAYER;
     let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
     if (currentView === null) {
@@ -143,12 +142,10 @@ function update_data(data) {
     }
 
     if (previousSelectedPiece) {
-        SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
-        if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
+        let currentPiece = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
+        if (currentPiece && currentPiece.color === (user_color === 'w' ? 0 : 1)) {
+            SELECTED_PIECE = currentPiece;
             IS_SELECTED = true;
-            server_get_possible_moves(SELECTED_PIECE, function(moves) {
-                possibleMoves = moves;
-            });
         } else {
             IS_SELECTED = false;
             SELECTED_PIECE = null;
@@ -160,7 +157,6 @@ function update_data(data) {
         updateMovesList(data.move_history);
     }
 }
-
 function updateTimersDisplay(whiteSeconds, blackSeconds) {
   function formatTime(s) {
     let m = Math.floor(s / 60);
@@ -446,9 +442,6 @@ function server_update_request() {
     .then(data => {
         if (data.error) {
             showError(data.error);
-            if (data.error === "Invalid game ID") {
-                window.location.href = "/";
-            }
             return Promise.reject(data.error);
         } else {
             update_data(data);
@@ -470,51 +463,57 @@ function server_update_request() {
 }
 
 function server_get_possible_moves(selected_piece, callback) {
-  let data = {
-    selected_piece: selected_piece,
-    game_id: game_id,
-    user_login: user_login,
-  };
+    let data = {
+        selected_piece: selected_piece,
+        game_id: game_id,
+        user_login: user_login,
+    };
 
-  if (user_color == "b") {
-    if (selected_piece) {
-      data.selected_piece = translate([selected_piece])[0];
-    } else {
-      showError('Выбранная фигура не существует.');
-      return;
-    }
-  }
-
-  fetch('/get_possible_moves', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
-  })
-  .then(response => {
-    if (!response.ok) {
-      return response.json().then(errData => Promise.reject(errData));
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (data.error) {
-      showError(data.error);
-      return;
-    }
     if (user_color == "b") {
-      data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+        if (selected_piece) {
+            data.selected_piece = translate([selected_piece])[0];
+        } else {
+            showError('Выбранная фигура не существует.');
+            return;
+        }
     }
-    callback(data.moves);
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showError(error.error || 'Произошла ошибка при получении возможных ходов.');
-    IS_SELECTED = false;
-    SELECTED_PIECE = null;
-    possibleMoves = [];
-  });
+
+    fetch('/get_possible_moves', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 403) {
+                showNotification('Сейчас не ваш ход.', 'error');
+                throw new Error('Not your turn');
+            }
+            return response.json().then(errData => Promise.reject(errData));
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+            return;
+        }
+        if (user_color == "b") {
+            data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+        }
+        callback(data.moves);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        if (error.message !== 'Not your turn') {
+            showError(error.error || 'Произошла ошибка при получении возможных ходов.');
+        }
+        IS_SELECTED = false;
+        SELECTED_PIECE = null;
+        possibleMoves = [];
+    });
 }
 
 function applyMove(boardState, move) {
@@ -1048,14 +1047,14 @@ function startPolling() {
     setInterval(() => {
         server_update_request()
             .then(() => {
-                pollingInterval = 1000; // Сбросить интервал при успешном запросе
+                pollingInterval = 1000;
             })
             .catch(() => {
-                pollingInterval = Math.min(pollingInterval * 2, 60000); // Увеличить интервал, максимум 60 секунд
+                pollingInterval = Math.min(pollingInterval * 2, 60000);
             });
     }, pollingInterval);
     if (game_id && user_login) {
-        setInterval(checkGameStatus, 5000); // Каждые 5 секунд
+        setInterval(checkGameStatus, 5000);
     }
 }
 

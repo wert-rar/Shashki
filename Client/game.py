@@ -112,7 +112,7 @@ def find_waiting_game(unstarted_games):
 
 
 def update_game_with_user(game_id, user_login, color, current_games, unstarted_games):
-    with threading.Lock():
+    with games_lock:
         game = current_games.get(game_id) or unstarted_games.get(game_id)
         if not game:
             return False
