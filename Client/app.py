@@ -193,6 +193,8 @@ def finalize_game(game, user_login):
         game.rank_updated = True
 
     remove_game(game.game_id)
+    session.pop('game_id', None)
+    session.pop('color', None)
 
     return result_move, points_gained
 
@@ -458,12 +460,16 @@ def start_game():
         try:
             game_id_int = int(game_id)
         except (ValueError, TypeError):
+            session.pop('game_id', None)
+            session.pop('color', None)
             app.logger.warning(f"Некорректный game_id в сессии: {game_id}")
             game_id_int = None
 
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int) if game_id_int else None
         if game and user_login in [game.f_user, game.c_user]:
             if game.status in ['w3', 'b3', 'n']:
+                session.pop('game_id', None)
+                session.pop('color', None)
 
                 new_game_id = create_new_game(user_login, unstarted_games, current_games)
                 if new_game_id:
@@ -583,8 +589,8 @@ def move():
     user_color = game.user_color(user_login)
 
     if user_color != current_player:
-        logging.debug(f"User {user_login} attempted to get moves, but it's {current_player}'s turn.")
-        return jsonify({"error": "Not your turn", "not_your_turn": True}), 403
+        logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
+        return jsonify({"error": "Not your turn"}), 403
 
     with game.lock:
         result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
@@ -676,7 +682,15 @@ def update_board():
         game_id = data.get("game_id")
         user_login = session.get('user')
 
-        game_id_int = int(game_id)
+        if game_id is None:
+            app.logger.debug("Необходимо поле game_id.")
+            return jsonify({"error": "Game ID is required"}), 400
+
+        try:
+            game_id_int = int(game_id)
+        except (ValueError, TypeError):
+            app.logger.warning(f"Некорректный game_id: {game_id}")
+            return jsonify({"error": "Invalid game ID"}), 400
 
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
         if not game:
@@ -706,7 +720,6 @@ def update_board():
             result_move, points_gained = finalize_game(game, user_login)
             response_data['points_gained'] = points_gained
             response_data['result'] = result_move
-            response_data['game_ended'] = True
 
         return jsonify(response_data)
     except Exception as e:
@@ -1011,9 +1024,9 @@ def start_singleplayer():
 
 @app.route('/player_loaded', methods=['POST'])
 def player_loaded():
-    data = request.get_json()
+    data = request.json
     game_id = data.get('game_id')
-    user_login = data.get('user_login')
+    user_login = session.get('user')
 
     app.logger.debug(f"Получен запрос player_loaded с game_id: {game_id}, user_login: {user_login}")
 

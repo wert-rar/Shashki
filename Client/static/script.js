@@ -9,7 +9,6 @@ let CURRENT_STATUS = "w1";
 let SERVER_IP = "";
 let LABEL_PADDING = 36;
 let lastMoveCount = 0;
-let CURRENT_PLAYER = null;
 
 let boardStates = [];
 let currentView = null;
@@ -17,7 +16,6 @@ let currentView = null;
 let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
-let gameEnded = false;
 
 let status = {
   w1: "Ход белых",
@@ -86,6 +84,9 @@ function update_data(data) {
 
     if (data.error) {
         showError(data.error);
+        if (data.error === "Invalid game ID") {
+            window.location.href = "/";
+        }
         return;
     }
 
@@ -93,8 +94,7 @@ function update_data(data) {
     if (data.white_time !== undefined && data.black_time !== undefined) {
         updateTimersDisplay(data.white_time, data.black_time);
     }
-
-    CURRENT_PLAYER = data.current_user || CURRENT_PLAYER;
+    CURRENT_PLAYER = data.current_player;
     let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
     if (currentView === null) {
@@ -143,10 +143,12 @@ function update_data(data) {
     }
 
     if (previousSelectedPiece) {
-        let currentPiece = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
-        if (currentPiece && currentPiece.color === (user_color === 'w' ? 0 : 1)) {
-            SELECTED_PIECE = currentPiece;
+        SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
+        if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
             IS_SELECTED = true;
+            server_get_possible_moves(SELECTED_PIECE, function(moves) {
+                possibleMoves = moves;
+            });
         } else {
             IS_SELECTED = false;
             SELECTED_PIECE = null;
@@ -156,22 +158,6 @@ function update_data(data) {
 
     if (data.move_history) {
         updateMovesList(data.move_history);
-    }
-
-    if (data.game_ended) {
-      gameEnded = true;
-      stopPolling();
-    }
-}
-
-function stopPolling() {
-    if (window.updateInterval) {
-        clearInterval(window.updateInterval);
-        window.updateInterval = null;
-    }
-    if (window.statusInterval) {
-        clearInterval(window.statusInterval);
-        window.statusInterval = null;
     }
 }
 
@@ -245,7 +231,7 @@ function returnToMainMenu() {
   xhr.setRequestHeader("Content-type", "application/json");
   xhr.onreadystatechange = function() {
     if (xhr.readyState === XMLHttpRequest.DONE) {
-      showNotification("Вы покинули игру.");
+      window.location.href = "/";
     }
   };
   xhr.send(JSON.stringify({}));
@@ -459,14 +445,11 @@ function server_update_request() {
     })
     .then(data => {
         if (data.error) {
+            showError(data.error);
             if (data.error === "Invalid game ID") {
-                console.warn("Игра недействительна. Останавливаем опрос...");
-                stopPolling();
-                showNotification("Игра недействительна или уже завершена.", "error");
-            } else {
-                showError(data.error);
+                window.location.href = "/";
             }
-            return Promise.resolve();
+            return Promise.reject(data.error);
         } else {
             update_data(data);
             return Promise.resolve();
@@ -475,13 +458,7 @@ function server_update_request() {
     .catch(error => {
         console.error('Ошибка при отправке /update_board:', error);
         if (error.error) {
-            if (error.error === "Invalid game ID") {
-                console.warn("Игра недействительна. Останавливаем опрос...");
-                stopPolling();
-                showNotification("Игра недействительна или уже завершена.", "error");
-            } else {
-                showError(error.error);
-            }
+            showError(error.error);
         } else {
             showError('Произошла непредвиденная ошибка.');
         }
@@ -492,59 +469,52 @@ function server_update_request() {
     });
 }
 
-
 function server_get_possible_moves(selected_piece, callback) {
-    let data = {
-        selected_piece: selected_piece,
-        game_id: game_id,
-        user_login: user_login,
-    };
+  let data = {
+    selected_piece: selected_piece,
+    game_id: game_id,
+    user_login: user_login,
+  };
 
-    if (user_color == "b") {
-        if (selected_piece) {
-            data.selected_piece = translate([selected_piece])[0];
-        } else {
-            showError('Выбранная фигура не существует.');
-            return;
-        }
+  if (user_color == "b") {
+    if (selected_piece) {
+      data.selected_piece = translate([selected_piece])[0];
+    } else {
+      showError('Выбранная фигура не существует.');
+      return;
     }
+  }
 
-    fetch('/get_possible_moves', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        if (!response.ok) {
-            if (response.status === 403) {
-                showNotification('Сейчас не ваш ход.', 'error');
-                throw new Error('Not your turn');
-            }
-            return response.json().then(errData => Promise.reject(errData));
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.error) {
-            showError(data.error);
-            return;
-        }
-        if (user_color == "b") {
-            data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
-        }
-        callback(data.moves);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        if (error.message !== 'Not your turn') {
-            showError(error.error || 'Произошла ошибка при получении возможных ходов.');
-        }
-        IS_SELECTED = false;
-        SELECTED_PIECE = null;
-        possibleMoves = [];
-    });
+  fetch('/get_possible_moves', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.json().then(errData => Promise.reject(errData));
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (data.error) {
+      showError(data.error);
+      return;
+    }
+    if (user_color == "b") {
+      data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
+    }
+    callback(data.moves);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showError(error.error || 'Произошла ошибка при получении возможных ходов.');
+    IS_SELECTED = false;
+    SELECTED_PIECE = null;
+    possibleMoves = [];
+  });
 }
 
 function applyMove(boardState, move) {
@@ -1060,8 +1030,10 @@ function checkGameStatus() {
             console.log('Игры нет.');
         } else if (data.status === 'invalid_game_id') {
             console.error('Некорректный game_id. Очистка сессии.');
+            window.location.href = "/";
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
+            window.location.href = "/";
         } else {
         }
     })
@@ -1073,25 +1045,19 @@ function checkGameStatus() {
 let pollingInterval = 1000;
 
 function startPolling() {
-    window.updateInterval = setInterval(() => {
-        if (gameEnded) return;
+    setInterval(() => {
         server_update_request()
             .then(() => {
-                pollingInterval = 1000;
+                pollingInterval = 1000; // Сбросить интервал при успешном запросе
             })
             .catch(() => {
-                pollingInterval = Math.min(pollingInterval * 2, 60000);
+                pollingInterval = Math.min(pollingInterval * 2, 60000); // Увеличить интервал, максимум 60 секунд
             });
     }, pollingInterval);
-
     if (game_id && user_login) {
-        window.statusInterval = setInterval(() => {
-            if (gameEnded) return;
-            checkGameStatus();
-        }, 5000);
+        setInterval(checkGameStatus, 5000); // Каждые 5 секунд
     }
 }
-
 
 function onLoad() {
   CANVAS = document.getElementById("board");
