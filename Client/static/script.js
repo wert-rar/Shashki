@@ -227,7 +227,7 @@ function returnToMainMenu() {
   xhr.setRequestHeader("Content-type", "application/json");
   xhr.onreadystatechange = function() {
     if (xhr.readyState === XMLHttpRequest.DONE) {
-      window.location.href = "/";
+      showNotification("Вы покинули игру.");
     }
   };
   xhr.send(JSON.stringify({}));
