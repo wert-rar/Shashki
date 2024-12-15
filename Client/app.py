@@ -676,15 +676,7 @@ def update_board():
         game_id = data.get("game_id")
         user_login = session.get('user')
 
-        if game_id is None:
-            app.logger.debug("Необходимо поле game_id.")
-            return jsonify({"error": "Game ID is required"}), 400
-
-        try:
-            game_id_int = int(game_id)
-        except (ValueError, TypeError):
-            app.logger.warning(f"Некорректный game_id: {game_id}")
-            return jsonify({"error": "Invalid game ID"}), 400
+        game_id_int = int(game_id)
 
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
         if not game:
