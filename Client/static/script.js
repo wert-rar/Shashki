@@ -17,6 +17,8 @@ let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
 
+let invalidGameIdErrorShown = false;
+
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -445,9 +447,13 @@ function server_update_request() {
     })
     .then(data => {
         if (data.error) {
-            showError(data.error);
             if (data.error === "Invalid game ID") {
-                window.location.href = "/";
+                if (!invalidGameIdErrorShown) {
+                    showError(data.error);
+                    invalidGameIdErrorShown = true;
+                }
+            } else {
+                showError(data.error);
             }
             return Promise.reject(data.error);
         } else {
@@ -459,6 +465,15 @@ function server_update_request() {
         console.error('Ошибка при отправке /update_board:', error);
         if (error.error) {
             showError(error.error);
+        } else if (typeof error === "string") {
+            if (error === "Invalid game ID") {
+                if (!invalidGameIdErrorShown) {
+                    showError(error);
+                    invalidGameIdErrorShown = true;
+                }
+            } else {
+                showError(error);
+            }
         } else {
             showError('Произошла непредвиденная ошибка.');
         }
