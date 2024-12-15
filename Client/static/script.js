@@ -459,7 +459,13 @@ function server_update_request() {
     })
     .then(data => {
         if (data.error) {
-            showError(data.error);
+            if (data.error === "Invalid game ID") {
+                console.warn("Игра недействительна. Останавливаем опрос...");
+                stopPolling();
+                showNotification("Игра недействительна или уже завершена.", "error");
+            } else {
+                showError(data.error);
+            }
             return Promise.resolve();
         } else {
             update_data(data);
@@ -469,7 +475,13 @@ function server_update_request() {
     .catch(error => {
         console.error('Ошибка при отправке /update_board:', error);
         if (error.error) {
-            showError(error.error);
+            if (error.error === "Invalid game ID") {
+                console.warn("Игра недействительна. Останавливаем опрос...");
+                stopPolling();
+                showNotification("Игра недействительна или уже завершена.", "error");
+            } else {
+                showError(error.error);
+            }
         } else {
             showError('Произошла непредвиденная ошибка.');
         }
@@ -479,6 +491,7 @@ function server_update_request() {
         isUpdating = false;
     });
 }
+
 
 function server_get_possible_moves(selected_piece, callback) {
     let data = {
