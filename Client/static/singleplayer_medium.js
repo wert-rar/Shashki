@@ -25,24 +25,24 @@ let pieces = [
     {"color":0,"x":6,"y":5,"mode":"p"}
 ];
 
-let current_player='w';
-let must_capture_piece=null;
-let selected_piece=null;
-let possibleMoves=[];
-let movesList=[];
-let game_over=false;
+let current_player = 'w';
+let must_capture_piece = null;
+let selected_piece = null;
+let possibleMoves = [];
+let movesList = [];
+let game_over = false;
 
-let CANVAS,CTX;
-let CELL_SIZE,BOARD_OFFSET_X,BOARD_OFFSET_Y;
-let difficulty='medium';
-let user_color='w';
-let IS_SELECTED=false;
-let colors={1:"rgb(0, 0, 0)",0:"rgb(255, 255, 255)"};
-let b_colors={1:"#971616",0:"#971616"};
-let lastFrom=null,lastTo=null;
-let botFrom=null,botTo=null;
-let selected_pos=null;
-let LABEL_PADDING=36;
+let CANVAS, CTX;
+let CELL_SIZE, BOARD_OFFSET_X, BOARD_OFFSET_Y;
+let difficulty = 'medium';
+let user_color = 'w';
+let IS_SELECTED = false;
+let colors = {1: "rgb(0, 0, 0)", 0: "rgb(255, 255, 255)"};
+let b_colors = {1: "#971616", 0: "#971616"};
+let lastFrom = null, lastTo = null;
+let botFrom = null, botTo = null;
+let selected_pos = null;
+let LABEL_PADDING = 36;
 
 let historyViewMode = false;
 let currentPiecesSnapshot = null;
@@ -50,8 +50,17 @@ let currentPiecesSnapshot = null;
 let username = window.username || "ghost1";
 let is_ghost = window.is_ghost || false;
 
+let moveRepetition = {
+    'w': {},
+    'b': {}
+};
+
 function copyPieces(pcs) {
     return pcs.map(p => ({...p}));
+}
+
+function serializeMove(move) {
+    return `${move.from.x},${move.from.y}->${move.to.x},${move.to.y}`;
 }
 
 function saveGameState() {
@@ -66,7 +75,8 @@ function saveGameState() {
         botFrom,
         botTo,
         user_color,
-        movesList
+        movesList,
+        moveRepetition
     };
     localStorage.setItem('checkers_game_state', JSON.stringify(state));
 }
@@ -86,6 +96,7 @@ function loadGameState() {
         botTo = state.botTo;
         user_color = state.user_color || 'w';
         movesList = state.movesList || [];
+        moveRepetition = state.moveRepetition || { 'w': {}, 'b': {} };
 
         document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
         restoreMovesHistory();
@@ -295,14 +306,23 @@ function switchTurn(){
 
 function isGameOver(){
     if(game_over) return true;
+
+    let allKings = pieces.every(p => p.is_king);
+    if(allKings) {
+        endGame('draw_kings');
+        return true;
+    }
+
     let color = (current_player === 'w' ? 0 : 1);
     let moves = get_possible_moves(pieces, color, must_capture_piece);
     let canMove = false;
     for(let k in moves){ if(moves[k].length > 0){ canMove = true; break; } }
     if(!canMove) return true;
+
     let opponentColor = current_player === 'w' ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
     if(oppPieces.length === 0) return true;
+
     return false;
 }
 
@@ -319,6 +339,9 @@ function endGame(forceStatus = null){
     if(forceStatus){
         if(forceStatus === 'w3') msg = 'Победили белые!';
         else if(forceStatus === 'b3') msg = 'Победили черные!';
+        else if(forceStatus === 'draw_kings') msg = 'Ничья: На поле остались только дамки.';
+        else if(forceStatus === 'draw_repetition') msg = 'Ничья: Ходы повторяются более 3 раз.';
+        else if(forceStatus === 'lose_repetition') msg = `Победили ${current_player === 'w' ? 'черные' : 'белые'}! Игрок ${current_player === 'w' ? 'белые' : 'черные'} повторял ходы.`;
         else msg = 'Ничья!';
     } else {
         if(oppPieces.length === 0){
@@ -357,6 +380,19 @@ function confirmSurrender(){
 
 function afterPlayerMove(result){
     addMoveToHistory(result, true);
+
+    let moveStr = serializeMove({from: lastFrom, to: lastTo});
+    if(moveRepetition['w'][moveStr]){
+        moveRepetition['w'][moveStr] += 1;
+    } else {
+        moveRepetition['w'][moveStr] = 1;
+    }
+
+    if(moveRepetition['w'][moveStr] > 3){
+        endGame('lose_repetition');
+        return;
+    }
+
     if(isGameOver()){ endGame(); return; }
     if(result.move_result === 'continue_capture'){
         must_capture_piece = result.newMustCapture;
@@ -373,6 +409,19 @@ function afterPlayerMove(result){
 
 function afterBotMove(result){
     addMoveToHistory(result, false);
+
+    let moveStr = serializeMove({from: botFrom, to: botTo});
+    if(moveRepetition['b'][moveStr]){
+        moveRepetition['b'][moveStr] += 1;
+    } else {
+        moveRepetition['b'][moveStr] = 1;
+    }
+
+    if(moveRepetition['b'][moveStr] > 3){
+        endGame('lose_repetition');
+        return;
+    }
+
     if(isGameOver()){ endGame(); return; }
     if(result.move_result === 'continue_capture'){
         must_capture_piece = result.newMustCapture;
@@ -441,7 +490,7 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
     }
 
     let value = maximizingPlayer ? -Infinity : Infinity;
-    let bestMove = null;
+    let bestMoves = [];
 
     for (let move of moves) {
         let pcsCopy = pcs.map(p => ({...p}));
@@ -449,52 +498,45 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
         let nextMustCapture = res.newMustCapture;
         let nextPlayer = maximizingPlayer;
 
+        let result;
         if (res.move_result === 'continue_capture') {
-            let result = minimax(res.newPcs, depth - 1, alpha, beta, nextPlayer, nextMustCapture);
-
-            if (maximizingPlayer) {
-                if (result.score > value) {
-                    value = result.score;
-                    bestMove = move;
-                }
-                alpha = Math.max(alpha, value);
-                if (alpha >= beta) break;
-            } else {
-                if (result.score < value) {
-                    value = result.score;
-                    bestMove = move;
-                }
-                beta = Math.min(beta, value);
-                if (beta <= alpha) break;
-            }
-
+            result = minimax(res.newPcs, depth - 1, alpha, beta, nextPlayer, nextMustCapture);
         } else {
-            let result = minimax(res.newPcs, depth - 1, alpha, beta, !maximizingPlayer, null);
+            result = minimax(res.newPcs, depth - 1, alpha, beta, !maximizingPlayer, null);
+        }
 
-            if (maximizingPlayer) {
-                if (result.score > value) {
-                    value = result.score;
-                    bestMove = move;
-                }
-                alpha = Math.max(alpha, value);
-                if (alpha >= beta) break;
-            } else {
-                if (result.score < value) {
-                    value = result.score;
-                    bestMove = move;
-                }
-                beta = Math.min(beta, value);
-                if (beta <= alpha) break;
+        if (maximizingPlayer) {
+            if (result.score > value) {
+                value = result.score;
+                bestMoves = [move];
+            } else if (result.score === value) {
+                bestMoves.push(move);
             }
+            alpha = Math.max(alpha, value);
+            if (alpha >= beta) break;
+        } else {
+            if (result.score < value) {
+                value = result.score;
+                bestMoves = [move];
+            } else if (result.score === value) {
+                bestMoves.push(move);
+            }
+            beta = Math.min(beta, value);
+            if (beta <= alpha) break;
         }
     }
 
-    return {score: value, move: bestMove};
+    let chosenMove = null;
+    if (bestMoves.length > 0) {
+        chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+
+    return {score: value, move: chosenMove};
 }
 
 function makeBotMove() {
     if (current_player !== 'b' || game_over) return;
-    let depth = 3;
+    let depth = 4;
     let result = minimax(pieces.map(p => ({...p})), depth, -Infinity, Infinity, true, must_capture_piece);
     let chosen_move = result.move;
     if (!chosen_move) {

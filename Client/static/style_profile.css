@@ -1,5 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: #FFF;
+    user-select: none;
+    pointer-events: none;
+    z-index: 5;
+    font-size: 1em;
+    opacity: 0.8;
+    animation: fall linear infinite;
+}
 
+@keyframes fall {
+    to {
+        transform: translateY(100vh);
+        opacity: 0;
+    }
+}
 :root {
     --primary-color: #3498db;
     --secondary-color: #2ecc71;
@@ -37,8 +54,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow-y: auto;
     position: relative;
+    overflow: hidden;
 }
 
 .container {
@@ -51,11 +68,6 @@ body {
     max-width: var(--container-max-width);
     transition: box-shadow var(--transition-speed), background-color var(--transition-speed);
     overflow: hidden;
-}
-
-.container:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
-    background-color: rgba(0, 0, 0, 0.9);
 }
 
 h1 {
@@ -73,7 +85,6 @@ h1::after {
     background: var(--primary-color);
     left: 50%;
     bottom: -10px;
-    transform: translateX(-50%);
     border-radius: 2px;
 }
 
@@ -129,11 +140,6 @@ h1::after {
     transition: transform var(--transition-speed), box-shadow var(--transition-speed);
     flex: 1 1 120px;
     position: relative;
-}
-
-.stat:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(52, 152, 219, 0.6);
 }
 
 .stat p {

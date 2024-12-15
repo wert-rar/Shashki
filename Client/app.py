@@ -1,11 +1,9 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
 from base import check_user_exists, register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
 from game import find_waiting_game, update_game_with_user, get_game_status, create_new_game
-import logging
-import subprocess
-import hmac, hashlib
-import itertools
-import threading
+import logging, subprocess, hmac, hashlib, itertools, threading, time
+
+games_lock = threading.Lock()
 
 current_games = {}
 unstarted_games = {}
@@ -173,17 +171,25 @@ def finalize_game(game, user_login):
 
     if not getattr(game, 'rank_updated', False):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
-        if result_move == 'win':
-            update_user_rank(user_login, points_gained)
-            update_user_stats(user_login, wins=1)
-            update_user_stats(opponent_login, losses=1)
-        elif result_move == 'lose':
-            update_user_stats(user_login, losses=1)
-        elif result_move == 'draw':
-            update_user_rank(user_login, points_gained)
-            update_user_rank(opponent_login, points_gained)
-            update_user_stats(user_login, draws=1)
-            update_user_stats(opponent_login, draws=1)
+        user_is_ghost = user_login.startswith('ghost')
+        opponent_is_ghost = opponent_login.startswith('ghost')
+
+        if not user_is_ghost:
+            if result_move == 'win':
+                update_user_rank(user_login, points_gained)
+                update_user_stats(user_login, wins=1)
+                if not opponent_is_ghost:
+                    update_user_stats(opponent_login, losses=1)
+            elif result_move == 'lose':
+                update_user_stats(user_login, losses=1)
+            elif result_move == 'draw':
+                update_user_rank(user_login, points_gained)
+                if not opponent_is_ghost:
+                    update_user_rank(opponent_login, points_gained)
+                update_user_stats(user_login, draws=1)
+                if not opponent_is_ghost:
+                    update_user_stats(opponent_login, draws=1)
+
         game.rank_updated = True
 
     remove_game(game.game_id)
@@ -198,6 +204,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     dest_x, dest_y = new_pos['x'], new_pos['y']
     color = 0 if current_player == 'w' else 1
 
+    app.logger.debug(f"Validating move from ({x}, {y}) to ({dest_x}, {dest_y}) for player {current_player}")
+
     if game.must_capture_piece:
         valid_moves = get_possible_moves(pieces, color, must_capture_piece=game.must_capture_piece)
     else:
@@ -206,6 +214,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     piece_moves = valid_moves.get((x, y), [])
 
     if not any(move['x'] == dest_x and move['y'] == dest_y for move in piece_moves):
+        app.logger.debug("Move is invalid")
         return {'move_result': 'invalid'}
 
     new_pieces = [piece.copy() for piece in pieces]
@@ -224,6 +233,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 new_pieces.remove(piece_at_square)
                 captured = True
                 captured_pieces.append({'x': current_x, 'y': current_y})
+                app.logger.debug(f"Captured piece at ({current_x}, {current_y})")
                 break
             elif piece_at_square:
                 break
@@ -243,16 +253,18 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                     piece['is_king'] = True
                     piece['mode'] = 'k'
                     promotion_occurred = True
+                    app.logger.debug(f"Piece promoted to king at ({dest_x}, {dest_y})")
             break
 
     if captured:
         capture_moves = can_capture(moved_piece, new_pieces)
         if capture_moves:
             game.must_capture_piece = moved_piece.copy()
+            app.logger.debug("Player must continue capturing")
             return {
                 'move_result': 'continue_capture',
                 'new_pieces': new_pieces,
-                'captured': True,
+                'captured': captured,
                 'captured_pieces': captured_pieces,
                 'multiple_capture': True
             }
@@ -260,6 +272,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
             game.must_capture_piece = None
     else:
         game.must_capture_piece = None
+
+    app.logger.debug(f"Move is valid, promotion occurred: {promotion_occurred}")
 
     return {
         'move_result': 'valid',
@@ -272,12 +286,13 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
 
 
 def remove_game(game_id):
-    if game_id in current_games:
-        completed_games[game_id] = current_games.pop(game_id)
-        app.logger.debug(f"Игра {game_id} перемещена из current_games в completed_games.")
-    elif game_id in unstarted_games:
-        completed_games[game_id] = unstarted_games.pop(game_id)
-        app.logger.debug(f"Игра {game_id} перемещена из unstarted_games в completed_games.")
+    with games_lock:
+        if game_id in current_games:
+            completed_games[game_id] = current_games.pop(game_id)
+            app.logger.debug(f"Игра {game_id} перемещена из current_games в completed_games.")
+        elif game_id in unstarted_games:
+            completed_games[game_id] = unstarted_games.pop(game_id)
+            app.logger.debug(f"Игра {game_id} перемещена из unstarted_games в completed_games.")
 
 
 @app.route("/")
@@ -321,16 +336,17 @@ def register():
         user_login = request.form['login']
         user_password = request.form['password']
 
-        if user_login.startswith('ghost'):
-            session['flash'] = 'Невозможно использовать имя, начинающееся с ghost.'
+        if user_login.lower().startswith('ghost'):
+            flash('Невозможно использовать имя, начинающееся с ghost.', 'error')
             return redirect(url_for('register'))
 
         if not check_user_exists(user_login):
             register_user(user_login, user_password)
-            session['flash'] = 'Пользователь успешно зарегистрирован!'
+            flash('Пользователь успешно зарегистрирован!', 'success')
             return redirect(url_for('login'))
         else:
-            session['flash'] = 'Такой пользователь уже зарегистрирован!'
+            flash('Такой пользователь уже зарегистрирован!', 'error')
+            return redirect(url_for('register'))
 
     return render_template('register.html')
 
@@ -344,14 +360,14 @@ def login():
         user = authenticate_user(user_login, user_password)
 
         if user:
-            session['flash'] = 'Успешный вход!'
             session['user'] = user_login
+            flash('Успешный вход!', 'success')
             return redirect(url_for('home'))
         else:
-            session['flash'] = 'Неправильное имя пользователя или пароль.'
+            flash('Неправильное имя пользователя или пароль.', 'error')
+            return redirect(url_for('login'))
 
     return render_template('login.html')
-
 
 @app.route('/profile/<username>')
 def profile(username):
@@ -428,8 +444,16 @@ def internal_server_error(e):
 @app.route('/start_game')
 def start_game():
     user_login = session.get('user')
-    if not user_login or user_login.startswith('ghost'):
-        return redirect(url_for('login'))
+    if not user_login:
+        with ghost_lock:
+            ghost_num = next(ghost_counter)
+            ghost_username = f"ghost{ghost_num}"
+        session['user'] = ghost_username
+        session['is_ghost'] = True
+    elif user_login.startswith('ghost'):
+        session['is_ghost'] = True
+    else:
+        session['is_ghost'] = False
 
     game_id = session.get('game_id')
     if game_id:
@@ -506,7 +530,7 @@ def check_game_status_route():
     user_login = session.get('user')
 
     if not game_id:
-        return jsonify({"status": "no_game"}), 404
+        return jsonify({"status": "no_game"}), 200
 
     try:
         game_id_int = int(game_id)
@@ -547,7 +571,7 @@ def move():
     game_id = data.get("game_id")
     user_login = session.get('user')
 
-    if game_id is None:
+    if not game_id:
         return jsonify({"error": "Game ID is required"}), 400
 
     try:
@@ -556,7 +580,7 @@ def move():
         return jsonify({"error": "Invalid game ID"}), 400
 
     game = current_games.get(game_id_int)
-    if game is None:
+    if not game:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
         abort(403)
@@ -649,13 +673,17 @@ def move():
 def update_board():
     try:
         if not request.is_json:
+            app.logger.debug("Запрос не является JSON.")
             return jsonify({"error": "Request data must be in JSON format"}), 400
 
         data = request.get_json()
+        app.logger.debug(f"Полученные данные: {data}")
+
         game_id = data.get("game_id")
         user_login = session.get('user')
 
         if game_id is None:
+            app.logger.debug("Необходимо поле game_id.")
             return jsonify({"error": "Game ID is required"}), 400
 
         try:
@@ -666,6 +694,7 @@ def update_board():
 
         game = current_games.get(game_id_int) or completed_games.get(game_id_int) or unstarted_games.get(game_id_int)
         if not game:
+            app.logger.debug(f"Игра с game_id={game_id_int} не найдена.")
             return jsonify({"error": "Invalid game ID"}), 400
 
         user_color = game.user_color(user_login)
@@ -722,11 +751,10 @@ def give_up_route():
 
         user_color = 'w' if user_login == game.f_user else 'b'
 
-        # Устанавливаем статус игры в зависимости от того, кто сдается
         if user_color == 'w':
-            game.status = 'b3'  # Черные выигрывают
+            game.status = 'b3'
         else:
-            game.status = 'w3'  # Белые выигрывают
+            game.status = 'w3'
 
         result_move, points_gained = finalize_game(game, user_login)
         response = {
@@ -911,8 +939,10 @@ def get_possible_moves_route():
     return jsonify({"moves": moves})
 
 
-@app.route('/api/profile/<username>')
+@app.route('/api/profile/<username>', methods=['GET'])
 def api_profile(username):
+    if username.startswith('ghost'):
+        return jsonify({"error": "Профиль не доступен"}), 403
     user = get_user_by_login(username)
     if user:
         return jsonify({
@@ -924,7 +954,7 @@ def api_profile(username):
             "total_games": user['wins'] + user['losses'] + user['draws']
         })
     else:
-        return jsonify({"error": "User not found"}), 404
+        return jsonify({"error": "Пользователь не найден"}), 404
 
 
 @app.route('/hook', methods=['POST'])
@@ -951,25 +981,83 @@ def webhook():
     except subprocess.CalledProcessError as e:
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
-@app.route("/start_singleplayer")
-def start_singleplayer():
-    user_login = session.get('user')
-    if not user_login:
-        with ghost_lock:
-            ghost_num = next(ghost_counter)
-            ghost_username = f"ghost{ghost_num}"
-        # Assign ghost username to the session
-        session['user'] = ghost_username
-        session['is_ghost'] = True  # Flag to identify ghost users
-    else:
-        session['is_ghost'] = False  # Existing logged-in user
-    return redirect(url_for('singleplayer', username=session['user']))
-
-@app.route("/singleplayer/<username>")
-def singleplayer(username):
-    # If the user is a ghost, set up the game against a bot
+@app.route("/singleplayer_easy/<username>")
+def singleplayer_easy(username):
     is_ghost = session.get('is_ghost', False)
-    return render_template("singleplayer.html", username=username, is_ghost=is_ghost)
+    return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost)
+
+@app.route("/singleplayer_medium/<username>")
+def singleplayer_medium_route(username):
+    is_ghost = session.get('is_ghost', False)
+    return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost)
+
+@app.route("/singleplayer_hard/<username>")
+def singleplayer_hard(username):
+    is_ghost = session.get('is_ghost', False)
+    return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost)
+
+@app.route("/start_singleplayer", methods=["GET", "POST"])
+def start_singleplayer():
+    if request.method == "POST":
+        difficulty = request.form.get("difficulty")
+        user_login = session.get('user')
+        if not user_login:
+            with ghost_lock:
+                ghost_num = next(ghost_counter)
+                ghost_username = f"ghost{ghost_num}"
+            session['user'] = ghost_username
+            session['is_ghost'] = True
+        else:
+            session['is_ghost'] = False
+
+        if difficulty == "easy":
+            return redirect(url_for('singleplayer_easy', username=session['user']))
+        elif difficulty == "medium":
+            return redirect(url_for('singleplayer_medium_route', username=session['user']))
+        elif difficulty == "hard":
+            return redirect(url_for('singleplayer_hard', username=session['user']))
+        else:
+            flash('Неизвестная сложность', 'error')
+            return redirect(url_for('home'))
+    else:
+        return redirect(url_for('home'))
+
+@app.route('/player_loaded', methods=['POST'])
+def player_loaded():
+    data = request.json
+    game_id = data.get('game_id')
+    user_login = session.get('user')
+
+    app.logger.debug(f"Получен запрос player_loaded с game_id: {game_id}, user_login: {user_login}")
+
+    if not game_id or not user_login:
+        return jsonify({"error": "Game ID and user login are required"}), 400
+
+    try:
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
+        return jsonify({"error": "Invalid game ID"}), 400
+
+    game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
+    if not game:
+        return jsonify({"error": "Game not found"}), 404
+
+    if user_login == game.f_user:
+        game.f_player_loaded = True
+    elif user_login == game.c_user:
+        game.c_player_loaded = True
+    else:
+        return jsonify({"error": "User not part of the game"}), 403
+
+    if game.f_player_loaded and game.c_player_loaded and game.last_update_time is None:
+        game.last_update_time = time.time()
+
+    return jsonify({"message": "Player loaded status updated"}), 200
+
+@app.route('/favicon.ico')
+def favicon():
+    return redirect(url_for('static', filename='favicon.ico'))
 
 
 if __name__ == "__main__":

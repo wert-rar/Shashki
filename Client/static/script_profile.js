@@ -11,49 +11,23 @@ function returnToGame() {
     const userLogin = profileData.currentUserLogin;
     window.location.href = `/board/${gameId}/${userLogin}`;
 }
+function createSnowflakes() {
+    const snowContainer = document.getElementById('snow-container');
+    const snowflakeCount = 50;
 
-document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('statsChart').getContext('2d');
-    const statsChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['Победы', 'Ничьих', 'Поражений'],
-            datasets: [{
-                data: [profileData.wins, profileData.draws, profileData.losses],
-                backgroundColor: [
-                    'rgba(46, 204, 113, 0.7)',
-                    'rgba(241, 196, 15, 0.7)',
-                    'rgba(231, 76, 60, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(46, 204, 113, 1)',
-                    'rgba(241, 196, 15, 1)',
-                    'rgba(231, 76, 60, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        font: {
-                            size: 14
-                        }
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Статистика Игры',
-                    font: {
-                        size: 18
-                    },
-                    color: 'white'
-                }
-            }
-        },
-    });
+    for (let i = 0; i < snowflakeCount; i++) {
+        const snowflake = document.createElement('div');
+        snowflake.classList.add('snowflake');
+        snowflake.textContent = '❄';
+        snowflake.style.left = Math.random() * 100 + 'vw';
+        snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+        snowflake.style.opacity = Math.random();
+        snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
+        snowflake.style.animationDelay = Math.random() * 10 + 's';
+        snowContainer.appendChild(snowflake);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    createSnowflakes();
 });

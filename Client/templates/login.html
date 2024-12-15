@@ -1,44 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход</title>
+    <link rel="preload" href="/static/favicon.ico" as="image">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        #snow-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 9999;
+        }
+
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: #FFF;
+            user-select: none;
+            pointer-events: none;
+            font-size: 1em;
+            opacity: 0.8;
+            animation: fall linear infinite;
+            z-index: 9999;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
         body {
             margin: 0;
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #0f0f0f, #1f1f1f);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
             color: white;
+            position: relative;
+            overflow: hidden;
         }
 
         body:before {
             content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
-            animation: rotateBg 10s linear infinite;
             z-index: -1;
-        }
-
-        @keyframes rotateBg {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
+            pointer-events: none;
         }
 
         .registration-menu {
@@ -48,9 +77,10 @@
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
             text-align: center;
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
             animation: fadeIn 1.2s ease;
             position: relative;
+            z-index: 1;
         }
 
         @keyframes fadeIn {
@@ -62,6 +92,24 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        .registration-menu button:not(.back-button) {
+            width: 90%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 15px 0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .registration-menu button:not(.back-button):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.5);
         }
 
         .back-button {
@@ -77,6 +125,7 @@
             text-decoration: none;
             transition: transform 0.2s ease, color 0.3s ease;
             will-change: transform;
+            z-index: 2;
         }
 
         .back-button:hover {
@@ -85,7 +134,7 @@
         }
 
         .back-button:focus {
-            outline: none; /* Убираем синий фокус */
+            outline: none;
         }
 
         .registration-menu h2 {
@@ -117,24 +166,6 @@
             outline: none;
         }
 
-        .registration-menu button:not(.back-button) {
-            width: 90%;
-            padding: 15px;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            cursor: pointer;
-            margin: 15px 0;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .registration-menu button:not(.back-button):hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.5);
-        }
-
         .registration-link {
             margin-top: 20px;
             font-size: 0.9rem;
@@ -142,7 +173,7 @@
         }
 
         .registration-link a {
-            text-decoration: none; /* Убираем подчеркивание */
+            text-decoration: none;
             color: #3498db;
             transition: color 0.3s ease;
         }
@@ -173,17 +204,119 @@
         <button class="back-button" onclick="window.location.href='/'">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <h2 id="title">Вход</h2>
-        <form method="POST">
+        <h2>Вход</h2>
+        <form method="POST" id="loginForm">
             <div class="registration-group">
-                <input type="text" name="login" placeholder="Имя пользователя" required>
-                <input type="password" name="password" placeholder="Пароль" required>
+                <input
+                    type="text"
+                    name="login"
+                    placeholder="Имя пользователя"
+                    required
+                    pattern='^[A-Za-z0-9]+$'
+                    title="Только английские буквы и цифры без пробелов"
+                    oninput='this.value = this.value.replace(/[^A-Za-z0-9]/g, "");'
+                >
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Пароль"
+                    required
+                    pattern='^(?=.*[A-Za-z0-9])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z0-9!@#$%^&*(),.?":{}|<>]{6,}$'
+                    title="Неверный логин или пароль"
+                    oninput='this.value = this.value.replace(/[^A-Za-z0-9!@#$%^&*(),.?":{}|<>]/g, "");'
+                >
                 <button type="submit">Войти</button>
             </div>
         </form>
         <div class="registration-link">
-            Не зарегистрированы? <a href="/register">Зарегистрируйтесь</a>
+            Еще не зарегистрированы? <a href="/register">Регистрация</a>
         </div>
     </div>
+
+    <div id="snow-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('loginForm');
+
+            function createSnowflakes() {
+                const snowContainer = document.getElementById('snow-container');
+                const snowflakeCount = 50;
+
+                for (let i = 0; i < snowflakeCount; i++) {
+                    const snowflake = document.createElement('div');
+                    snowflake.classList.add('snowflake');
+                    snowflake.textContent = '❄';
+                    snowflake.style.left = Math.random() * 100 + 'vw';
+                    snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                    snowflake.style.opacity = Math.random();
+                    snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                    snowflake.style.animationDelay = Math.random() * 10 + 's';
+                    snowContainer.appendChild(snowflake);
+                }
+            }
+
+            createSnowflakes();
+
+            loginForm.addEventListener('submit', function(event) {
+                const login = loginForm.login.value.trim();
+                const password = loginForm.password.value.trim();
+                const loginPattern = /^[A-Za-z0-9]+$/;
+                const passwordPattern = /^(?=.*[A-Za-z0-9])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z0-9!@#$%^&*(),.?":{}|<>]{6,}$/;
+
+                let errors = [];
+
+                if (!loginPattern.test(login)) {
+                    errors.push('Неверный логин или пароль');
+                }
+
+                if (!passwordPattern.test(password)) {
+                    errors.push('Неверный логин или пароль');
+                }
+
+                if (errors.length > 0) {
+                    event.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Ошибка ввода',
+                        html: errors.join('<br>'),
+                        background: '#333',
+                        color: '#fff',
+                        confirmButtonColor: '#e74c3c'
+                    });
+                }
+            });
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    let messages = {{ messages|tojson }};
+                    messages.forEach(function(message) {
+                        let category = message[0];
+                        let text = message[1];
+                        let icon = 'info';
+                        let title = 'Информация';
+
+                        if (category === 'success') {
+                            icon = 'success';
+                            title = 'Успех';
+                        } else if (category === 'error') {
+                            icon = 'error';
+                            title = 'Ошибка';
+                        }
+
+                        Swal.fire({
+                            icon: icon,
+                            title: title,
+                            text: text,
+                            background: '#333',
+                            color: '#fff',
+                            confirmButtonColor: category === 'error' ? '#e74c3c' : '#2ecc71'
+                        });
+                    });
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
 </body>
 </html>
