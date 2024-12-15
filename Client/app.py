@@ -1025,9 +1025,9 @@ def start_singleplayer():
 
 @app.route('/player_loaded', methods=['POST'])
 def player_loaded():
-    data = request.json
+    data = request.get_json()
     game_id = data.get('game_id')
-    user_login = session.get('user')
+    user_login = data.get('user_login')
 
     app.logger.debug(f"Получен запрос player_loaded с game_id: {game_id}, user_login: {user_login}")
 
