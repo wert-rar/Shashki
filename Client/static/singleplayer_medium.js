@@ -380,7 +380,10 @@ function confirmSurrender(){
 
 function afterPlayerMove(result){
     addMoveToHistory(result, true);
-
+    if (isGameOver()) {
+        endGame();
+        return;
+    }
     let moveStr = serializeMove({from: lastFrom, to: lastTo});
     if(moveRepetition['w'][moveStr]){
         moveRepetition['w'][moveStr] += 1;
@@ -401,6 +404,10 @@ function afterPlayerMove(result){
     } else {
         must_capture_piece = null;
         switchTurn();
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
         if(isGameOver()){ endGame(); return; }
         if(current_player === 'b'){ setTimeout(makeBotMove, 1000); }
     }
@@ -409,7 +416,10 @@ function afterPlayerMove(result){
 
 function afterBotMove(result){
     addMoveToHistory(result, false);
-
+    if (isGameOver()) {
+        endGame();
+        return;
+    }
     let moveStr = serializeMove({from: botFrom, to: botTo});
     if(moveRepetition['b'][moveStr]){
         moveRepetition['b'][moveStr] += 1;
@@ -430,6 +440,10 @@ function afterBotMove(result){
     } else {
         must_capture_piece = null;
         switchTurn();
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
         if(isGameOver()) endGame();
     }
     saveGameState();

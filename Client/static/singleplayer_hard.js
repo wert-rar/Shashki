@@ -436,7 +436,10 @@
 
     function afterPlayerMove(result){
         addMoveToHistory(result, true);
-
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
         let currentHash = computeZobristHash(pieces);
         if(moveRepetition[currentHash]){
             moveRepetition[currentHash] +=1;
@@ -467,6 +470,10 @@
         } else {
             must_capture_piece = null;
             switchTurn();
+            if (isGameOver()) {
+                endGame();
+                return;
+            }
             if(isGameOver()){ endGame(); return; }
             if(current_player === 'b'){ setTimeout(makeBotMove, 1000); }
         }
@@ -476,7 +483,10 @@
 
     function afterBotMove(result){
         addMoveToHistory(result, false);
-
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
         let currentHash = computeZobristHash(pieces);
         if(moveRepetition[currentHash]){
             moveRepetition[currentHash] +=1;
@@ -497,6 +507,10 @@
         } else {
             must_capture_piece = null;
             switchTurn();
+            if (isGameOver()) {
+                endGame();
+                return;
+            }
             if(isGameOver()) endGame();
         }
         saveGameState();

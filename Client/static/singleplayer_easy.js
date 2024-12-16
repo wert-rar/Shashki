@@ -311,6 +311,7 @@ function isGameOver() {
 
     let allKings = pieces.every(p => p.is_king);
     if (allKings) {
+        console.log('Ничья: все фигуры стали дамками.');
         endGame('draw_kings');
         return true;
     }
@@ -318,6 +319,7 @@ function isGameOver() {
     let currentBoard = serializeBoard(pieces);
     positionHistory[currentBoard] = (positionHistory[currentBoard] || 0) + 1;
     if (positionHistory[currentBoard] > 3) {
+        console.log('Ничья: повторение позиции 3 раза.');
         endGame('draw_repetition');
         return true;
     }
@@ -326,11 +328,18 @@ function isGameOver() {
     let moves = get_possible_moves(pieces, color, must_capture_piece);
     let canMove = false;
     for (let k in moves) { if (moves[k].length > 0) { canMove = true; break; } }
-    if (!canMove) return true;
+
+    if (!canMove) {
+        console.log('Игра окончена: нет доступных ходов.');
+        return true;
+    }
 
     let opponentColor = current_player === 'w' ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
-    if (oppPieces.length === 0) return true;
+    if (oppPieces.length === 0) {
+        console.log('Игра окончена: у противника нет фигур.');
+        return true;
+    }
 
     return false;
 }
@@ -341,6 +350,7 @@ function endGame(forceStatus = null) {
     let color = (current_player === 'w' ? 0 : 1);
     let moves = get_possible_moves(pieces, color, must_capture_piece);
     let canMove = false;
+
     for (let k in moves) { if (moves[k].length > 0) { canMove = true; break; } }
     let opponentColor = current_player === 'w' ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
@@ -388,7 +398,10 @@ function confirmSurrender() {
 
 function afterPlayerMove(result) {
     addMoveToHistory(result, true);
-    if (isGameOver()) { return; }
+    if (isGameOver()) {
+        endGame();
+        return;
+    }
     if (result.move_result === 'continue_capture') {
         must_capture_piece = result.newMustCapture;
         document.getElementById('status').textContent = (current_player === 'w' ? 'Продолжают ходить белые' : 'Продолжают ходить черные');
@@ -396,7 +409,10 @@ function afterPlayerMove(result) {
     } else {
         must_capture_piece = null;
         switchTurn();
-        if (isGameOver()) { return; }
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
         if (current_player === 'b') { setTimeout(makeBotMove, 1000); }
     }
     saveGameState();
@@ -404,7 +420,10 @@ function afterPlayerMove(result) {
 
 function afterBotMove(result) {
     addMoveToHistory(result, false);
-    if (isGameOver()) { return; }
+    if (isGameOver()) {
+        endGame();
+        return;
+    }
     if (result.move_result === 'continue_capture') {
         must_capture_piece = result.newMustCapture;
         document.getElementById('status').textContent = (current_player === 'w' ? 'Продолжают ходить белые' : 'Продолжают ходить черные');
@@ -412,7 +431,10 @@ function afterBotMove(result) {
     } else {
         must_capture_piece = null;
         switchTurn();
-        if (isGameOver()) endGame();
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
     }
     saveGameState();
 }
@@ -439,13 +461,12 @@ function makeBotMove() {
         return;
     }
     let chosen_move = allMoves[Math.floor(Math.random() * allMoves.length)];
-
+    console.log('Ход бота:', chosen_move);
     botFrom = {x: chosen_move.from.x, y: chosen_move.from.y};
     botTo = {x: chosen_move.to.x, y: chosen_move.to.y};
     let sel_piece = get_piece_at(pieces, chosen_move.from.x, chosen_move.from.y);
     let res = validate_move(sel_piece, chosen_move.to, 'b', pieces, must_capture_piece);
     if (res.move_result === 'invalid') {
-        console.error("Бот выбрал неверный ход");
         endGame();
         return;
     }
