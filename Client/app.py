@@ -351,6 +351,17 @@ def register():
     return render_template('register.html')
 
 
+def find_active_game(user_login):
+    with games_lock:
+        for game in current_games.values():
+            if game.f_user == user_login or game.c_user == user_login:
+                return game
+        for game in unstarted_games.values():
+            if game.f_user == user_login or game.c_user == user_login:
+                return game
+    return None
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -361,6 +372,10 @@ def login():
 
         if user:
             session['user'] = user_login
+            game = find_active_game(user_login)
+            if game:
+                session['game_id'] = game.game_id
+                session['color'] = game.user_color(user_login)
             flash('Успешный вход!', 'success')
             return redirect(url_for('home'))
         else:
@@ -368,6 +383,7 @@ def login():
             return redirect(url_for('login'))
 
     return render_template('login.html')
+
 
 @app.route('/profile/<username>')
 def profile(username):
@@ -390,8 +406,6 @@ def profile(username):
                     if game.f_user and game.c_user and game.status not in ['w3', 'b3', 'n']:
                         in_game = True
                         game_id = game_id_int
-                    else:
-                        in_game = False
             except (ValueError, TypeError):
                 app.logger.warning(f"Некорректный game_id в сессии: {session.get('game_id')}")
                 in_game = False
@@ -416,7 +430,7 @@ def logout():
     session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
-    session['flash'] = 'Вы вышли из системы.'
+    flash('Вы вышли из системы.', 'info')
     return redirect(url_for('home'))
 
 
@@ -478,7 +492,7 @@ def start_game():
                     app.logger.debug(f"New game created after finished game: {new_game_id} for {user_login}")
                     return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
                 else:
-                    session['flash'] = 'Не удалось начать новую игру.'
+                    flash('Не удалось начать новую игру.', 'error')
                     return redirect(url_for('home'))
             else:
                 if game.f_user and game.c_user:
@@ -500,17 +514,17 @@ def start_game():
                     app.logger.debug(f"New game created after failed join: {new_game_id} for {user_login}")
                     return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
                 else:
-                    session['flash'] = 'Не удалось создать или присоединиться к игре.'
+                    flash('Не удалось создать или присоединиться к игре.', 'error')
                     return redirect(url_for('home'))
             session['game_id'] = game.game_id
             session['color'] = color
         except ValueError as e:
-            session['flash'] = str(e)
+            flash(str(e), 'error')
             return redirect(url_for('home'))
     else:
         game_id = create_new_game(user_login, unstarted_games, current_games)
         if not game_id:
-            session['flash'] = 'Не удалось создать игру.'
+            flash('Не удалось создать игру.', 'error')
             return redirect(url_for('home'))
         session['game_id'] = game_id
         session['color'] = 'w'
@@ -800,7 +814,7 @@ def leave_game():
 
     session.pop('game_id', None)
     session.pop('color', None)
-    session['flash'] = 'Вы покинули игру.'
+    flash('Вы покинули игру.', 'info')
     return jsonify({"message": "Left the game successfully"}), 200
 
 
@@ -981,20 +995,24 @@ def webhook():
     except subprocess.CalledProcessError as e:
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
+
 @app.route("/singleplayer_easy/<username>")
 def singleplayer_easy(username):
     is_ghost = session.get('is_ghost', False)
     return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost)
+
 
 @app.route("/singleplayer_medium/<username>")
 def singleplayer_medium_route(username):
     is_ghost = session.get('is_ghost', False)
     return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost)
 
+
 @app.route("/singleplayer_hard/<username>")
 def singleplayer_hard(username):
     is_ghost = session.get('is_ghost', False)
     return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost)
+
 
 @app.route("/start_singleplayer", methods=["GET", "POST"])
 def start_singleplayer():
@@ -1021,6 +1039,7 @@ def start_singleplayer():
             return redirect(url_for('home'))
     else:
         return redirect(url_for('home'))
+
 
 @app.route('/player_loaded', methods=['POST'])
 def player_loaded():
@@ -1054,6 +1073,7 @@ def player_loaded():
         game.last_update_time = time.time()
 
     return jsonify({"message": "Player loaded status updated"}), 200
+
 
 @app.route('/favicon.ico')
 def favicon():
