@@ -77,6 +77,10 @@ function update_data(data) {
             pieces = data.pieces;
             if (user_color == "b") pieces = translate(pieces);
             console.log("Updated pieces:", pieces);
+
+            if (pieces && pieces.length > 0 && boardStates.length === 0) {
+              boardStates = [JSON.parse(JSON.stringify(pieces))];
+            }
         } else {
             console.error("data.pieces is undefined");
             showError("Получены некорректные данные от сервера.");
@@ -427,11 +431,6 @@ function server_update_request() {
             return Promise.reject(data.error);
         } else {
             update_data(data);
-            if (boardStates.length === 0) {
-              boardStates = [JSON.parse(JSON.stringify(pieces))];
-            } else if (boardStates.length === 1 && boardStates[0].length === 0) {
-              boardStates[0] = JSON.parse(JSON.stringify(pieces));
-            }
             return Promise.resolve();
         }
     })
@@ -842,10 +841,6 @@ function viewBoardState(moveIndex) {
 
   let selectedState = boardStates[moveIndex].map(piece => ({...piece}));
 
-  if (user_color === "b") {
-    selectedState = translate(selectedState);
-  }
-
   pieces = selectedState;
 
   currentView = moveIndex;
@@ -855,11 +850,8 @@ function viewBoardState(moveIndex) {
 function returnToCurrentView() {
   let currentState = boardStates[boardStates.length - 1].map(piece => ({...piece}));
 
-  if (user_color === "b") {
-    currentState = translate(currentState);
-  }
-
   pieces = currentState;
+
   currentView = null;
   let indicator = document.getElementById('history-view-indicator');
   if (indicator) {
@@ -1028,14 +1020,14 @@ function startPolling() {
     setInterval(() => {
         server_update_request()
             .then(() => {
-                pollingInterval = 1000; // Сбросить интервал при успешном запросе
+                pollingInterval = 1000;
             })
             .catch(() => {
-                pollingInterval = Math.min(pollingInterval * 2, 60000); // Увеличить интервал, максимум 60 секунд
+                pollingInterval = Math.min(pollingInterval * 2, 60000);
             });
     }, pollingInterval);
     if (game_id && user_login) {
-        setInterval(checkGameStatus, 5000); // Каждые 5 секунд
+        setInterval(checkGameStatus, 5000);
     }
 }
 
@@ -1045,7 +1037,6 @@ function onLoad() {
   CTX.imageSmoothingEnabled = true;
   HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
 
-  boardStates = [[]];
   adjustScreen();
 
   server_update_request().then(() => {
