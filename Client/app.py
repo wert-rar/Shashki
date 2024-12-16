@@ -135,7 +135,6 @@ def check_draw(pieces):
         return False
     if can_player_move(pieces, 1):
         return False
-    app.logger.debug("Ничья: нет возможных ходов для любых фигур.")
     return True
 
 
@@ -204,7 +203,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     dest_x, dest_y = new_pos['x'], new_pos['y']
     color = 0 if current_player == 'w' else 1
 
-    app.logger.debug(f"Validating move from ({x}, {y}) to ({dest_x}, {dest_y}) for player {current_player}")
 
     if game.must_capture_piece:
         valid_moves = get_possible_moves(pieces, color, must_capture_piece=game.must_capture_piece)
@@ -214,7 +212,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     piece_moves = valid_moves.get((x, y), [])
 
     if not any(move['x'] == dest_x and move['y'] == dest_y for move in piece_moves):
-        app.logger.debug("Move is invalid")
         return {'move_result': 'invalid'}
 
     new_pieces = [piece.copy() for piece in pieces]
@@ -233,7 +230,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 new_pieces.remove(piece_at_square)
                 captured = True
                 captured_pieces.append({'x': current_x, 'y': current_y})
-                app.logger.debug(f"Captured piece at ({current_x}, {current_y})")
                 break
             elif piece_at_square:
                 break
@@ -253,14 +249,12 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                     piece['is_king'] = True
                     piece['mode'] = 'k'
                     promotion_occurred = True
-                    app.logger.debug(f"Piece promoted to king at ({dest_x}, {dest_y})")
             break
 
     if captured:
         capture_moves = can_capture(moved_piece, new_pieces)
         if capture_moves:
             game.must_capture_piece = moved_piece.copy()
-            app.logger.debug("Player must continue capturing")
             return {
                 'move_result': 'continue_capture',
                 'new_pieces': new_pieces,
@@ -272,8 +266,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
             game.must_capture_piece = None
     else:
         game.must_capture_piece = None
-
-    app.logger.debug(f"Move is valid, promotion occurred: {promotion_occurred}")
 
     return {
         'move_result': 'valid',
@@ -289,10 +281,8 @@ def remove_game(game_id):
     with games_lock:
         if game_id in current_games:
             completed_games[game_id] = current_games.pop(game_id)
-            app.logger.debug(f"Игра {game_id} перемещена из current_games в completed_games.")
         elif game_id in unstarted_games:
             completed_games[game_id] = unstarted_games.pop(game_id)
-            app.logger.debug(f"Игра {game_id} перемещена из unstarted_games в completed_games.")
 
 
 @app.route("/")
@@ -308,7 +298,6 @@ def home():
 
 @app.route('/board/<int:game_id>/<user_login>')
 def get_board(game_id, user_login):
-    app.logger.debug(f"Game ID received: {game_id}")
     game = current_games.get(game_id) or completed_games.get(game_id) or unstarted_games.get(game_id)
     if not game:
         abort(404)
@@ -407,7 +396,6 @@ def profile(username):
                         in_game = True
                         game_id = game_id_int
             except (ValueError, TypeError):
-                app.logger.warning(f"Некорректный game_id в сессии: {session.get('game_id')}")
                 in_game = False
 
         return render_template('profile.html',
@@ -489,7 +477,6 @@ def start_game():
                 if new_game_id:
                     session['game_id'] = new_game_id
                     session['color'] = 'w'
-                    app.logger.debug(f"New game created after finished game: {new_game_id} for {user_login}")
                     return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
                 else:
                     flash('Не удалось начать новую игру.', 'error')
@@ -507,15 +494,18 @@ def start_game():
         try:
             updated = update_game_with_user(game.game_id, user_login, color, current_games, unstarted_games)
             if not updated:
-                new_game_id = create_new_game(user_login, unstarted_games, current_games)
-                if new_game_id:
-                    session['game_id'] = new_game_id
-                    session['color'] = 'w'
-                    app.logger.debug(f"New game created after failed join: {new_game_id} for {user_login}")
-                    return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
-                else:
-                    flash('Не удалось создать или присоединиться к игре.', 'error')
-                    return redirect(url_for('home'))
+                with ghost_lock:
+                    ghost_num = next(ghost_counter)
+                    ghost_username = f"ghost{ghost_num}"
+                new_game_id = game.game_id
+                game.c_user = ghost_username
+                current_games[new_game_id] = game
+                del unstarted_games[new_game_id]
+                app.logger.debug(
+                    f"Ghost пользователь {ghost_username} автоматически присоединился к игре {new_game_id}")
+                session['game_id'] = new_game_id
+                session['color'] = color
+                return redirect(url_for('get_board', game_id=new_game_id, user_login=user_login))
             session['game_id'] = game.game_id
             session['color'] = color
         except ValueError as e:
@@ -529,7 +519,6 @@ def start_game():
         session['game_id'] = game_id
         session['color'] = 'w'
 
-    app.logger.debug(f"Game created or joined: {session['game_id']} by {user_login} with color {session['color']}")
 
     game = current_games.get(session['game_id']) or unstarted_games.get(session['game_id'])
     if game and game.f_user and game.c_user:
@@ -603,12 +592,10 @@ def move():
     user_color = game.user_color(user_login)
 
     if user_color != current_player:
-        logging.debug(f"User {user_login} attempted to move, but it's {current_player}'s turn.")
         return jsonify({"error": "Not your turn"}), 403
 
     with game.lock:
         result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
-        logging.debug(f"Validate move result: {result}")
 
         if result['move_result'] == 'invalid':
             return jsonify({"error": "Invalid move"}), 400
@@ -814,7 +801,6 @@ def leave_game():
 
     session.pop('game_id', None)
     session.pop('color', None)
-    flash('Вы покинули игру.', 'info')
     return jsonify({"message": "Left the game successfully"}), 200
 
 
@@ -1047,7 +1033,6 @@ def player_loaded():
     game_id = data.get('game_id')
     user_login = session.get('user')
 
-    app.logger.debug(f"Получен запрос player_loaded с game_id: {game_id}, user_login: {user_login}")
 
     if not game_id or not user_login:
         return jsonify({"error": "Game ID and user login are required"}), 400
@@ -1055,7 +1040,6 @@ def player_loaded():
     try:
         game_id_int = int(game_id)
     except (ValueError, TypeError):
-        app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
         return jsonify({"error": "Invalid game ID"}), 400
 
     game = current_games.get(game_id_int) or unstarted_games.get(game_id_int)
