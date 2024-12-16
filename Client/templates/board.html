@@ -87,7 +87,10 @@
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
             <p id="game-over-message"></p>
-            <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+            <div class="modal-buttons">
+                <button id="main-menu-button" onclick="returnToMainMenu()">Главное меню</button>
+                <button id="register-button" onclick="window.location.href='/register'" style="display: none;">Зарегистрироваться</button>
+            </div>
         </div>
     </div>
 

@@ -154,54 +154,95 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
 }
 
 function displayGameOverMessage(data) {
-  let modal = document.getElementById("game-over-modal");
-  if (modal.style.display === "block") return;
+    console.log(`User is ghost: ${is_ghost}`);
+    console.log(`Opponent is ghost: ${opponent_login.startsWith('ghost')}`);
 
-  let title = document.getElementById("game-over-title");
-  let message = document.getElementById("game-over-message");
+    let modal = document.getElementById("game-over-modal");
+    if (modal.style.display === "block") return;
 
-  let resultText = "";
-  let isVictory = false;
-  let isDefeat = false;
+    let title = document.getElementById("game-over-title");
+    let message = document.getElementById("game-over-message");
 
-  let gameResult = data.result;
-  if (!gameResult) {
-    if (CURRENT_STATUS === 'w3') {
-      gameResult = (user_color === 'w') ? 'win' : 'lose';
-    } else if (CURRENT_STATUS === 'b3') {
-      gameResult = (user_color === 'b') ? 'win' : 'lose';
-    } else if (CURRENT_STATUS === 'n') {
-      gameResult = 'draw';
+    let resultText = "";
+    let isVictory = false;
+    let isDefeat = false;
+
+    let gameResult = data.result;
+    if (!gameResult) {
+        if (CURRENT_STATUS === 'w3') {
+            gameResult = (user_color === 'w') ? 'win' : 'lose';
+        } else if (CURRENT_STATUS === 'b3') {
+            gameResult = (user_color === 'b') ? 'win' : 'lose';
+        } else if (CURRENT_STATUS === 'n') {
+            gameResult = 'draw';
+        }
     }
-  }
 
-  if (gameResult === "win") {
-    resultText = "Вы победили!";
-    isVictory = true;
-  } else if (gameResult === "lose") {
-    resultText = "Вы проиграли.";
-    isDefeat = true;
-  } else if (gameResult === "draw") {
-    resultText = "Ничья.";
-  }
+    let userIsGhost = is_ghost;
+    let opponentIsGhost = opponent_login.startsWith('ghost');
 
-  let points_gained = data.points_gained || 0;
+    console.log(`User is ghost: ${userIsGhost}, Opponent is ghost: ${opponentIsGhost}`);
 
-  title.innerText = "Игра окончена";
-  message.innerHTML = `
-      ${resultText}<br>
-      Вы получили ${points_gained} очков к рангу.
-  `;
+    if (userIsGhost) {
+        resultText = "Вы не получаете очки, пока не зарегистрированы.";
+    } else {
+        if (gameResult === "win") {
+            resultText = "Вы победили!";
+            isVictory = true;
+        } else if (gameResult === "lose") {
+            resultText = "Вы проиграли.";
+            isDefeat = true;
+        } else if (gameResult === "draw") {
+            resultText = "Ничья.";
+        }
+    }
 
-  modal.style.display = "block";
+    let points_gained = data.points_gained || 0;
 
-  if (isVictory && !victorySoundPlayed) {
-    playVictorySound();
-    victorySoundPlayed = true;
-  } else if (isDefeat && !defeatSoundPlayed) {
-    playDefeatSound();
-    defeatSoundPlayed = true;
-  }
+    title.innerText = "Игра окончена";
+
+    if (userIsGhost) {
+        message.innerHTML = resultText;
+    } else {
+        message.innerHTML = `
+            ${resultText}<br>
+            Вы получили ${points_gained} очков к рангу.
+        `;
+    }
+
+    // Управление видимостью кнопок
+    const modalButtons = modal.querySelector('.modal-buttons');
+    const mainMenuButton = document.getElementById('main-menu-button');
+    const registerButton = document.getElementById('register-button');
+
+    if (userIsGhost) {
+        registerButton.style.display = 'inline-block';
+        modalButtons.classList.add('two-buttons');
+        modalButtons.classList.remove('single-button');
+    } else {
+        registerButton.style.display = 'none';
+        modalButtons.classList.remove('two-buttons');
+        modalButtons.classList.add('single-button');
+    }
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (userIsGhost) {
+        modalContent.classList.add('guest');
+        modalContent.classList.remove('registered');
+    } else {
+        modalContent.classList.remove('guest');
+        modalContent.classList.add('registered');
+    }
+
+    modal.style.display = "block";
+
+    if (isVictory && !victorySoundPlayed) {
+        playVictorySound();
+        victorySoundPlayed = true;
+    } else if (isDefeat && !defeatSoundPlayed) {
+        playDefeatSound();
+        defeatSoundPlayed = true;
+    }
 }
 
 function returnToMainMenu() {

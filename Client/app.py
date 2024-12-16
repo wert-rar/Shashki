@@ -156,14 +156,15 @@ def finalize_game(game, user_login):
         winner_color = None
 
     user_color = game.user_color(user_login)
+    user_is_ghost = user_login.startswith('ghost')
 
     if winner_color is None:
         result_move = 'draw'
-        points_gained = 5
+        points_gained = 5 if not user_is_ghost else 0
     else:
         if winner_color == user_color:
             result_move = 'win'
-            points_gained = 10
+            points_gained = 10 if not user_is_ghost else 0
         else:
             result_move = 'lose'
             points_gained = 0
@@ -308,6 +309,8 @@ def get_board(game_id, user_login):
 
     opponent_login = game.c_user if user_login == game.f_user else game.f_user
 
+    is_ghost = user_login.startswith('ghost')
+
     return render_template(
         'board.html',
         user_login=user_login,
@@ -315,7 +318,8 @@ def get_board(game_id, user_login):
         user_color=user_color,
         opponent_login=opponent_login,
         f_user=game.f_user,
-        c_user=game.c_user
+        c_user=game.c_user,
+        is_ghost=is_ghost
     )
 
 

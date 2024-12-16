@@ -720,6 +720,61 @@ canvas#board {
   top: -3px;
 }
 
+.modal-content.registered {
+    width: 400px;
+    max-width: 80%;
+}
+
+.modal-content.guest {
+    width: 550px;
+    max-width: 90%;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.modal-buttons.two-buttons {
+    justify-content: space-between;
+}
+
+.modal-buttons.single-button {
+    justify-content: center;
+}
+
+.modal-buttons.two-buttons button {
+    width: 45%;
+}
+
+.modal-buttons.single-button button {
+    width: auto;
+}
+
+#main-menu-button {
+    white-space: nowrap;
+    background-color: #00ADB5;
+    color: #222831;
+}
+
+#main-menu-button:hover {
+    background-color: #02c8d1;
+}
+
+#register-button {
+    background-color: #FF4C4C;
+    color: #FFFFFF;
+}
+
+#register-button:hover {
+    background-color: #FF6B6B;
+}
+
+.modal-buttons.single-button button {
+    margin: 0 auto;
+}
+
 @media (max-width: 1440px) {
     .sidebar, .moves-sidebar {
         width: 220px;
