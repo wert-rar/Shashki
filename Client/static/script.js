@@ -40,32 +40,7 @@ let b_colors = {
   0: "#971616",
 };
 
-let pieces = [
-  { color: 1, x: 1, y: 0, mode: "p" },
-  { color: 1, x: 3, y: 0, mode: "p" },
-  { color: 1, x: 5, y: 0, mode: "p" },
-  { color: 1, x: 7, y: 0, mode: "p" },
-  { color: 1, x: 0, y: 1, mode: "p" },
-  { color: 1, x: 2, y: 1, mode: "p" },
-  { color: 1, x: 4, y: 1, mode: "p" },
-  { color: 1, x: 6, y: 1, mode: "p" },
-  { color: 1, x: 1, y: 2, mode: "p" },
-  { color: 1, x: 3, y: 2, mode: "p" },
-  { color: 1, x: 5, y: 2, mode: "p" },
-  { color: 1, x: 7, y: 2, mode: "p" },
-  { color: 0, x: 0, y: 5, mode: "p" },
-  { color: 0, x: 2, y: 5, mode: "p" },
-  { color: 0, x: 4, y: 5, mode: "p" },
-  { color: 0, x: 6, y: 5, mode: "p" },
-  { color: 0, x: 1, y: 6, mode: "p" },
-  { color: 0, x: 3, y: 6, mode: "p" },
-  { color: 0, x: 5, y: 6, mode: "p" },
-  { color: 0, x: 7, y: 6, mode: "p" },
-  { color: 0, x: 0, y: 7, mode: "p" },
-  { color: 0, x: 2, y: 7, mode: "p" },
-  { color: 0, x: 4, y: 7, mode: "p" },
-  { color: 0, x: 6, y: 7, mode: "p" },
-];
+let pieces = [];
 
 let possibleMoves = [];
 
@@ -452,6 +427,11 @@ function server_update_request() {
             return Promise.reject(data.error);
         } else {
             update_data(data);
+            if (boardStates.length === 0) {
+              boardStates = [JSON.parse(JSON.stringify(pieces))];
+            } else if (boardStates.length === 1 && boardStates[0].length === 0) {
+              boardStates[0] = JSON.parse(JSON.stringify(pieces));
+            }
             return Promise.resolve();
         }
     })
@@ -1064,27 +1044,28 @@ function onLoad() {
   CTX = CANVAS.getContext("2d");
   CTX.imageSmoothingEnabled = true;
   HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
-  if (user_color == "b") {
-    pieces = translate(pieces);
-  }
-  boardStates = [JSON.parse(JSON.stringify(pieces))];
+
+  boardStates = [[]];
   adjustScreen();
-  update();
-  addEventListeners();
-  startPolling();
 
-  let gameFoundSound = document.getElementById('sound-game-found');
-  if (gameFoundSound) {
-    gameFoundSound.volume = 0.35;
-    gameFoundSound.play().catch(error => {
-      console.error('Ошибка при воспроизведении звука нахождения игры:', error);
-    });
-  }
+  server_update_request().then(() => {
+    update();
+    addEventListeners();
+    startPolling();
 
-  if (user_login.startsWith('ghost')) {
-    disableProfileFeatures();
-  }
-  notify_player_loaded();
+    let gameFoundSound = document.getElementById('sound-game-found');
+    if (gameFoundSound) {
+      gameFoundSound.volume = 0.35;
+      gameFoundSound.play().catch(error => {
+        console.error('Ошибка при воспроизведении звука нахождения игры:', error);
+      });
+    }
+
+    if (user_login.startsWith('ghost')) {
+      disableProfileFeatures();
+    }
+    notify_player_loaded();
+  });
 }
 
 function disableProfileFeatures() {
