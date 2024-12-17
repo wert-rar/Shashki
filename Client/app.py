@@ -989,26 +989,31 @@ def webhook():
 @app.route("/singleplayer_easy/<username>")
 def singleplayer_easy(username):
     is_ghost = session.get('is_ghost', False)
-    return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost)
+    user_color = request.args.get('color', 'w')
+    return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost, user_color=user_color)
 
 
 @app.route("/singleplayer_medium/<username>")
 def singleplayer_medium_route(username):
     is_ghost = session.get('is_ghost', False)
-    return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost)
+    user_color = request.args.get('color', 'w')
+    return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost, user_color=user_color)
 
 
 @app.route("/singleplayer_hard/<username>")
 def singleplayer_hard(username):
     is_ghost = session.get('is_ghost', False)
-    return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost)
+    user_color = request.args.get('color', 'w')
+    return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost, user_color=user_color)
 
 
 @app.route("/start_singleplayer", methods=["GET", "POST"])
 def start_singleplayer():
     if request.method == "POST":
         difficulty = request.form.get("difficulty")
+        color = request.form.get("color")
         user_login = session.get('user')
+
         if not user_login:
             with ghost_lock:
                 ghost_num = next(ghost_counter)
@@ -1018,15 +1023,11 @@ def start_singleplayer():
         else:
             session['is_ghost'] = False
 
-        if difficulty == "easy":
-            return redirect(url_for('singleplayer_easy', username=session['user']))
-        elif difficulty == "medium":
-            return redirect(url_for('singleplayer_medium_route', username=session['user']))
-        elif difficulty == "hard":
-            return redirect(url_for('singleplayer_hard', username=session['user']))
-        else:
+        if difficulty not in ["easy", "medium", "hard"]:
             flash('Неизвестная сложность', 'error')
             return redirect(url_for('home'))
+
+        return redirect(url_for(f'singleplayer_{difficulty}', username=session['user'], color=color))
     else:
         return redirect(url_for('home'))
 
