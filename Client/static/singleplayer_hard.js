@@ -34,7 +34,7 @@ let game_over = false;
 
 let CANVAS, CTX;
 let CELL_SIZE, BOARD_OFFSET_X, BOARD_OFFSET_Y;
-let difficulty = 'medium';
+let difficulty = 'hard';
 let user_color = 'w';
 let IS_SELECTED = false;
 let colors = {1: "rgb(0, 0, 0)", 0: "rgb(255, 255, 255)"};
@@ -89,7 +89,7 @@ function loadGameState() {
         current_player = state.current_player;
         must_capture_piece = state.must_capture_piece;
         game_over = state.game_over;
-        difficulty = state.difficulty || 'medium';
+        difficulty = state.difficulty || 'hard';
         lastFrom = state.lastFrom;
         lastTo = state.lastTo;
         botFrom = state.botFrom;
@@ -247,7 +247,7 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
         let current_x = x + dx, current_y = y + dy;
         while(current_x !== new_pos.x && current_y !== new_pos.y){
             let pch = get_piece_at(new_pieces, current_x, current_y);
-            if(pch && pch.color !== selected_piece.color){
+            if(pch && pch.color !== color){
                 new_pieces = new_pieces.filter(pp => (pp.x !== pch.x || pp.y !== pch.y));
                 captured = true;
                 captured_pieces.push({x: pch.x, y: pch.y});
@@ -408,7 +408,6 @@ function afterPlayerMove(result){
             endGame();
             return;
         }
-        if(isGameOver()){ endGame(); return; }
         if(current_player === 'b'){ setTimeout(makeBotMove, 1000); }
     }
     saveGameState();
@@ -444,19 +443,70 @@ function afterBotMove(result){
             endGame();
             return;
         }
-        if(isGameOver()) endGame();
     }
     saveGameState();
 }
 
 function evaluatePosition(pcs) {
     let score = 0;
+
     for (let p of pcs) {
-        let val = (p.is_king ? 2 : 1);
-        if (p.color === 1) score += val;
-        else score -= val;
+        if (p.color === 1) {
+            score += p.is_king ? 10 : 7;
+            if (!p.is_king) {
+                score += (7 - p.y) * 0.8;
+            }
+            if (isCenter(p.x, p.y)) {
+                score += 3;
+            }
+            if (isCorner(p.x, p.y)) {
+                score += 2;
+            }
+        } else {
+            score -= p.is_king ? 10 : 7;
+            if (!p.is_king) {
+                score -= (p.y) * 0.8;
+            }
+            if (isCenter(p.x, p.y)) {
+                score -= 3;
+            }
+            if (isCorner(p.x, p.y)) {
+                score -= 2;
+            }
+        }
     }
+
+    let botMoves = generateAllMoves(pcs, 1, must_capture_piece).length;
+    let playerMoves = generateAllMoves(pcs, 0, must_capture_piece).length;
+    score += (botMoves - playerMoves) * 1;
+
+    for (let p of pcs) {
+        let opponentColor = p.color === 1 ? 0 : 1;
+        let opponentPieces = pcs.filter(op => op.color === opponentColor);
+        for (let op of opponentPieces) {
+            if (isThreatened(op, p, pcs)) {
+                score += p.color === 1 ? -2 : 2;
+            }
+        }
+    }
+
     return score;
+}
+
+
+function isCorner(x, y) {
+    return (x === 0 && y === 0) || (x === 7 && y === 0) ||
+           (x === 0 && y === 7) || (x === 7 && y === 7);
+}
+
+
+function isCenter(x, y){
+    return (x >= 2 && x <=5) && (y >=2 && y <=5);
+}
+
+function isThreatened(opponent, piece, pcs){
+    let potentialCaptures = can_capture(opponent, pcs);
+    return potentialCaptures.some(m => m.x === piece.x && m.y === piece.y);
 }
 
 function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
@@ -469,6 +519,18 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
             moves.push({from: {x: px, y: py}, to: m, piece: piece});
         }
     }
+
+    moves.sort((a, b) => {
+        let aCapture = Math.abs(a.to.x - a.from.x) === 2;
+        let bCapture = Math.abs(b.to.x - b.from.x) === 2;
+        if (aCapture && !bCapture) return -1;
+        if (!aCapture && bCapture) return 1;
+
+        let aCenterDist = Math.abs(a.to.x - 3.5) + Math.abs(a.to.y - 3.5);
+        let bCenterDist = Math.abs(b.to.x - 3.5) + Math.abs(b.to.y - 3.5);
+        return aCenterDist - bCenterDist;
+    });
+
     return moves;
 }
 
@@ -493,64 +555,72 @@ function isTerminalNode(pcs, mustCapturePieceLoc, maximizingPlayer) {
 
 function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc) {
     if (depth === 0 || isTerminalNode(pcs, mustCapturePieceLoc, maximizingPlayer)) {
-        return {score: evaluatePosition(pcs)};
+        return { score: evaluatePosition(pcs) };
     }
 
     let color = maximizingPlayer ? 1 : 0;
     let moves = generateAllMoves(pcs, color, mustCapturePieceLoc);
 
     if (moves.length === 0) {
-        return {score: evaluatePosition(pcs)};
+        return { score: evaluatePosition(pcs) };
     }
 
-    let value = maximizingPlayer ? -Infinity : Infinity;
-    let bestMoves = [];
-
-    for (let move of moves) {
-        let pcsCopy = pcs.map(p => ({...p}));
-        let res = applyMove(pcsCopy, move, color, mustCapturePieceLoc);
-        let nextMustCapture = res.newMustCapture;
-        let nextPlayer = maximizingPlayer;
-
-        let result;
-        if (res.move_result === 'continue_capture') {
-            result = minimax(res.newPcs, depth - 1, alpha, beta, nextPlayer, nextMustCapture);
-        } else {
-            result = minimax(res.newPcs, depth - 1, alpha, beta, !maximizingPlayer, null);
-        }
-
-        if (maximizingPlayer) {
-            if (result.score > value) {
-                value = result.score;
-                bestMoves = [move];
-            } else if (result.score === value) {
-                bestMoves.push(move);
+    if (maximizingPlayer) {
+        let maxEval = -Infinity;
+        let bestMove = null;
+        for (let move of moves) {
+            let pcsCopy = pcs.map(p => ({...p}));
+            let res = applyMove(pcsCopy, move, color, mustCapturePieceLoc);
+            let evalScore;
+            if (res.move_result === 'continue_capture') {
+                let child = minimax(res.newPcs, depth - 1, alpha, beta, true, res.newMustCapture);
+                evalScore = child.score;
+            } else {
+                let child = minimax(res.newPcs, depth - 1, alpha, beta, false, null);
+                evalScore = child.score;
             }
-            alpha = Math.max(alpha, value);
-            if (alpha >= beta) break;
-        } else {
-            if (result.score < value) {
-                value = result.score;
-                bestMoves = [move];
-            } else if (result.score === value) {
-                bestMoves.push(move);
+
+            if (evalScore > maxEval) {
+                maxEval = evalScore;
+                bestMove = move;
             }
-            beta = Math.min(beta, value);
-            if (beta <= alpha) break;
+            alpha = Math.max(alpha, evalScore);
+            if (beta <= alpha) {
+                break;
+            }
         }
-    }
+        return { score: maxEval, move: bestMove };
+    } else {
+        let minEval = Infinity;
+        let bestMove = null;
+        for (let move of moves) {
+            let pcsCopy = pcs.map(p => ({...p}));
+            let res = applyMove(pcsCopy, move, color, mustCapturePieceLoc);
+            let evalScore;
+            if (res.move_result === 'continue_capture') {
+                let child = minimax(res.newPcs, depth - 1, alpha, beta, false, res.newMustCapture);
+                evalScore = child.score;
+            } else {
+                let child = minimax(res.newPcs, depth - 1, alpha, beta, true, null);
+                evalScore = child.score;
+            }
 
-    let chosenMove = null;
-    if (bestMoves.length > 0) {
-        chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+            if (evalScore < minEval) {
+                minEval = evalScore;
+                bestMove = move;
+            }
+            beta = Math.min(beta, evalScore);
+            if (beta <= alpha) {
+                break;
+            }
+        }
+        return { score: minEval, move: bestMove };
     }
-
-    return {score: value, move: chosenMove};
 }
 
 function makeBotMove() {
     if (current_player !== 'b' || game_over) return;
-    let depth = 4;
+    let depth = 6;
     let result = minimax(pieces.map(p => ({...p})), depth, -Infinity, Infinity, true, must_capture_piece);
     let chosen_move = result.move;
     if (!chosen_move) {
