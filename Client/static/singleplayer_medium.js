@@ -451,13 +451,35 @@ function afterBotMove(result){
 
 function evaluatePosition(pcs) {
     let score = 0;
+    let whiteMoves = generateAllMoves(pcs, 0).length;
+    let blackMoves = generateAllMoves(pcs, 1).length;
+
     for (let p of pcs) {
-        let val = (p.is_king ? 2 : 1);
-        if (p.color === 1) score += val;
-        else score -= val;
+        let pieceValue = p.is_king ? 1.5 : 1;
+        let centerX = 3.5, centerY = 3.5;
+        let distanceToCenter = Math.sqrt(Math.pow(p.x - centerX, 2) + Math.pow(p.y - centerY, 2));
+        let centerControl = (distanceToCenter < 3) ? 0.5 : 0;
+
+        let advancement = 0;
+        if (!p.is_king) {
+            advancement = p.color === 1 ? p.y : (7 - p.y);
+            advancement /= 7;
+        }
+
+        let totalValue = pieceValue + centerControl + advancement;
+        if (p.color === 1) {
+            score += totalValue;
+        } else {
+            score -= totalValue;
+        }
     }
+
+    score += (blackMoves - whiteMoves) * 0.1;
+
     return score;
 }
+
+
 
 function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
     let moves = [];

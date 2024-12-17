@@ -455,12 +455,19 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
 function makeBotMove() {
     if (current_player !== 'b' || game_over) return;
 
-    let allMoves = generateAllMoves(pieces.map(p => ({...p})), 1, must_capture_piece);
-    if (allMoves.length === 0) {
-        endGame();
-        return;
+    let captureMoves = getCaptureMoves(pieces.map(p => ({...p})), 1);
+
+    if (captureMoves.length > 0) {
+        var chosen_move = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+    } else {
+        var allMoves = generateAllMoves(pieces.map(p => ({...p})), 1, null);
+        if (allMoves.length === 0) {
+            endGame();
+            return;
+        }
+        var chosen_move = allMoves[Math.floor(Math.random() * allMoves.length)];
     }
-    let chosen_move = allMoves[Math.floor(Math.random() * allMoves.length)];
+
     console.log('Ход бота:', chosen_move);
     botFrom = {x: chosen_move.from.x, y: chosen_move.from.y};
     botTo = {x: chosen_move.to.x, y: chosen_move.to.y};
@@ -478,6 +485,21 @@ function makeBotMove() {
     }
     afterBotMove(res);
     saveGameState();
+}
+
+function getCaptureMoves(pcs, color) {
+    let captureMoves = [];
+    let vm = get_possible_moves(pcs, color, null);
+    for (let key in vm) {
+        let [px, py] = key.split(',').map(Number);
+        let piece = get_piece_at(pcs, px, py);
+        for (let m of vm[key]) {
+            if (Math.abs(m.x - px) > 1 || Math.abs(m.y - py) > 1) {
+                captureMoves.push({from: {x: px, y: py}, to: m, piece: piece});
+            }
+        }
+    }
+    return captureMoves;
 }
 
 function addMoveToHistory(result, playerMove = true) {
