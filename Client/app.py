@@ -994,7 +994,7 @@ def singleplayer_easy(username):
 
 
 @app.route("/singleplayer_medium/<username>")
-def singleplayer_medium_route(username):
+def singleplayer_medium(username):
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost, user_color=user_color)
