@@ -672,9 +672,10 @@ function makeBotMove() {
 
 
 function addMoveToHistory(result, playerMove = true){
+    let player;
     if(playerMove){
+        player = current_player;
         if(lastFrom && lastTo){
-            let player = user_color;
             movesList.push({
                 player: player,
                 from: lastFrom,
@@ -688,7 +689,9 @@ function addMoveToHistory(result, playerMove = true){
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-            sp1.textContent = player === 'w' ? username : 'Бот Vova(ГАУ)';
+
+            sp1.textContent = username;
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(lastFrom)} -> ${convertPosToNotation(lastTo)}`;
@@ -699,8 +702,8 @@ function addMoveToHistory(result, playerMove = true){
             li.addEventListener('click', onMoveClick);
         }
     } else {
+        player = bot_color;
         if(botFrom && botTo){
-            let player = bot_color;
             movesList.push({
                 player: player,
                 from: botFrom,
@@ -714,7 +717,9 @@ function addMoveToHistory(result, playerMove = true){
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-            sp1.textContent = player === bot_color ? 'Бот Vova(ГАУ)' : username;
+
+            sp1.textContent = 'Бот Vova(ГАУ)';
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(botFrom)} -> ${convertPosToNotation(botTo)}`;
@@ -729,7 +734,6 @@ function addMoveToHistory(result, playerMove = true){
     movesCont.scrollTop = movesCont.scrollHeight;
     saveGameState();
 }
-
 
 function convertPosToNotation(pos){
     let letters = ['A','B','C','D','E','F','G','H'];

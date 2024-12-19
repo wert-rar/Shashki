@@ -733,7 +733,9 @@ function addMoveToHistory(result, playerMove = true){
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-            sp1.textContent = player === 'w' ? username : 'Бот Vova(ГАУ)';
+
+            sp1.textContent = username;
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(lastFrom)} -> ${convertPosToNotation(lastTo)}`;
@@ -759,7 +761,9 @@ function addMoveToHistory(result, playerMove = true){
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-            sp1.textContent = player === bot_color ? 'Бот Vova(ГАУ)' : username;
+
+            sp1.textContent = 'Бот Vova(ГАУ)';
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(botFrom)} -> ${convertPosToNotation(botTo)}`;

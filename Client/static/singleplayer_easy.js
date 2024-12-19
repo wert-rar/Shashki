@@ -572,10 +572,11 @@ function getCaptureMoves(pcs, color) {
     return captureMoves;
 }
 
-function addMoveToHistory(result, playerMove = true) {
-    if (playerMove) {
-        if (lastFrom && lastTo) {
-            let player = user_color;
+function addMoveToHistory(result, playerMove = true){
+    let player;
+    if(playerMove){
+        player = current_player;
+        if(lastFrom && lastTo){
             movesList.push({
                 player: player,
                 from: lastFrom,
@@ -589,7 +590,9 @@ function addMoveToHistory(result, playerMove = true) {
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-            sp1.textContent = player === 'w' ? username : 'Бот Vova(ГАУ)';
+
+            sp1.textContent = username;
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(lastFrom)} -> ${convertPosToNotation(lastTo)}`;
@@ -600,8 +603,8 @@ function addMoveToHistory(result, playerMove = true) {
             li.addEventListener('click', onMoveClick);
         }
     } else {
-        if (botFrom && botTo) {
-            let player = bot_color;
+        player = bot_color;
+        if(botFrom && botTo){
             movesList.push({
                 player: player,
                 from: botFrom,
@@ -615,7 +618,9 @@ function addMoveToHistory(result, playerMove = true) {
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-            sp1.textContent = player === 'w' ? 'Бот Vova(ГАУ)' : username;
+
+            sp1.textContent = 'Бот Vova(ГАУ)';
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(botFrom)} -> ${convertPosToNotation(botTo)}`;
@@ -626,16 +631,10 @@ function addMoveToHistory(result, playerMove = true) {
             li.addEventListener('click', onMoveClick);
         }
     }
-
     let movesCont = document.querySelector('.moves-container');
     movesCont.scrollTop = movesCont.scrollHeight;
-
-    let currentBoard = serializeBoard(pieces);
-    positionHistory[currentBoard] = (positionHistory[currentBoard] || 0) + 1;
-
     saveGameState();
 }
-
 function convertPosToNotation(pos) {
     let letters = ['A','B','C','D','E','F','G','H'];
     let file = letters[pos.x];
