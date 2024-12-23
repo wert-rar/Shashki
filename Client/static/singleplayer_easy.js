@@ -36,6 +36,9 @@ let CANVAS, CTX;
 let CELL_SIZE, BOARD_OFFSET_X, BOARD_OFFSET_Y;
 let difficulty = 'easy';
 let user_color = 'w';
+let user_color_num = 0;
+let bot_color = 'b';
+let bot_color_num = 1;
 let IS_SELECTED = false;
 let colors = {1: "rgb(0, 0, 0)", 0: "rgb(255, 255, 255)"};
 let b_colors = {1: "#971616", 0: "#971616"};
@@ -51,6 +54,64 @@ let username = window.username || "ghost1";
 let is_ghost = window.is_ghost || false;
 
 let positionHistory = {};
+
+function initializePieces(userColor) {
+    if (userColor === 'w') {
+        return [
+            {"color":1,"x":1,"y":0,"mode":"p"},
+            {"color":1,"x":3,"y":0,"mode":"p"},
+            {"color":1,"x":5,"y":0,"mode":"p"},
+            {"color":1,"x":7,"y":0,"mode":"p"},
+            {"color":1,"x":0,"y":1,"mode":"p"},
+            {"color":1,"x":2,"y":1,"mode":"p"},
+            {"color":1,"x":4,"y":1,"mode":"p"},
+            {"color":1,"x":6,"y":1,"mode":"p"},
+            {"color":1,"x":1,"y":2,"mode":"p"},
+            {"color":1,"x":3,"y":2,"mode":"p"},
+            {"color":1,"x":5,"y":2,"mode":"p"},
+            {"color":1,"x":7,"y":2,"mode":"p"},
+            {"color":0,"x":0,"y":5,"mode":"p"},
+            {"color":0,"x":2,"y":5,"mode":"p"},
+            {"color":0,"x":4,"y":5,"mode":"p"},
+            {"color":0,"x":6,"y":5,"mode":"p"},
+            {"color":0,"x":1,"y":6,"mode":"p"},
+            {"color":0,"x":3,"y":6,"mode":"p"},
+            {"color":0,"x":5,"y":6,"mode":"p"},
+            {"color":0,"x":7,"y":6,"mode":"p"},
+            {"color":0,"x":0,"y":7,"mode":"p"},
+            {"color":0,"x":2,"y":7,"mode":"p"},
+            {"color":0,"x":4,"y":7,"mode":"p"},
+            {"color":0,"x":6,"y":7,"mode":"p"}
+        ];
+    } else {
+        return [
+            {"color":1,"x":1,"y":0,"mode":"p"},
+            {"color":1,"x":3,"y":0,"mode":"p"},
+            {"color":1,"x":5,"y":0,"mode":"p"},
+            {"color":1,"x":7,"y":0,"mode":"p"},
+            {"color":1,"x":0,"y":1,"mode":"p"},
+            {"color":1,"x":2,"y":1,"mode":"p"},
+            {"color":1,"x":4,"y":1,"mode":"p"},
+            {"color":1,"x":6,"y":1,"mode":"p"},
+            {"color":1,"x":1,"y":2,"mode":"p"},
+            {"color":1,"x":3,"y":2,"mode":"p"},
+            {"color":1,"x":5,"y":2,"mode":"p"},
+            {"color":1,"x":7,"y":2,"mode":"p"},
+            {"color":0,"x":0,"y":5,"mode":"p"},
+            {"color":0,"x":2,"y":5,"mode":"p"},
+            {"color":0,"x":4,"y":5,"mode":"p"},
+            {"color":0,"x":6,"y":5,"mode":"p"},
+            {"color":0,"x":1,"y":6,"mode":"p"},
+            {"color":0,"x":3,"y":6,"mode":"p"},
+            {"color":0,"x":5,"y":6,"mode":"p"},
+            {"color":0,"x":7,"y":6,"mode":"p"},
+            {"color":0,"x":0,"y":7,"mode":"p"},
+            {"color":0,"x":2,"y":7,"mode":"p"},
+            {"color":0,"x":4,"y":7,"mode":"p"},
+            {"color":0,"x":6,"y":7,"mode":"p"}
+        ];
+    }
+}
 
 function copyPieces(pcs) {
     return pcs.map(p => ({...p}));
@@ -100,10 +161,14 @@ function loadGameState() {
         movesList = state.movesList || [];
         positionHistory = state.positionHistory || {};
 
+        user_color_num = (user_color === 'w') ? 0 : 1;
+        bot_color_num = 1 - user_color_num;
+        bot_color = (bot_color_num === 0) ? 'w' : 'b';
+
         document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
         restoreMovesHistory();
 
-        if (!game_over && current_player === 'b') {
+        if (!game_over && current_player === bot_color) {
             setTimeout(makeBotMove, 1000);
         }
     } else {
@@ -232,7 +297,7 @@ function get_possible_moves(pcs, color, must_capture = null) {
 }
 
 function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc) {
-    let color = (player === 'w' ? 0 : 1);
+    let color = (player === 'w') ? 0 : 1;
     let valid_moves = get_possible_moves(pcs, color, mustCapturePieceLoc);
     let piece_moves = valid_moves[`${selected_piece.x},${selected_piece.y}`] || [];
     if (!piece_moves.some(m => m.x === new_pos.x && m.y === new_pos.y)) {
@@ -311,6 +376,7 @@ function isGameOver() {
 
     let allKings = pieces.every(p => p.is_king);
     if (allKings) {
+        console.log('Ничья: все фигуры стали дамками.');
         endGame('draw_kings');
         return true;
     }
@@ -318,19 +384,27 @@ function isGameOver() {
     let currentBoard = serializeBoard(pieces);
     positionHistory[currentBoard] = (positionHistory[currentBoard] || 0) + 1;
     if (positionHistory[currentBoard] > 3) {
+        console.log('Ничья: повторение позиции 3 раза.');
         endGame('draw_repetition');
         return true;
     }
 
-    let color = (current_player === 'w' ? 0 : 1);
-    let moves = get_possible_moves(pieces, color, must_capture_piece);
+    let color_num = (current_player === 'w') ? 0 : 1;
+    let moves = get_possible_moves(pieces, color_num, must_capture_piece);
     let canMove = false;
     for (let k in moves) { if (moves[k].length > 0) { canMove = true; break; } }
-    if (!canMove) return true;
 
-    let opponentColor = current_player === 'w' ? 1 : 0;
+    if (!canMove) {
+        console.log('Игра окончена: нет доступных ходов.');
+        return true;
+    }
+
+    let opponentColor = (current_player === 'w') ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
-    if (oppPieces.length === 0) return true;
+    if (oppPieces.length === 0) {
+        console.log('Игра окончена: у противника нет фигур.');
+        return true;
+    }
 
     return false;
 }
@@ -341,8 +415,9 @@ function endGame(forceStatus = null) {
     let color = (current_player === 'w' ? 0 : 1);
     let moves = get_possible_moves(pieces, color, must_capture_piece);
     let canMove = false;
+
     for (let k in moves) { if (moves[k].length > 0) { canMove = true; break; } }
-    let opponentColor = current_player === 'w' ? 1 : 0;
+    let opponentColor = (current_player === 'w') ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
 
     if (forceStatus) {
@@ -388,7 +463,10 @@ function confirmSurrender() {
 
 function afterPlayerMove(result) {
     addMoveToHistory(result, true);
-    if (isGameOver()) { return; }
+    if (isGameOver()) {
+        endGame();
+        return;
+    }
     if (result.move_result === 'continue_capture') {
         must_capture_piece = result.newMustCapture;
         document.getElementById('status').textContent = (current_player === 'w' ? 'Продолжают ходить белые' : 'Продолжают ходить черные');
@@ -396,15 +474,21 @@ function afterPlayerMove(result) {
     } else {
         must_capture_piece = null;
         switchTurn();
-        if (isGameOver()) { return; }
-        if (current_player === 'b') { setTimeout(makeBotMove, 1000); }
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
+        if (current_player === bot_color) { setTimeout(makeBotMove, 1000); }
     }
     saveGameState();
 }
 
 function afterBotMove(result) {
     addMoveToHistory(result, false);
-    if (isGameOver()) { return; }
+    if (isGameOver()) {
+        endGame();
+        return;
+    }
     if (result.move_result === 'continue_capture') {
         must_capture_piece = result.newMustCapture;
         document.getElementById('status').textContent = (current_player === 'w' ? 'Продолжают ходить белые' : 'Продолжают ходить черные');
@@ -412,7 +496,10 @@ function afterBotMove(result) {
     } else {
         must_capture_piece = null;
         switchTurn();
-        if (isGameOver()) endGame();
+        if (isGameOver()) {
+            endGame();
+            return;
+        }
     }
     saveGameState();
 }
@@ -431,21 +518,32 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
 }
 
 function makeBotMove() {
-    if (current_player !== 'b' || game_over) return;
+    if (game_over) return;
+    if (current_player !== bot_color) return;
 
-    let allMoves = generateAllMoves(pieces.map(p => ({...p})), 1, must_capture_piece);
-    if (allMoves.length === 0) {
-        endGame();
-        return;
+    let color_num = bot_color_num;
+    let color_player = bot_color;
+
+    let captureMoves = getCaptureMoves(pieces.map(p => ({...p})), color_num);
+
+    let chosen_move;
+    if (captureMoves.length > 0) {
+        chosen_move = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+    } else {
+        let allMoves = generateAllMoves(pieces.map(p => ({...p})), color_num, null);
+        if (allMoves.length === 0) {
+            endGame();
+            return;
+        }
+        chosen_move = allMoves[Math.floor(Math.random() * allMoves.length)];
     }
-    let chosen_move = allMoves[Math.floor(Math.random() * allMoves.length)];
 
+    console.log('Ход бота:', chosen_move);
     botFrom = {x: chosen_move.from.x, y: chosen_move.from.y};
     botTo = {x: chosen_move.to.x, y: chosen_move.to.y};
     let sel_piece = get_piece_at(pieces, chosen_move.from.x, chosen_move.from.y);
-    let res = validate_move(sel_piece, chosen_move.to, 'b', pieces, must_capture_piece);
+    let res = validate_move(sel_piece, chosen_move.to, color_player, pieces, must_capture_piece);
     if (res.move_result === 'invalid') {
-        console.error("Бот выбрал неверный ход");
         endGame();
         return;
     }
@@ -459,51 +557,75 @@ function makeBotMove() {
     saveGameState();
 }
 
-function addMoveToHistory(result, playerMove = true) {
-    if (playerMove) {
-        if (lastFrom && lastTo) {
+function getCaptureMoves(pcs, color) {
+    let captureMoves = [];
+    let vm = get_possible_moves(pcs, color, null);
+    for (let key in vm) {
+        let [px, py] = key.split(',').map(Number);
+        let piece = get_piece_at(pcs, px, py);
+        for (let m of vm[key]) {
+            if (Math.abs(m.x - px) > 1 || Math.abs(m.y - py) > 1) {
+                captureMoves.push({from: {x: px, y: py}, to: m, piece: piece});
+            }
+        }
+    }
+    return captureMoves;
+}
+
+function addMoveToHistory(result, playerMove = true){
+    let player;
+    if(playerMove){
+        player = current_player;
+        if(lastFrom && lastTo){
             movesList.push({
-                player: 'w',
+                player: player,
                 from: lastFrom,
                 to: lastTo,
                 piecesSnapshot: copyPieces(pieces)
             });
             let li = document.createElement('li');
-            li.classList.add('player-move');
+            li.classList.add(player === 'w' ? 'player-move' : 'opponent-move');
             li.setAttribute('data-move-index', movesList.length - 1);
             let div = document.createElement('div');
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
+
             sp1.textContent = username;
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(lastFrom)} -> ${convertPosToNotation(lastTo)}`;
-            div.appendChild(sp1); div.appendChild(sp2);
+            div.appendChild(sp1);
+            div.appendChild(sp2);
             li.appendChild(div);
             document.querySelector('.moves-list').appendChild(li);
             li.addEventListener('click', onMoveClick);
         }
     } else {
-        if (botFrom && botTo) {
+        player = bot_color;
+        if(botFrom && botTo){
             movesList.push({
-                player: 'b',
+                player: player,
                 from: botFrom,
                 to: botTo,
                 piecesSnapshot: copyPieces(pieces)
             });
             let li = document.createElement('li');
-            li.classList.add('opponent-move');
+            li.classList.add(player === 'w' ? 'player-move' : 'opponent-move');
             li.setAttribute('data-move-index', movesList.length - 1);
             let div = document.createElement('div');
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
+
             sp1.textContent = 'Бот Vova(ГАУ)';
+
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(botFrom)} -> ${convertPosToNotation(botTo)}`;
-            div.appendChild(sp1); div.appendChild(sp2);
+            div.appendChild(sp1);
+            div.appendChild(sp2);
             li.appendChild(div);
             document.querySelector('.moves-list').appendChild(li);
             li.addEventListener('click', onMoveClick);
@@ -511,28 +633,30 @@ function addMoveToHistory(result, playerMove = true) {
     }
     let movesCont = document.querySelector('.moves-container');
     movesCont.scrollTop = movesCont.scrollHeight;
-
-    let currentBoard = serializeBoard(pieces);
-    positionHistory[currentBoard] = (positionHistory[currentBoard] || 0) + 1;
-
     saveGameState();
 }
-
 function convertPosToNotation(pos) {
     let letters = ['A','B','C','D','E','F','G','H'];
     let file = letters[pos.x];
-    let rank = 8 - pos.y;
+    let rank;
+
+    if (user_color === 'w') {
+        rank = 8 - pos.y;
+    } else {
+        rank = pos.y + 1;
+    }
+
     return file + rank;
 }
 
 function onClick(evt) {
-    if (game_over || current_player === 'b' || historyViewMode) return;
+    if (game_over || current_player === bot_color || historyViewMode) return;
     let loc = {x: evt.offsetX, y: evt.offsetY};
     let coords = getCoordinates(loc);
     if (coords.x === -1 || coords.y === -1) return;
     if (!selected_piece) {
         let p = get_piece_at(pieces, coords.x, coords.y);
-        if (p && p.color === 0 && current_player === 'w') {
+        if (p && p.color === user_color_num && current_player === user_color) {
             selected_piece = p;
             IS_SELECTED = true;
             updatePossibleMoves();
@@ -543,7 +667,7 @@ function onClick(evt) {
             lastFrom = {x: selected_piece.x, y: selected_piece.y};
             lastTo = {x: coords.x, y: coords.y};
             selected_pos = {x: coords.x, y: coords.y};
-            let res = validate_move(selected_piece, move, 'w', pieces, must_capture_piece);
+            let res = validate_move(selected_piece, move, user_color, pieces, must_capture_piece);
             if (res.move_result === 'invalid') {
                 selected_piece = null;
                 IS_SELECTED = false;
@@ -575,7 +699,7 @@ function onClick(evt) {
 
 function updatePossibleMoves() {
     if (!selected_piece) return;
-    let color = (current_player === 'w' ? 0 : 1);
+    let color = (current_player === 'w') ? 0 : 1;
     let vm = must_capture_piece ? get_possible_moves(pieces, color, must_capture_piece) : get_possible_moves(pieces, color);
     possibleMoves = vm[`${selected_piece.x},${selected_piece.y}`] || [];
 }
@@ -583,6 +707,11 @@ function updatePossibleMoves() {
 function getCoordinates(loc) {
     let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
     let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
+
+    if (user_color === 'b') {
+        gridY = 7 - gridY;
+    }
+
     if (gridX < 0 || gridX > 7 || gridY < 0 || gridY > 7) return {x: -1, y: -1};
     if ((gridX + gridY) % 2 === 0) return {x: -1, y: -1};
     return {x: gridX, y: gridY};
@@ -627,11 +756,14 @@ function draw_circle(x, y, r, width, strokeColor, fillColor) {
     CTX.closePath();
 }
 
-function draw_piece(piece, user_color) {
+function draw_piece(piece, user_color_param) {
     let fillStyle = colors[piece.color];
     let strokeStyle = colors[piece.color ? 0 : 1];
-    const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
-    const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
+    let displayX = piece.x;
+    let displayY = user_color_param === "b" ? 7 - piece.y : piece.y;
+
+    const X = BOARD_OFFSET_X + CELL_SIZE * (displayX + 0.5);
+    const Y = BOARD_OFFSET_Y + CELL_SIZE * (displayY + 0.5);
     const radius = (CELL_SIZE / 2) * 0.8;
     const innerRadius = radius * 0.7;
     const crownRadius = radius * 0.5;
@@ -668,8 +800,10 @@ function draw_possible_moves() {
     CTX.shadowColor = 'rgba(0,162,255,0.8)';
     CTX.shadowBlur = 10;
     for (let move of possibleMoves) {
+        let displayY = (user_color === "b") ? 7 - move.y : move.y;
+
         const X = BOARD_OFFSET_X + CELL_SIZE * move.x;
-        const Y = BOARD_OFFSET_Y + CELL_SIZE * move.y;
+        const Y = BOARD_OFFSET_Y + CELL_SIZE * displayY;
         CTX.strokeRect(X, Y, CELL_SIZE, CELL_SIZE);
     }
     CTX.restore();
@@ -705,14 +839,14 @@ function drawLabels() {
     }
 }
 
-
 function render_Board() {
     CTX.fillStyle = "#121212";
     CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
-    let step = user_color === "b" ? 1 : 0;
+    let step = 0;
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
-            if ((i + j) % 2 === 1) {
+            let row = (user_color === "b") ? 7 - i : i;
+            if ((j + row) % 2 === 1) {
                 CTX.fillStyle = b_colors[step % 2];
                 CTX.fillRect(BOARD_OFFSET_X + CELL_SIZE * j, BOARD_OFFSET_Y + CELL_SIZE * i, CELL_SIZE, CELL_SIZE);
             }
@@ -723,7 +857,6 @@ function render_Board() {
     drawLabels();
 }
 
-
 function render_Pieces() {
     for (let i = 0; i < pieces.length; i++) {
         draw_piece(pieces[i], user_color);
@@ -733,7 +866,6 @@ function render_Pieces() {
     }
 }
 
-
 function update() {
     CTX.clearRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
     render_Board();
@@ -741,11 +873,9 @@ function update() {
     window.requestAnimationFrame(update);
 }
 
-
 window.addEventListener('resize', () => {
     adjustScreen();
 });
-
 
 window.onload = function() {
     CANVAS = document.getElementById("board");
@@ -753,7 +883,25 @@ window.onload = function() {
     CTX.imageSmoothingEnabled = true;
     adjustScreen();
 
-    loadGameState();
+    user_color = window.user_color || 'w';
+    user_color_num = (user_color === 'w') ? 0 : 1;
+    bot_color_num = 1 - user_color_num;
+    bot_color = (bot_color_num === 0) ? 'w' : 'b';
+
+    let stateStr = localStorage.getItem('checkers_game_state');
+    if (stateStr) {
+        loadGameState();
+    } else {
+        pieces = initializePieces(user_color);
+
+        current_player = 'w';
+        document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
+        saveGameState();
+
+        if (bot_color === 'w') {
+            setTimeout(makeBotMove, 1000);
+        }
+    }
 
     if (selected_piece) updatePossibleMoves();
 
@@ -766,7 +914,6 @@ window.onload = function() {
     }
 };
 
-
 function onMoveClick(evt) {
     if (!movesList || movesList.length === 0) return;
     const li = evt.currentTarget;
@@ -774,7 +921,6 @@ function onMoveClick(evt) {
     if (isNaN(index)) return;
     showHistoryState(index);
 }
-
 
 function showHistoryState(index) {
     if (!historyViewMode) {
@@ -800,7 +946,6 @@ function showHistoryState(index) {
     update();
 }
 
-
 function returnToCurrentState() {
     if (!currentPiecesSnapshot) return;
     historyViewMode = false;
@@ -822,7 +967,6 @@ function returnToCurrentState() {
     updatePossibleMoves();
     update();
 }
-
 
 function showReturnToCurrentButton() {
     let btn = document.getElementById('history-view-button');

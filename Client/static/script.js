@@ -40,32 +40,7 @@ let b_colors = {
   0: "#971616",
 };
 
-let pieces = [
-  { color: 1, x: 1, y: 0, mode: "p" },
-  { color: 1, x: 3, y: 0, mode: "p" },
-  { color: 1, x: 5, y: 0, mode: "p" },
-  { color: 1, x: 7, y: 0, mode: "p" },
-  { color: 1, x: 0, y: 1, mode: "p" },
-  { color: 1, x: 2, y: 1, mode: "p" },
-  { color: 1, x: 4, y: 1, mode: "p" },
-  { color: 1, x: 6, y: 1, mode: "p" },
-  { color: 1, x: 1, y: 2, mode: "p" },
-  { color: 1, x: 3, y: 2, mode: "p" },
-  { color: 1, x: 5, y: 2, mode: "p" },
-  { color: 1, x: 7, y: 2, mode: "p" },
-  { color: 0, x: 0, y: 5, mode: "p" },
-  { color: 0, x: 2, y: 5, mode: "p" },
-  { color: 0, x: 4, y: 5, mode: "p" },
-  { color: 0, x: 6, y: 5, mode: "p" },
-  { color: 0, x: 1, y: 6, mode: "p" },
-  { color: 0, x: 3, y: 6, mode: "p" },
-  { color: 0, x: 5, y: 6, mode: "p" },
-  { color: 0, x: 7, y: 6, mode: "p" },
-  { color: 0, x: 0, y: 7, mode: "p" },
-  { color: 0, x: 2, y: 7, mode: "p" },
-  { color: 0, x: 4, y: 7, mode: "p" },
-  { color: 0, x: 6, y: 7, mode: "p" },
-];
+let pieces = [];
 
 let possibleMoves = [];
 
@@ -85,7 +60,7 @@ function update_data(data) {
     if (data.error) {
         showError(data.error);
         if (data.error === "Invalid game ID") {
-            window.location.href = "/";
+            alert("Произошла ошибка: " + data.error);
         }
         return;
     }
@@ -102,6 +77,10 @@ function update_data(data) {
             pieces = data.pieces;
             if (user_color == "b") pieces = translate(pieces);
             console.log("Updated pieces:", pieces);
+
+            if (pieces && pieces.length > 0 && boardStates.length === 0) {
+              boardStates = [JSON.parse(JSON.stringify(pieces))];
+            }
         } else {
             console.error("data.pieces is undefined");
             showError("Получены некорректные данные от сервера.");
@@ -175,54 +154,94 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
 }
 
 function displayGameOverMessage(data) {
-  let modal = document.getElementById("game-over-modal");
-  if (modal.style.display === "block") return;
+    console.log(`User is ghost: ${is_ghost}`);
+    console.log(`Opponent is ghost: ${opponent_login.startsWith('ghost')}`);
 
-  let title = document.getElementById("game-over-title");
-  let message = document.getElementById("game-over-message");
+    let modal = document.getElementById("game-over-modal");
+    if (modal.style.display === "block") return;
 
-  let resultText = "";
-  let isVictory = false;
-  let isDefeat = false;
+    let title = document.getElementById("game-over-title");
+    let message = document.getElementById("game-over-message");
 
-  let gameResult = data.result;
-  if (!gameResult) {
-    if (CURRENT_STATUS === 'w3') {
-      gameResult = (user_color === 'w') ? 'win' : 'lose';
-    } else if (CURRENT_STATUS === 'b3') {
-      gameResult = (user_color === 'b') ? 'win' : 'lose';
-    } else if (CURRENT_STATUS === 'n') {
-      gameResult = 'draw';
+    let resultText = "";
+    let isVictory = false;
+    let isDefeat = false;
+
+    let gameResult = data.result;
+    if (!gameResult) {
+        if (CURRENT_STATUS === 'w3') {
+            gameResult = (user_color === 'w') ? 'win' : 'lose';
+        } else if (CURRENT_STATUS === 'b3') {
+            gameResult = (user_color === 'b') ? 'win' : 'lose';
+        } else if (CURRENT_STATUS === 'n') {
+            gameResult = 'draw';
+        }
     }
-  }
 
-  if (gameResult === "win") {
-    resultText = "Вы победили!";
-    isVictory = true;
-  } else if (gameResult === "lose") {
-    resultText = "Вы проиграли.";
-    isDefeat = true;
-  } else if (gameResult === "draw") {
-    resultText = "Ничья.";
-  }
+    let userIsGhost = is_ghost;
+    let opponentIsGhost = opponent_login.startsWith('ghost');
 
-  let points_gained = data.points_gained || 0;
+    console.log(`User is ghost: ${userIsGhost}, Opponent is ghost: ${opponentIsGhost}`);
 
-  title.innerText = "Игра окончена";
-  message.innerHTML = `
-      ${resultText}<br>
-      Вы получили ${points_gained} очков к рангу.
-  `;
+    if (userIsGhost) {
+        resultText = "Вы не получаете очки, пока не зарегистрированы.";
+    } else {
+        if (gameResult === "win") {
+            resultText = "Вы победили!";
+            isVictory = true;
+        } else if (gameResult === "lose") {
+            resultText = "Вы проиграли.";
+            isDefeat = true;
+        } else if (gameResult === "draw") {
+            resultText = "Ничья.";
+        }
+    }
 
-  modal.style.display = "block";
+    let points_gained = data.points_gained || 0;
 
-  if (isVictory && !victorySoundPlayed) {
-    playVictorySound();
-    victorySoundPlayed = true;
-  } else if (isDefeat && !defeatSoundPlayed) {
-    playDefeatSound();
-    defeatSoundPlayed = true;
-  }
+    title.innerText = "Игра окончена";
+
+    if (userIsGhost) {
+        message.innerHTML = resultText;
+    } else {
+        message.innerHTML = `
+            ${resultText}<br>
+            Вы получили ${points_gained} очков к рангу.
+        `;
+    }
+
+    const modalButtons = modal.querySelector('.modal-buttons');
+    const mainMenuButton = document.getElementById('main-menu-button');
+    const registerButton = document.getElementById('register-button');
+
+    if (userIsGhost) {
+        registerButton.style.display = 'inline-block';
+        modalButtons.classList.add('two-buttons');
+        modalButtons.classList.remove('single-button');
+    } else {
+        registerButton.style.display = 'none';
+        modalButtons.classList.remove('two-buttons');
+        modalButtons.classList.add('single-button');
+    }
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (userIsGhost) {
+        modalContent.classList.add('guest');
+        modalContent.classList.remove('registered');
+    } else {
+        modalContent.classList.remove('guest');
+        modalContent.classList.add('registered');
+    }
+
+    modal.style.display = "block";
+
+    if (isVictory && !victorySoundPlayed) {
+        playVictorySound();
+        victorySoundPlayed = true;
+    } else if (isDefeat && !defeatSoundPlayed) {
+        playDefeatSound();
+        defeatSoundPlayed = true;
+    }
 }
 
 function returnToMainMenu() {
@@ -447,7 +466,7 @@ function server_update_request() {
         if (data.error) {
             showError(data.error);
             if (data.error === "Invalid game ID") {
-                window.location.href = "/";
+                alert("Произошла ошибка: " + data.error);
             }
             return Promise.reject(data.error);
         } else {
@@ -862,10 +881,6 @@ function viewBoardState(moveIndex) {
 
   let selectedState = boardStates[moveIndex].map(piece => ({...piece}));
 
-  if (user_color === "b") {
-    selectedState = translate(selectedState);
-  }
-
   pieces = selectedState;
 
   currentView = moveIndex;
@@ -875,11 +890,8 @@ function viewBoardState(moveIndex) {
 function returnToCurrentView() {
   let currentState = boardStates[boardStates.length - 1].map(piece => ({...piece}));
 
-  if (user_color === "b") {
-    currentState = translate(currentState);
-  }
-
   pieces = currentState;
+
   currentView = null;
   let indicator = document.getElementById('history-view-indicator');
   if (indicator) {
@@ -1030,7 +1042,6 @@ function checkGameStatus() {
             console.log('Игры нет.');
         } else if (data.status === 'invalid_game_id') {
             console.error('Некорректный game_id. Очистка сессии.');
-            window.location.href = "/";
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
             window.location.href = "/";
@@ -1048,14 +1059,14 @@ function startPolling() {
     setInterval(() => {
         server_update_request()
             .then(() => {
-                pollingInterval = 1000; // Сбросить интервал при успешном запросе
+                pollingInterval = 1000;
             })
             .catch(() => {
-                pollingInterval = Math.min(pollingInterval * 2, 60000); // Увеличить интервал, максимум 60 секунд
+                pollingInterval = Math.min(pollingInterval * 2, 60000);
             });
     }, pollingInterval);
     if (game_id && user_login) {
-        setInterval(checkGameStatus, 5000); // Каждые 5 секунд
+        setInterval(checkGameStatus, 5000);
     }
 }
 
@@ -1064,27 +1075,27 @@ function onLoad() {
   CTX = CANVAS.getContext("2d");
   CTX.imageSmoothingEnabled = true;
   HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
-  if (user_color == "b") {
-    pieces = translate(pieces);
-  }
-  boardStates = [JSON.parse(JSON.stringify(pieces))];
+
   adjustScreen();
-  update();
-  addEventListeners();
-  startPolling();
 
-  let gameFoundSound = document.getElementById('sound-game-found');
-  if (gameFoundSound) {
-    gameFoundSound.volume = 0.35;
-    gameFoundSound.play().catch(error => {
-      console.error('Ошибка при воспроизведении звука нахождения игры:', error);
-    });
-  }
+  server_update_request().then(() => {
+    update();
+    addEventListeners();
+    startPolling();
 
-  if (user_login.startsWith('ghost')) {
-    disableProfileFeatures();
-  }
-  notify_player_loaded();
+    let gameFoundSound = document.getElementById('sound-game-found');
+    if (gameFoundSound) {
+      gameFoundSound.volume = 0.35;
+      gameFoundSound.play().catch(error => {
+        console.error('Ошибка при воспроизведении звука нахождения игры:', error);
+      });
+    }
+
+    if (user_login.startsWith('ghost')) {
+      disableProfileFeatures();
+    }
+    notify_player_loaded();
+  });
 }
 
 function disableProfileFeatures() {

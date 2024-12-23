@@ -77,7 +77,10 @@
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
             <p id="game-over-message"></p>
-            <button onclick="returnToMainMenu()">Вернуться в главное меню</button>
+            <div class="modal-buttons">
+                <button id="main-menu-button" onclick="returnToMainMenu()">Главное меню</button>
+                <button id="register-button" onclick="window.location.href='/register'" style="display: none;">Зарегистрироваться</button>
+            </div>
         </div>
     </div>
     <div id="draw-offer-modal" class="modal">
@@ -100,6 +103,7 @@
         const user_color = "{{ user_color }}";
         const opponent_login = "{{ opponent_login }}";
         const is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
+        console.log(`User: ${user_login}, Game ID: ${game_id}, Color: ${user_color}, Opponent: ${opponent_login}, Is Ghost: ${is_ghost}`);
     </script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
