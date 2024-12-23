@@ -1,9 +1,30 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
-from base_sqlite import check_user_exists, register_user, authenticate_user, get_user_by_login, update_user_rank, update_user_stats, create_tables
-from game import get_game_status_internally, find_waiting_game_in_db, update_game_with_user_in_db, create_new_game_in_db
-from game import remove_game_in_db, get_or_create_ephemeral_game, all_games_lock, all_games_dict, update_game_status_in_db
+from base_sqlite import (
+    check_user_exists,
+    register_user,
+    authenticate_user,
+    get_user_by_login,
+    update_user_rank,
+    update_user_stats,
+    create_tables,
+    get_user_rang,
+    insert_completed_game,
+    get_user_history
+)
+from game import (
+    get_game_status_internally,
+    find_waiting_game_in_db,
+    update_game_with_user_in_db,
+    create_new_game_in_db,
+    remove_game_in_db,
+    get_or_create_ephemeral_game,
+    all_games_lock,
+    all_games_dict,
+    update_game_status_in_db
+)
 import logging, subprocess, hmac, hashlib, threading, time
 import itertools
+import datetime
 
 ghost_counter = itertools.count(1)
 ghost_lock = threading.Lock()
@@ -148,45 +169,96 @@ def finalize_game(game, user_login):
     else:
         winner_color = None
 
+    if getattr(game, 'rank_updated', False):
+        if winner_color is None:
+            return 'draw', 0
+        else:
+            return ('win' if winner_color == game.user_color(user_login) else 'lose'), 0
+
+    f_user_before = get_user_rang(game.f_user) if (game.f_user and not game.f_user.startswith('ghost')) else 0
+    c_user_before = get_user_rang(game.c_user) if (game.c_user and not game.c_user.startswith('ghost')) else 0
+
     user_color = game.user_color(user_login)
     user_is_ghost = user_login.startswith('ghost')
 
     if winner_color is None:
         result_move = 'draw'
-        points_gained = 5 if not user_is_ghost else 0
+        points_gained_user = 5 if (not user_is_ghost) else 0
     else:
         if winner_color == user_color:
             result_move = 'win'
-            points_gained = 10 if not user_is_ghost else 0
+            points_gained_user = 10 if (not user_is_ghost) else 0
         else:
             result_move = 'lose'
-            points_gained = 0
+            points_gained_user = 0
 
-    if not getattr(game, 'rank_updated', False):
-        opponent_login = game.f_user if game.f_user != user_login else game.c_user
-        opponent_is_ghost = opponent_login.startswith('ghost')
+    opponent_login = game.f_user if game.f_user != user_login else game.c_user
+    opponent_is_ghost = opponent_login.startswith('ghost') if opponent_login else True
 
-        if not user_is_ghost:
-            if result_move == 'win':
-                update_user_rank(user_login, points_gained)
-                update_user_stats(user_login, wins=1)
-                if not opponent_is_ghost:
-                    update_user_stats(opponent_login, losses=1)
-            elif result_move == 'lose':
-                update_user_stats(user_login, losses=1)
-            elif result_move == 'draw':
-                update_user_rank(user_login, points_gained)
-                if not opponent_is_ghost:
-                    update_user_rank(opponent_login, points_gained)
-                update_user_stats(user_login, draws=1)
-                if not opponent_is_ghost:
-                    update_user_stats(opponent_login, draws=1)
+    if not user_is_ghost:
+        if result_move == 'win':
+            update_user_rank(user_login, points_gained_user)
+            update_user_stats(user_login, wins=1)
+            if not opponent_is_ghost:
+                update_user_stats(opponent_login, losses=1)
+        elif result_move == 'lose':
+            update_user_stats(user_login, losses=1)
+        elif result_move == 'draw':
+            update_user_rank(user_login, points_gained_user)
+            update_user_stats(user_login, draws=1)
+            if not opponent_is_ghost:
+                update_user_rank(opponent_login, points_gained_user)
+                update_user_stats(opponent_login, draws=1)
 
-        game.rank_updated = True
+    game.rank_updated = True
 
     update_game_status_in_db(game.game_id, 'completed')
 
-    return result_move, points_gained
+    f_user_after = get_user_rang(game.f_user) if (game.f_user and not game.f_user.startswith('ghost')) else 0
+    c_user_after = get_user_rang(game.c_user) if (game.c_user and not game.c_user.startswith('ghost')) else 0
+
+    date_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if game.f_user and not game.f_user.startswith('ghost'):
+        if winner_color == 'w':
+            res = 'win'
+        elif winner_color == 'b':
+            res = 'lose'
+        elif winner_color is None:
+            res = 'draw'
+        else:
+            res = 'lose'
+
+        insert_completed_game(
+            user_login=game.f_user,
+            game_id=game.game_id,
+            date_start=date_now,
+            rating_before=f_user_before,
+            rating_after=f_user_after,
+            rating_change=(f_user_after - f_user_before),
+            result=res
+        )
+
+    if game.c_user and not game.c_user.startswith('ghost'):
+        if winner_color == 'b':
+            res = 'win'
+        elif winner_color == 'w':
+            res = 'lose'
+        elif winner_color is None:
+            res = 'draw'
+        else:
+            res = 'lose'
+
+        insert_completed_game(
+            user_login=game.c_user,
+            game_id=game.game_id,
+            date_start=date_now,
+            rating_before=c_user_before,
+            rating_after=c_user_after,
+            rating_change=(c_user_after - c_user_before),
+            result=res
+        )
+
+    return result_move, points_gained_user
 
 
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
@@ -377,17 +449,22 @@ def profile(username):
             except (ValueError, TypeError):
                 in_game = False
 
-        return render_template('profile.html',
-                               profile_user_login=user['login'],
-                               rang=user['rang'],
-                               total_games=total_games,
-                               wins=user['wins'],
-                               losses=user['losses'],
-                               draws=user['draws'],
-                               is_own_profile=is_own_profile,
-                               in_game=in_game,
-                               game_id=game_id,
-                               current_user_login=current_user)
+        user_history = get_user_history(username)
+
+        return render_template(
+            'profile.html',
+            profile_user_login=user['login'],
+            rang=user['rang'],
+            total_games=total_games,
+            wins=user['wins'],
+            losses=user['losses'],
+            draws=user['draws'],
+            is_own_profile=is_own_profile,
+            in_game=in_game,
+            game_id=game_id,
+            current_user_login=current_user,
+            user_history=user_history
+        )
     else:
         abort(404)
 
@@ -402,12 +479,12 @@ def logout():
 
 
 @app.errorhandler(404)
-def page_not_found():
+def page_not_found(e):
     return render_template('404.html'), 404
 
 
 @app.errorhandler(403)
-def forbidden():
+def forbidden(e):
     return render_template('403.html'), 403
 
 

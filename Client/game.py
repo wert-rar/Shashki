@@ -1,4 +1,4 @@
-import random, time, threading
+import time, threading
 from base_postgres import SessionLocal, Game as DBGame
 
 all_games_lock = threading.Lock()
@@ -30,7 +30,6 @@ pieces = [
     {"color": 0, "x": 4, "y": 5, "mode": "p"},
     {"color": 0, "x": 6, "y": 5, "mode": "p"}
 ]
-
 
 class Game:
     def __init__(self, f_user, c_user, game_id):
@@ -102,7 +101,6 @@ class Game:
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
-
 def get_or_create_ephemeral_game(game_id):
     with all_games_lock:
         if game_id in all_games_dict:
@@ -125,7 +123,6 @@ def get_or_create_ephemeral_game(game_id):
         db_session.close()
         return new_game
 
-
 def find_waiting_game_in_db():
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(
@@ -134,7 +131,6 @@ def find_waiting_game_in_db():
     ).first()
     db_session.close()
     return db_game
-
 
 def update_game_with_user_in_db(game_id, user_login, color):
     db_session = SessionLocal()
@@ -181,8 +177,8 @@ def update_game_with_user_in_db(game_id, user_login, color):
 
     return True
 
-
 def create_new_game_in_db(user_login):
+    import random
     db_session = SessionLocal()
     while True:
         game_id_candidate = random.randint(1, 99999999)
@@ -206,7 +202,6 @@ def create_new_game_in_db(user_login):
 
     return game_id_candidate
 
-
 def remove_game_in_db(game_id):
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
@@ -218,7 +213,6 @@ def remove_game_in_db(game_id):
     with all_games_lock:
         if game_id in all_games_dict:
             del all_games_dict[game_id]
-
 
 def get_game_status_internally(game_id):
     db_session = SessionLocal()
