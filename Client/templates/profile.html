@@ -26,7 +26,7 @@
         </div>
 
         <div class="history-game" id="history-game">
-            <h2>История последних игр</h2>
+            <h2>История игр</h2>
 
             <div class="history-table-wrapper collapsed" id="history-table-wrapper">
                 <table border="1" cellpadding="8" cellspacing="0">
@@ -73,8 +73,7 @@
     </div>
 
     <script>
-        const allRecords = {{ user_history|tojson }};
-
+        const allRecords = {{ user_history|tojson }}.reverse();
 
         let currentIndex = 0;
         const pageSize = 10;
@@ -115,7 +114,7 @@
                 } else if (record.result === "lose") {
                     resultTd.innerHTML = '<span style="color: red;">Поражение</span>';
                 } else {
-                    resultTd.innerHTML = '<span style="color: gray;">Ничья</span>';
+                    resultTd.innerHTML = '<span style="color: yellow;">Ничья</span>';
                 }
                 tr.appendChild(resultTd);
 
@@ -131,7 +130,6 @@
 
             wrapper.scrollTop = 0;
         }
-
 
         function hideRecords() {
             const tbody = document.getElementById("history-tbody");

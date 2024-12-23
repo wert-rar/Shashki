@@ -160,6 +160,8 @@ def is_all_kings(pieces):
 
 
 def finalize_game(game, user_login):
+    logging.info(f"Finalizing game {game.game_id} for user {user_login} with status {game.status}")
+
     if game.status == 'w3':
         winner_color = 'w'
     elif game.status == 'b3':
@@ -169,96 +171,113 @@ def finalize_game(game, user_login):
     else:
         winner_color = None
 
-    if getattr(game, 'rank_updated', False):
-        if winner_color is None:
-            return 'draw', 0
-        else:
-            return ('win' if winner_color == game.user_color(user_login) else 'lose'), 0
-
-    f_user_before = get_user_rang(game.f_user) if (game.f_user and not game.f_user.startswith('ghost')) else 0
-    c_user_before = get_user_rang(game.c_user) if (game.c_user and not game.c_user.startswith('ghost')) else 0
+    logging.debug(f"Winner color determined as: {winner_color}")
 
     user_color = game.user_color(user_login)
     user_is_ghost = user_login.startswith('ghost')
 
     if winner_color is None:
         result_move = 'draw'
-        points_gained_user = 5 if (not user_is_ghost) else 0
+        points_gained = 5 if not user_is_ghost else 0
     else:
         if winner_color == user_color:
             result_move = 'win'
-            points_gained_user = 10 if (not user_is_ghost) else 0
+            points_gained = 10 if not user_is_ghost else 0
         else:
             result_move = 'lose'
-            points_gained_user = 0
+            points_gained = 0
 
-    opponent_login = game.f_user if game.f_user != user_login else game.c_user
-    opponent_is_ghost = opponent_login.startswith('ghost') if opponent_login else True
+    logging.debug(f"Result move: {result_move}, Points gained: {points_gained}")
 
-    if not user_is_ghost:
-        if result_move == 'win':
-            update_user_rank(user_login, points_gained_user)
-            update_user_stats(user_login, wins=1)
+    if not getattr(game, 'rank_updated', False):
+        opponent_login = game.f_user if game.f_user != user_login else game.c_user
+        opponent_is_ghost = opponent_login.startswith('ghost')
+
+        logging.info(f"Updating stats for user {user_login} against opponent {opponent_login}")
+
+        if not user_is_ghost:
+            # Получаем ранг пользователя до изменения
+            user_rank_before = get_user_rang(user_login)
+
+            if result_move == 'win':
+                update_user_rank(user_login, points_gained)
+                update_user_stats(user_login, wins=1)
+                if not opponent_is_ghost:
+                    update_user_stats(opponent_login, losses=1)
+                logging.info(f"User {user_login} won against {opponent_login}")
+            elif result_move == 'lose':
+                update_user_stats(user_login, losses=1)
+                logging.info(f"User {user_login} lost against {opponent_login}")
+            elif result_move == 'draw':
+                update_user_rank(user_login, points_gained)
+                if not opponent_is_ghost:
+                    update_user_rank(opponent_login, points_gained)
+                update_user_stats(user_login, draws=1)
+                if not opponent_is_ghost:
+                    update_user_stats(opponent_login, draws=1)
+                logging.info(f"Game between {user_login} and {opponent_login} ended in a draw")
+
+            # Получаем ранг пользователя после изменения
+            user_rank_after = get_user_rang(user_login)
+            user_rating_change = user_rank_after - user_rank_before
+
+            # Устанавливаем дату завершения игры
+            date_end = datetime.datetime.now().isoformat()
+
+            # Вставляем запись о завершённой игре для пользователя
+            insert_completed_game(
+                user_login=user_login,
+                game_id=game.game_id,
+                date_start=date_end,  # Здесь можно использовать дату начала игры, если она доступна
+                rating_before=user_rank_before,
+                rating_after=user_rank_after,
+                rating_change=user_rating_change,
+                result=result_move
+            )
+
+            # Обработка оппонента, если он не Ghost
             if not opponent_is_ghost:
-                update_user_stats(opponent_login, losses=1)
-        elif result_move == 'lose':
-            update_user_stats(user_login, losses=1)
-        elif result_move == 'draw':
-            update_user_rank(user_login, points_gained_user)
-            update_user_stats(user_login, draws=1)
-            if not opponent_is_ghost:
-                update_user_rank(opponent_login, points_gained_user)
-                update_user_stats(opponent_login, draws=1)
+                if result_move == 'win':
+                    opponent_result_move = 'lose'
+                    opponent_points_gained = 0
+                elif result_move == 'lose':
+                    opponent_result_move = 'win'
+                    opponent_points_gained = 10
+                elif result_move == 'draw':
+                    opponent_result_move = 'draw'
+                    opponent_points_gained = 5 if not opponent_is_ghost else 0
 
-    game.rank_updated = True
+                # Получаем ранг оппонента до изменения
+                opponent_rank_before = get_user_rang(opponent_login)
 
-    update_game_status_in_db(game.game_id, 'completed')
+                if opponent_result_move == 'win':
+                    update_user_rank(opponent_login, opponent_points_gained)
+                    update_user_stats(opponent_login, wins=1)
+                elif opponent_result_move == 'lose':
+                    update_user_stats(opponent_login, losses=1)
+                elif opponent_result_move == 'draw':
+                    update_user_rank(opponent_login, opponent_points_gained)
+                    update_user_stats(opponent_login, draws=1)
 
-    f_user_after = get_user_rang(game.f_user) if (game.f_user and not game.f_user.startswith('ghost')) else 0
-    c_user_after = get_user_rang(game.c_user) if (game.c_user and not game.c_user.startswith('ghost')) else 0
+                # Получаем ранг оппонента после изменения
+                opponent_rank_after = get_user_rang(opponent_login)
+                opponent_rating_change = opponent_rank_after - opponent_rank_before
 
-    date_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    if game.f_user and not game.f_user.startswith('ghost'):
-        if winner_color == 'w':
-            res = 'win'
-        elif winner_color == 'b':
-            res = 'lose'
-        elif winner_color is None:
-            res = 'draw'
-        else:
-            res = 'lose'
+                # Вставляем запись о завершённой игре для оппонента
+                insert_completed_game(
+                    user_login=opponent_login,
+                    game_id=game.game_id,
+                    date_start=date_end,  # Здесь можно использовать дату начала игры, если она доступна
+                    rating_before=opponent_rank_before,
+                    rating_after=opponent_rank_after,
+                    rating_change=opponent_rating_change,
+                    result=opponent_result_move
+                )
 
-        insert_completed_game(
-            user_login=game.f_user,
-            game_id=game.game_id,
-            date_start=date_now,
-            rating_before=f_user_before,
-            rating_after=f_user_after,
-            rating_change=(f_user_after - f_user_before),
-            result=res
-        )
+        game.rank_updated = True
+        update_game_status_in_db(game.game_id, 'completed')
 
-    if game.c_user and not game.c_user.startswith('ghost'):
-        if winner_color == 'b':
-            res = 'win'
-        elif winner_color == 'w':
-            res = 'lose'
-        elif winner_color is None:
-            res = 'draw'
-        else:
-            res = 'lose'
-
-        insert_completed_game(
-            user_login=game.c_user,
-            game_id=game.game_id,
-            date_start=date_now,
-            rating_before=c_user_before,
-            rating_after=c_user_after,
-            rating_change=(c_user_after - c_user_before),
-            result=res
-        )
-
-    return result_move, points_gained_user
+    return result_move, points_gained
 
 
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
