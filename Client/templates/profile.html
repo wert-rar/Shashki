@@ -85,6 +85,12 @@
             document.getElementById("hideButton").addEventListener("click", hideRecords);
         });
 
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const date = new Date(dateString);
+            return date.toLocaleString('ru-RU', options);
+        }
+
         function loadRecords() {
             const tbody = document.getElementById("history-tbody");
             const wrapper = document.getElementById("history-table-wrapper");
@@ -98,7 +104,7 @@
                 tr.classList.add("fade-in");
 
                 const dateTd = document.createElement("td");
-                dateTd.textContent = record.date_start;
+                dateTd.textContent = formatDate(record.date_start);
                 tr.appendChild(dateTd);
 
                 const ratingTd = document.createElement("td");

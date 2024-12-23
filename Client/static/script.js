@@ -210,7 +210,6 @@ function displayGameOverMessage(data) {
         `;
     }
 
-    // Управление видимостью кнопок
     const modalButtons = modal.querySelector('.modal-buttons');
     const mainMenuButton = document.getElementById('main-menu-button');
     const registerButton = document.getElementById('register-button');

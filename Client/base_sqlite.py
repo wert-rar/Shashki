@@ -1,7 +1,6 @@
 import sqlite3
 import logging
 import hashlib
-import datetime
 
 def create_tables():
     try:

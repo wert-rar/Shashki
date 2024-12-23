@@ -196,7 +196,6 @@ def finalize_game(game, user_login):
         logging.info(f"Updating stats for user {user_login} against opponent {opponent_login}")
 
         if not user_is_ghost:
-            # Получаем ранг пользователя до изменения
             user_rank_before = get_user_rang(user_login)
 
             if result_move == 'win':
@@ -217,25 +216,21 @@ def finalize_game(game, user_login):
                     update_user_stats(opponent_login, draws=1)
                 logging.info(f"Game between {user_login} and {opponent_login} ended in a draw")
 
-            # Получаем ранг пользователя после изменения
             user_rank_after = get_user_rang(user_login)
             user_rating_change = user_rank_after - user_rank_before
 
-            # Устанавливаем дату завершения игры
             date_end = datetime.datetime.now().isoformat()
 
-            # Вставляем запись о завершённой игре для пользователя
             insert_completed_game(
                 user_login=user_login,
                 game_id=game.game_id,
-                date_start=date_end,  # Здесь можно использовать дату начала игры, если она доступна
+                date_start=date_end,
                 rating_before=user_rank_before,
                 rating_after=user_rank_after,
                 rating_change=user_rating_change,
                 result=result_move
             )
 
-            # Обработка оппонента, если он не Ghost
             if not opponent_is_ghost:
                 if result_move == 'win':
                     opponent_result_move = 'lose'
@@ -247,7 +242,6 @@ def finalize_game(game, user_login):
                     opponent_result_move = 'draw'
                     opponent_points_gained = 5 if not opponent_is_ghost else 0
 
-                # Получаем ранг оппонента до изменения
                 opponent_rank_before = get_user_rang(opponent_login)
 
                 if opponent_result_move == 'win':
@@ -259,15 +253,13 @@ def finalize_game(game, user_login):
                     update_user_rank(opponent_login, opponent_points_gained)
                     update_user_stats(opponent_login, draws=1)
 
-                # Получаем ранг оппонента после изменения
                 opponent_rank_after = get_user_rang(opponent_login)
                 opponent_rating_change = opponent_rank_after - opponent_rank_before
 
-                # Вставляем запись о завершённой игре для оппонента
                 insert_completed_game(
                     user_login=opponent_login,
                     game_id=game.game_id,
-                    date_start=date_end,  # Здесь можно использовать дату начала игры, если она доступна
+                    date_start=date_end,
                     rating_before=opponent_rank_before,
                     rating_after=opponent_rank_after,
                     rating_change=opponent_rating_change,
