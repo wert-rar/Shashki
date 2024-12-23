@@ -1,6 +1,8 @@
-import itertools, random, time, threading
+import random, time, threading
+from base_postgres import SessionLocal, Game as DBGame
 
-games_lock = threading.Lock()
+all_games_lock = threading.Lock()
+all_games_dict = {}
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -28,8 +30,6 @@ pieces = [
     {"color": 0, "x": 4, "y": 5, "mode": "p"},
     {"color": 0, "x": 6, "y": 5, "mode": "p"}
 ]
-
-game_id_counter = itertools.count(2)
 
 
 class Game:
@@ -59,7 +59,6 @@ class Game:
     def update_timers(self):
         if self.last_update_time is None:
             return
-
         now = time.time()
         elapsed = now - self.last_update_time
         self.last_update_time = now
@@ -104,62 +103,137 @@ class Game:
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
 
-def find_waiting_game(unstarted_games):
-    for game in unstarted_games.values():
-        if not game.f_user or not game.c_user:
-            return game
-    return None
+def get_or_create_ephemeral_game(game_id):
+    with all_games_lock:
+        if game_id in all_games_dict:
+            return all_games_dict[game_id]
+
+        db_session = SessionLocal()
+        db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
+        if not db_game:
+            db_session.close()
+            return None
+
+        if db_game.status == 'completed':
+            db_session.close()
+            return None
+
+        f_user = db_game.f_user
+        c_user = db_game.c_user
+        new_game = Game(f_user, c_user, db_game.game_id)
+        all_games_dict[game_id] = new_game
+        db_session.close()
+        return new_game
 
 
-def update_game_with_user(game_id, user_login, color, current_games, unstarted_games):
-    with threading.Lock():
-        game = current_games.get(game_id) or unstarted_games.get(game_id)
-        if not game:
-            return False
+def find_waiting_game_in_db():
+    db_session = SessionLocal()
+    db_game = db_session.query(DBGame).filter(
+        DBGame.status == 'unstarted',
+        DBGame.c_user.is_(None)
+    ).first()
+    db_session.close()
+    return db_game
 
-        if user_login in [game.f_user, game.c_user]:
-            return False
 
-        if color == 'w':
-            if game.f_user is None:
-                game.f_user = user_login
-                if game.c_user:
-                    current_games[game_id] = game
-                    del unstarted_games[game_id]
-                return True
-            else:
-                return False
-        elif color == 'b':
-            if game.c_user is None:
-                game.c_user = user_login
-                if game.f_user:
-                    current_games[game_id] = game
-                    del unstarted_games[game_id]
-                return True
-            else:
-                return False
+def update_game_with_user_in_db(game_id, user_login, color):
+    db_session = SessionLocal()
+    db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
+
+    if not db_game:
+        db_session.close()
+        return False
+
+    if db_game.f_user == user_login or db_game.c_user == user_login:
+        db_session.close()
+        return False
+
+    if color == 'w':
+        if db_game.f_user is None:
+            db_game.f_user = user_login
+            if db_game.c_user:
+                db_game.status = 'current'
         else:
+            db_session.close()
             return False
-
-
-def create_new_game(user_login, unstarted_games, current_games):
-    with games_lock:
-        game_id = random.randint(1, 99999999)
-        while game_id in current_games or game_id in unstarted_games:
-            game_id = random.randint(1, 99999999)
-        new_game = Game(f_user=user_login, c_user=None, game_id=game_id)
-        unstarted_games[game_id] = new_game
-    return game_id
-
-
-def get_game_status(game_id, current_games, unstarted_games):
-    game = current_games.get(game_id) or unstarted_games.get(game_id)
-    if not game:
-        return None
-
-    if game.f_user and game.c_user:
-        return {'status': 'active'}
-    elif game.f_user or game.c_user:
-        return {'status': 'waiting'}
+    elif color == 'b':
+        if db_game.c_user is None:
+            db_game.c_user = user_login
+            if db_game.f_user:
+                db_game.status = 'current'
+        else:
+            db_session.close()
+            return False
     else:
-        return {'status': 'no_players'}
+        db_session.close()
+        return False
+
+    db_session.commit()
+    db_session.close()
+
+    game_obj = get_or_create_ephemeral_game(game_id)
+    if game_obj:
+        with game_obj.lock:
+            if color == 'w':
+                game_obj.f_user = user_login
+            else:
+                game_obj.c_user = user_login
+
+    return True
+
+
+def create_new_game_in_db(user_login):
+    db_session = SessionLocal()
+    while True:
+        game_id_candidate = random.randint(1, 99999999)
+        exists = db_session.query(DBGame).filter(DBGame.game_id == game_id_candidate).first()
+        if not exists:
+            break
+
+    new_db_game = DBGame(
+        game_id=game_id_candidate,
+        f_user=user_login,
+        c_user=None,
+        status='unstarted'
+    )
+    db_session.add(new_db_game)
+    db_session.commit()
+    db_session.close()
+
+    new_game = Game(f_user=user_login, c_user=None, game_id=game_id_candidate)
+    with all_games_lock:
+        all_games_dict[game_id_candidate] = new_game
+
+    return game_id_candidate
+
+
+def remove_game_in_db(game_id):
+    db_session = SessionLocal()
+    db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
+    if db_game:
+        db_game.status = 'completed'
+        db_session.commit()
+    db_session.close()
+
+    with all_games_lock:
+        if game_id in all_games_dict:
+            del all_games_dict[game_id]
+
+
+def get_game_status_internally(game_id):
+    db_session = SessionLocal()
+    db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
+    if not db_game:
+        db_session.close()
+        return None
+    status = db_game.status
+    db_session.close()
+    return status
+
+def update_game_status_in_db(game_id, new_status):
+    db_session = SessionLocal()
+    db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
+    if db_game:
+        db_game.status = new_status
+        db_session.commit()
+    db_session.close()

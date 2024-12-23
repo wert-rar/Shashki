@@ -8,15 +8,14 @@ DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-class Games(Base):
+class Game(Base):
     __tablename__ = "games"
 
-    id = Column(Integer, primary_key=True, index=True)
-    unstarted_games = Column(Integer, default=0)
-    current_games = Column(Integer, default=0)
-    completed_games = Column(Integer, default=0)
+    game_id = Column(Integer, primary_key=True, index=True)
+    f_user = Column(String, nullable=True)
+    c_user = Column(String, nullable=True)
+    status = Column(String, default="unstarted")
 
-# Создаем таблицы в базе данных
 def init_db():
     Base.metadata.create_all(bind=engine)
 

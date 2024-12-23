@@ -60,7 +60,7 @@ function update_data(data) {
     if (data.error) {
         showError(data.error);
         if (data.error === "Invalid game ID") {
-            window.location.href = "/";
+            alert("Произошла ошибка: " + data.error);
         }
         return;
     }
@@ -467,7 +467,7 @@ function server_update_request() {
         if (data.error) {
             showError(data.error);
             if (data.error === "Invalid game ID") {
-                window.location.href = "/";
+                alert("Произошла ошибка: " + data.error);
             }
             return Promise.reject(data.error);
         } else {
@@ -1043,7 +1043,6 @@ function checkGameStatus() {
             console.log('Игры нет.');
         } else if (data.status === 'invalid_game_id') {
             console.error('Некорректный game_id. Очистка сессии.');
-            window.location.href = "/";
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
             window.location.href = "/";
