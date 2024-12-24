@@ -349,89 +349,185 @@
         }
 
         .modal-content.difficulty-modal {
-            background: rgba(0, 0, 0, 0.9);
+            background: linear-gradient(135deg, #1e1e2e, #2b2b3b);
             padding: 40px;
             border-radius: 20px;
             text-align: center;
-            color: white;
+            color: #e0e0e0;
             max-width: 400px;
             width: 90%;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.7);
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.8),
+                0 0 20px rgba(80, 70, 150, 0.6),
+                0 0 40px rgba(100, 90, 200, 0.4);
+            position: relative;
+            animation: fadeInScale 0.5s ease-out;
+            z-index: 10;
+            transition: box-shadow 0.3s ease-out;
+            will-change: box-shadow;
+        }
+
+        .modal-content.difficulty-modal:hover {
+            box-shadow:
+                0 15px 40px rgba(0, 0, 0, 0.9),
+                0 0 30px rgba(80, 70, 150, 0.8),
+                0 0 50px rgba(100, 90, 200, 0.5);
         }
 
         .close {
-            color: #aaa;
+            color: #ff5555;
             position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 28px;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
             font-weight: bold;
             cursor: pointer;
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+        .close:hover {
+            transform: rotate(90deg) scale(1.2);
+            color: #ff9999;
         }
 
         .difficulty-button {
             display: block;
             width: 100%;
             max-width: 300px;
-            margin: 10px auto;
+            margin: 15px auto;
             padding: 15px 20px;
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
+            text-align: center;
             cursor: pointer;
             border: none;
             border-radius: 30px;
-            background-color: #4CAF50;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
             color: white;
-            transition: background-color 0.3s, transform 0.3s;
+            transition: background 0.3s, box-shadow 0.3s, transform 0.3s;
             position: relative;
             overflow: hidden;
-            z-index: 2;
+            will-change: transform, box-shadow;
         }
 
-        .difficulty-button:before {
+        .difficulty-button:hover {
+            background: linear-gradient(135deg, #45a049, #3e8e41);
+            box-shadow: 0 5px 15px rgba(0, 255, 150, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .difficulty-button::before {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
             width: 100%;
             height: 100%;
-            background: rgba(255, 255, 255, 0.3);
-            transition: left 0.3s;
-            z-index: -1;
+            background: rgba(255, 255, 255, 0.2);
+            transition: left 0.3s ease-in-out;
+            z-index: 1;
         }
 
-        .difficulty-button:hover:before {
+        .difficulty-button:hover::before {
             left: 0;
         }
 
-        .difficulty-button:hover {
-            background-color: #45a049;
-            transform: scale(1.05);
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
         }
 
-        @media (max-width: 600px) {
-            .button, .difficulty-button {
-                width: 90%;
-                max-width: 250px;
-                padding: 12px 16px;
-                font-size: 14px;
-            }
+        .selected {
+            border-color: gold;
+            background-color: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 10px gold;
+        }
+
+        .selection-section {
+            margin: 20px 0;
+        }
+
+        .selection-section h3 {
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .selection-button {
+            display: inline-block;
+            width: 100px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: 2px solid #4CAF50;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s, border-color 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .play-button {
+            display: inline-block;
+            width: 120px;
+            margin: 20px auto 0;
+            background-color: #FFD700;
+            color: #000;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .play-button.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .play-button:hover {
+            background-color: #FFC107;
+            transform: scale(1.05);
         }
     </style>
 </head>
 <body>
 
-    <div id="difficultyModal" class="modal">
+    <div id="selectionModal" class="modal">
         <div class="modal-content difficulty-modal">
             <span class="close" id="closeModal">&times;</span>
-            <h2>Выберите сложность бота</h2>
-            <form method="POST" action="/start_singleplayer">
-                <button type="submit" name="difficulty" value="easy" class="difficulty-button">Легкая</button>
-                <button type="submit" name="difficulty" value="medium" class="difficulty-button">Средняя</button>
-                <button type="submit" name="difficulty" value="hard" class="difficulty-button">Тяжелая</button>
+            <h2>Выбор режима одиночной игры</h2>
+            <form id="selectionForm" method="POST" action="/start_singleplayer">
+                <div class="selection-section">
+                    <h3>Выберите сложность бота:</h3>
+                    <button type="button" class="selection-button" data-type="difficulty" data-value="easy">Легкая</button>
+                    <button type="button" class="selection-button" data-type="difficulty" data-value="medium">Средняя</button>
+                    <button type="button" class="selection-button" data-type="difficulty" data-value="hard">Тяжелая</button>
+                </div>
+                <div class="selection-section">
+                    <h3>Выберите цвет шашек:</h3>
+                    <button type="button" class="selection-button" data-type="color" data-value="w">Белые</button>
+                    <button type="button" class="selection-button" data-type="color" data-value="b">Черные</button>
+                </div>
+                <input type="hidden" name="difficulty" id="selectedDifficulty">
+                <input type="hidden" name="color" id="selectedColor">
+                <button type="submit" class="play-button" id="playButton">Играть</button>
             </form>
+
         </div>
     </div>
+
     <nav>
         <div class="navigation-menu">
             {% if 'user' in session and user_is_registered %}
@@ -475,13 +571,21 @@
 
     <div id="snow-container"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.8"></script>
     <script>
         var user_login = "{{ session['user'] if 'user' in session else '' }}";
         var game_id = "{{ session['game_id'] if 'game_id' in session else '' }}";
-        var modal = document.getElementById("difficultyModal");
+        var modal = document.getElementById("selectionModal");
         var btn = document.getElementById("singleplayer-button");
         var span = document.getElementById("closeModal");
+        var playButton = document.getElementById("playButton");
+        var selectedDifficulty = document.getElementById("selectedDifficulty");
+        var selectedColor = document.getElementById("selectedColor");
+
+        let selections = {
+            difficulty: null,
+            color: null
+        };
 
         btn.onclick = function() {
             modal.style.display = "flex";
@@ -489,13 +593,61 @@
 
         span.onclick = function() {
             modal.style.display = "none";
+            resetSelections();
         }
 
         window.onclick = function(event) {
             if (event.target == modal) {
                 modal.style.display = "none";
+                resetSelections();
             }
         }
+
+        document.querySelectorAll('.selection-button').forEach(function(button) {
+            button.addEventListener('click', function() {
+                let type = this.getAttribute('data-type');
+                let value = this.getAttribute('data-value');
+
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    selections[type] = null;
+
+                    if (type === 'difficulty') selectedDifficulty.value = '';
+                    if (type === 'color') selectedColor.value = '';
+                } else {
+                    document.querySelectorAll(`.selection-button[data-type="${type}"]`).forEach(function(btn) {
+                        btn.classList.remove('selected');
+                    });
+
+                    this.classList.add('selected');
+                    selections[type] = value;
+
+                    if (type === 'difficulty') selectedDifficulty.value = value;
+                    if (type === 'color') selectedColor.value = value;
+                }
+
+                if (selections.difficulty && selections.color) {
+                    playButton.classList.add('active');
+                } else {
+                    playButton.classList.remove('active');
+                }
+            });
+        });
+
+        function resetSelections() {
+            selections.difficulty = null;
+            selections.color = null;
+
+            selectedDifficulty.value = '';
+            selectedColor.value = '';
+
+            document.querySelectorAll('.selection-button').forEach(function(button) {
+                button.classList.remove('selected');
+            });
+
+            playButton.classList.remove('active');
+        }
+
 
         function startMultiplayerGame() {
             window.location.href = '/start_game';
