@@ -5,6 +5,7 @@
     <meta http-equiv="Cache-Control" content="no-store" />
     <title>Главная страничка</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
@@ -13,7 +14,7 @@
             padding: 0;
             min-height: 100vh;
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0f0f0f, #1f1f1f);
+            background: linear-gradient(135deg, #121212, #1e1e1e);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -35,9 +36,9 @@
 
         .container {
             position: relative;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(20, 20, 20, 0.95);
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
             text-align: center;
             padding: 40px;
             width: 100%;
@@ -195,7 +196,7 @@
         #return-to-game {
             position: absolute;
             bottom: 20px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(30, 30, 30, 0.95);
             border: 2px solid #4CAF50;
             border-radius: 15px;
             padding: 20px;
@@ -263,7 +264,7 @@
         }
 
         .modal-content {
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(30, 30, 30, 0.95);
             padding: 30px;
             border-radius: 20px;
             text-align: center;
@@ -273,6 +274,7 @@
             box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
             position: relative;
             z-index: 4;
+            transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
         }
 
         #leave-game-modal .modal-content h2 {
@@ -349,12 +351,20 @@
         }
 
         .modal-content.difficulty-modal {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #1e1e2e, #2b2b3b);
+=======
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             padding: 40px;
             border-radius: 20px;
             text-align: center;
             color: #e0e0e0;
+<<<<<<< HEAD
             max-width: 400px;
+=======
+            max-width: 500px;
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             width: 90%;
             box-shadow:
                 0 10px 30px rgba(0, 0, 0, 0.8),
@@ -363,8 +373,14 @@
             position: relative;
             animation: fadeInScale 0.5s ease-out;
             z-index: 10;
+<<<<<<< HEAD
             transition: box-shadow 0.3s ease-out;
             will-change: box-shadow;
+=======
+            transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
+            will-change: box-shadow, transform;
+            transform: translateY(0);
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
         }
 
         .modal-content.difficulty-modal:hover {
@@ -383,6 +399,7 @@
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.3s ease, color 0.3s ease;
+<<<<<<< HEAD
         }
         .close:hover {
             transform: rotate(90deg) scale(1.2);
@@ -416,11 +433,97 @@
         }
 
         .difficulty-button::before {
+=======
+        }
+
+        .close:hover {
+            transform: rotate(90deg) scale(1.2);
+            color: #ff9999;
+        }
+
+        .selection-section {
+            margin: 20px 0;
+        }
+
+        .selection-section h3 {
+            margin-bottom: 15px;
+            color: #ffffff;
+            font-size: 1.2rem;
+        }
+
+        .cards-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 20px;
+            width: 120px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s, border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .card.selected {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 25px gold;
+            transition: background 0.3s, border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card::before {
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+            z-index: 0;
+        }
+
+        .card:hover::before {
+            transform: rotate(0deg);
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card-content i {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .card-content h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: #ffffff;
+        }
+
+        .play-button {
+            display: inline-block;
             width: 100%;
+<<<<<<< HEAD
             height: 100%;
             background: rgba(255, 255, 255, 0.2);
             transition: left 0.3s ease-in-out;
@@ -500,6 +603,32 @@
             background-color: #FFC107;
             transform: scale(1.05);
         }
+=======
+            max-width: 300px;
+            margin: 30px auto 0;
+            background-color: #FFD700;
+            color: #000;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        .play-button.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .play-button:hover {
+            background-color: #FFC107;
+            transform: scale(1.05);
+        }
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
     </style>
 </head>
 <body>
@@ -511,6 +640,7 @@
             <form id="selectionForm" method="POST" action="/start_singleplayer">
                 <div class="selection-section">
                     <h3>Выберите сложность бота:</h3>
+<<<<<<< HEAD
                     <button type="button" class="selection-button" data-type="difficulty" data-value="easy">Легкая</button>
                     <button type="button" class="selection-button" data-type="difficulty" data-value="medium">Средняя</button>
                     <button type="button" class="selection-button" data-type="difficulty" data-value="hard">Тяжелая</button>
@@ -519,6 +649,45 @@
                     <h3>Выберите цвет шашек:</h3>
                     <button type="button" class="selection-button" data-type="color" data-value="w">Белые</button>
                     <button type="button" class="selection-button" data-type="color" data-value="b">Черные</button>
+=======
+                    <div class="cards-container" id="difficultyContainer">
+                        <div class="card" data-type="difficulty" data-value="easy">
+                            <div class="card-content">
+                                <i class="fas fa-smile fa-3x" style="color: #4CAF50;"></i>
+                                <h4>Легкая</h4>
+                            </div>
+                        </div>
+                        <div class="card" data-type="difficulty" data-value="medium">
+                            <div class="card-content">
+                                <i class="fas fa-surprise fa-3x" style="color: #FFA500;"></i>
+                                <h4>Средняя</h4>
+                            </div>
+                        </div>
+                        <div class="card" data-type="difficulty" data-value="hard">
+                            <div class="card-content">
+                                <i class="fas fa-face-angry fa-3x" style="color: #B197FC;"></i>
+                                <h4>Тяжелая</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="selection-section">
+                    <h3>Выберите цвет шашек:</h3>
+                    <div class="cards-container" id="colorContainer">
+                        <div class="card" data-type="color" data-value="w">
+                            <div class="card-content">
+                                <i class="fas fa-circle fa-3x" style="color: #ffffff;"></i>
+                                <h4>Белые</h4>
+                            </div>
+                        </div>
+                        <div class="card" data-type="color" data-value="b">
+                            <div class="card-content">
+                                <i class="fas fa-circle fa-3x" style="color: #000000;"></i>
+                                <h4>Черные</h4>
+                            </div>
+                        </div>
+                    </div>
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
                 </div>
                 <input type="hidden" name="difficulty" id="selectedDifficulty">
                 <input type="hidden" name="color" id="selectedColor">
@@ -603,8 +772,13 @@
             }
         }
 
+<<<<<<< HEAD
         document.querySelectorAll('.selection-button').forEach(function(button) {
             button.addEventListener('click', function() {
+=======
+        document.querySelectorAll('.card').forEach(function(card) {
+            card.addEventListener('click', function() {
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
                 let type = this.getAttribute('data-type');
                 let value = this.getAttribute('data-value');
 
@@ -615,8 +789,13 @@
                     if (type === 'difficulty') selectedDifficulty.value = '';
                     if (type === 'color') selectedColor.value = '';
                 } else {
+<<<<<<< HEAD
                     document.querySelectorAll(`.selection-button[data-type="${type}"]`).forEach(function(btn) {
                         btn.classList.remove('selected');
+=======
+                    document.querySelectorAll(`.card[data-type="${type}"]`).forEach(function(otherCard) {
+                        otherCard.classList.remove('selected');
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
                     });
 
                     this.classList.add('selected');
@@ -641,14 +820,22 @@
             selectedDifficulty.value = '';
             selectedColor.value = '';
 
+<<<<<<< HEAD
             document.querySelectorAll('.selection-button').forEach(function(button) {
                 button.classList.remove('selected');
+=======
+            document.querySelectorAll('.card').forEach(function(card) {
+                card.classList.remove('selected');
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             });
 
             playButton.classList.remove('active');
         }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
         function startMultiplayerGame() {
             window.location.href = '/start_game';
         }
@@ -785,7 +972,7 @@
                             icon: icon,
                             title: title,
                             text: text,
-                            background: '#333',
+                            background: '#1e1e2e',
                             color: '#fff',
                             confirmButtonColor: category === 'error' ? '#e74c3c' : '#2ecc71'
                         });
@@ -793,6 +980,7 @@
                 {% endif %}
             {% endwith %}
         });
+
         window.addEventListener('pageshow', handlePageShow);
 
         function createSnowflakes() {

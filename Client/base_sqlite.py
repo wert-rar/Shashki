@@ -4,7 +4,7 @@ import hashlib
 
 def create_tables():
     try:
-        with sqlite3.connect("DataBase.db") as con:
+        with sqlite3.connect("../DataBase.db") as con:
             cur = con.cursor()
 
             cur.execute("""
@@ -20,35 +20,24 @@ def create_tables():
             """)
 
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS game(
-                    game_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    status TEXT,
-                    white_user TEXT,
-                    black_user TEXT,
-                    start_time TIMESTAMP,
-                    FOREIGN KEY (white_user) REFERENCES player(login),
-                    FOREIGN KEY (black_user) REFERENCES player(login)
+                CREATE TABLE IF NOT EXISTS completed_game(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_login TEXT,
+                    game_id INTEGER,
+                    date_start TEXT,
+                    rating_before INTEGER,
+                    rating_after INTEGER,
+                    rating_change INTEGER,
+                    result TEXT
                 )
             """)
-
-            cur.execute("PRAGMA table_info(game)")
-            columns = [column[1] for column in cur.fetchall()]
-            if 'start_time' not in columns:
-                cur.execute("ALTER TABLE game ADD COLUMN start_time TIMESTAMP")
-                logging.info("Добавлен столбец 'start_time' в таблицу 'game'.")
-
-            cur.execute("SELECT COUNT(*) FROM game")
-            if cur.fetchone()[0] == 0:
-                cur.execute("INSERT INTO game (status, white_user, black_user) VALUES ('waiting', NULL, NULL)")
-                con.commit()
-                logging.info("Таблица 'game' инициализирована первичной записью.")
 
             logging.info("Функция create_tables завершена успешно.")
     except sqlite3.Error as e:
         logging.error(f"Ошибка при создании таблиц: {e}")
 
 def connect_db():
-    con = sqlite3.connect("DataBase.db")
+    con = sqlite3.connect("../DataBase.db")
     con.row_factory = sqlite3.Row
     return con
 
@@ -108,6 +97,16 @@ def get_user_by_login(username):
     con.close()
     return user
 
+def get_user_rang(user_login):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("SELECT rang FROM player WHERE login = ?", (user_login,))
+    row = cur.fetchone()
+    con.close()
+    if row:
+        return row['rang']
+    return 0
+
 def update_user_rank(user_login, points):
     con = connect_db()
     cur = con.cursor()
@@ -127,3 +126,36 @@ def update_user_stats(user_login, wins=0, losses=0, draws=0):
     """, (wins, losses, draws, user_login))
     con.commit()
     con.close()
+
+def insert_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("""
+        INSERT INTO completed_game
+        (user_login, game_id, date_start, rating_before, rating_after, rating_change, result)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_login, game_id, date_start, rating_before, rating_after, rating_change, result))
+    con.commit()
+    con.close()
+
+def get_user_history(user_login):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("""
+        SELECT *
+        FROM completed_game
+        WHERE user_login = ?
+        ORDER BY id ASC
+        LIMIT 50
+    """, (user_login,))
+    rows = cur.fetchall()
+    con.close()
+
+    result = []
+    for row in rows:
+        result.append(dict(row))
+    return result
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    create_tables()
