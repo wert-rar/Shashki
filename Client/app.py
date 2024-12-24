@@ -519,6 +519,7 @@ def start_game():
             ghost_username = f"ghost{ghost_num}"
         session['user'] = ghost_username
         session['is_ghost'] = True
+        user_login = ghost_username
     elif user_login.startswith('ghost'):
         session['is_ghost'] = True
     else:
