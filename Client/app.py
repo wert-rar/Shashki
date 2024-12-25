@@ -559,29 +559,22 @@ def start_game():
         color = 'w' if not waiting_game.f_user else 'b'
         try:
             updated = update_game_with_user_in_db(waiting_game.game_id, user_login, color)
-            if not updated:
-                with ghost_lock:
-                    ghost_num = next(ghost_counter)
-                    ghost_username = f"ghost{ghost_num}"
-                updated2 = update_game_with_user_in_db(waiting_game.game_id, ghost_username, 'b')
-                if not updated2:
-                    flash('Ошибка при автоподключении ghost-пользователя.', 'error')
-                    return redirect(url_for('home'))
+            if updated:
                 session['game_id'] = waiting_game.game_id
                 session['color'] = color
                 return redirect(url_for('get_board', game_id=waiting_game.game_id, user_login=user_login))
-            session['game_id'] = waiting_game.game_id
-            session['color'] = color
+            else:
+                pass
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
-    else:
-        game_id_new = create_new_game_in_db(user_login)
-        if not game_id_new:
-            flash('Не удалось создать игру.', 'error')
-            return redirect(url_for('home'))
-        session['game_id'] = game_id_new
-        session['color'] = 'w'
+
+    game_id_new = create_new_game_in_db(user_login)
+    if not game_id_new:
+        flash('Не удалось создать игру.', 'error')
+        return redirect(url_for('home'))
+    session['game_id'] = game_id_new
+    session['color'] = 'w'
 
     g = get_or_create_ephemeral_game(session['game_id'])
     if g and g.f_user and g.c_user:

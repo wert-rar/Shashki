@@ -146,7 +146,6 @@ def get_user_history(user_login):
         FROM completed_game
         WHERE user_login = ?
         ORDER BY id ASC
-        LIMIT 50
     """, (user_login,))
     rows = cur.fetchall()
     con.close()
