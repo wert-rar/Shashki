@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+import os
 import hashlib
 
 def create_tables():
@@ -37,7 +38,9 @@ def create_tables():
         logging.error(f"Ошибка при создании таблиц: {e}")
 
 def connect_db():
-    con = sqlite3.connect("../DataBase.db")
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(BASE_DIR, 'DataBase.db')
+    con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
     return con
 
