@@ -57,8 +57,6 @@ function translate(pieces_data) {
 function update_data(data) {
     console.log("Received data from server:", data);
 
-<<<<<<< HEAD
-=======
     if (data.error) {
         showError(data.error);
         if (data.error === "Invalid game ID") {
@@ -67,7 +65,6 @@ function update_data(data) {
         return;
     }
 
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
     CURRENT_STATUS = data.status_;
     if (data.white_time !== undefined && data.black_time !== undefined) {
         updateTimersDisplay(data.white_time, data.black_time);
@@ -468,12 +465,9 @@ function server_update_request() {
     .then(data => {
         if (data.error) {
             showError(data.error);
-<<<<<<< HEAD
-=======
             if (data.error === "Invalid game ID") {
                 alert("Произошла ошибка: " + data.error);
             }
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             return Promise.reject(data.error);
         } else {
             update_data(data);
@@ -1046,14 +1040,11 @@ function checkGameStatus() {
     .then(data => {
         if (data.status === 'no_game') {
             console.log('Игры нет.');
-<<<<<<< HEAD
-=======
         } else if (data.status === 'invalid_game_id') {
             console.error('Некорректный game_id. Очистка сессии.');
         } else if (data.status === 'game_not_found') {
             console.error('Игра не найдена.');
             window.location.href = "/";
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
         } else {
         }
     })

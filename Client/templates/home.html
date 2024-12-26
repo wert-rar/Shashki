@@ -351,20 +351,12 @@
         }
 
         .modal-content.difficulty-modal {
-<<<<<<< HEAD
-            background: linear-gradient(135deg, #1e1e2e, #2b2b3b);
-=======
             background: linear-gradient(135deg, #1a1a2e, #16213e);
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             padding: 40px;
             border-radius: 20px;
             text-align: center;
             color: #e0e0e0;
-<<<<<<< HEAD
-            max-width: 400px;
-=======
             max-width: 500px;
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             width: 90%;
             box-shadow:
                 0 10px 30px rgba(0, 0, 0, 0.8),
@@ -373,14 +365,9 @@
             position: relative;
             animation: fadeInScale 0.5s ease-out;
             z-index: 10;
-<<<<<<< HEAD
-            transition: box-shadow 0.3s ease-out;
-            will-change: box-shadow;
-=======
             transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
             will-change: box-shadow, transform;
             transform: translateY(0);
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
         }
 
         .modal-content.difficulty-modal:hover {
@@ -399,41 +386,6 @@
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.3s ease, color 0.3s ease;
-<<<<<<< HEAD
-        }
-        .close:hover {
-            transform: rotate(90deg) scale(1.2);
-            color: #ff9999;
-        }
-
-        .difficulty-button {
-            display: block;
-            width: 100%;
-            max-width: 300px;
-            margin: 15px auto;
-            padding: 15px 20px;
-            font-size: 18px;
-            font-weight: 600;
-            text-align: center;
-            cursor: pointer;
-            border: none;
-            border-radius: 30px;
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-            transition: background 0.3s, box-shadow 0.3s, transform 0.3s;
-            position: relative;
-            overflow: hidden;
-            will-change: transform, box-shadow;
-        }
-
-        .difficulty-button:hover {
-            background: linear-gradient(135deg, #45a049, #3e8e41);
-            box-shadow: 0 5px 15px rgba(0, 255, 150, 0.4);
-            transform: translateY(-3px);
-        }
-
-        .difficulty-button::before {
-=======
         }
 
         .close:hover {
@@ -485,7 +437,6 @@
         }
 
         .card::before {
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             content: '';
             position: absolute;
             top: -50%;
@@ -523,87 +474,6 @@
         .play-button {
             display: inline-block;
             width: 100%;
-<<<<<<< HEAD
-            height: 100%;
-            background: rgba(255, 255, 255, 0.2);
-            transition: left 0.3s ease-in-out;
-            z-index: 1;
-        }
-
-        .difficulty-button:hover::before {
-            left: 0;
-        }
-
-        @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .selected {
-            border-color: gold;
-            background-color: rgba(255, 215, 0, 0.3);
-            box-shadow: 0 0 10px gold;
-        }
-
-        .selection-section {
-            margin: 20px 0;
-        }
-
-        .selection-section h3 {
-            margin-bottom: 10px;
-            color: #ffffff;
-        }
-
-        .selection-button {
-            display: inline-block;
-            width: 100px;
-            margin: 5px;
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: 2px solid #4CAF50;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.3s, border-color 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .play-button {
-            display: inline-block;
-            width: 120px;
-            margin: 20px auto 0;
-            background-color: #FFD700;
-            color: #000;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.3s;
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .play-button.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .play-button:hover {
-            background-color: #FFC107;
-            transform: scale(1.05);
-        }
-=======
             max-width: 300px;
             margin: 30px auto 0;
             background-color: #FFD700;
@@ -628,7 +498,6 @@
             background-color: #FFC107;
             transform: scale(1.05);
         }
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
     </style>
 </head>
 <body>
@@ -640,16 +509,6 @@
             <form id="selectionForm" method="POST" action="/start_singleplayer">
                 <div class="selection-section">
                     <h3>Выберите сложность бота:</h3>
-<<<<<<< HEAD
-                    <button type="button" class="selection-button" data-type="difficulty" data-value="easy">Легкая</button>
-                    <button type="button" class="selection-button" data-type="difficulty" data-value="medium">Средняя</button>
-                    <button type="button" class="selection-button" data-type="difficulty" data-value="hard">Тяжелая</button>
-                </div>
-                <div class="selection-section">
-                    <h3>Выберите цвет шашек:</h3>
-                    <button type="button" class="selection-button" data-type="color" data-value="w">Белые</button>
-                    <button type="button" class="selection-button" data-type="color" data-value="b">Черные</button>
-=======
                     <div class="cards-container" id="difficultyContainer">
                         <div class="card" data-type="difficulty" data-value="easy">
                             <div class="card-content">
@@ -687,13 +546,11 @@
                             </div>
                         </div>
                     </div>
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
                 </div>
                 <input type="hidden" name="difficulty" id="selectedDifficulty">
                 <input type="hidden" name="color" id="selectedColor">
                 <button type="submit" class="play-button" id="playButton">Играть</button>
             </form>
-
         </div>
     </div>
 
@@ -772,13 +629,8 @@
             }
         }
 
-<<<<<<< HEAD
-        document.querySelectorAll('.selection-button').forEach(function(button) {
-            button.addEventListener('click', function() {
-=======
         document.querySelectorAll('.card').forEach(function(card) {
             card.addEventListener('click', function() {
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
                 let type = this.getAttribute('data-type');
                 let value = this.getAttribute('data-value');
 
@@ -789,13 +641,8 @@
                     if (type === 'difficulty') selectedDifficulty.value = '';
                     if (type === 'color') selectedColor.value = '';
                 } else {
-<<<<<<< HEAD
-                    document.querySelectorAll(`.selection-button[data-type="${type}"]`).forEach(function(btn) {
-                        btn.classList.remove('selected');
-=======
                     document.querySelectorAll(`.card[data-type="${type}"]`).forEach(function(otherCard) {
                         otherCard.classList.remove('selected');
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
                     });
 
                     this.classList.add('selected');
@@ -820,22 +667,13 @@
             selectedDifficulty.value = '';
             selectedColor.value = '';
 
-<<<<<<< HEAD
-            document.querySelectorAll('.selection-button').forEach(function(button) {
-                button.classList.remove('selected');
-=======
             document.querySelectorAll('.card').forEach(function(card) {
                 card.classList.remove('selected');
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
             });
 
             playButton.classList.remove('active');
         }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> b3161f4d7e9254e27f8c560080a802e9d1c8fb92
         function startMultiplayerGame() {
             window.location.href = '/start_game';
         }
