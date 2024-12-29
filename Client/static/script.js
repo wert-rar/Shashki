@@ -17,6 +17,8 @@ let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
 
+let lastBoardState = "";
+
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -64,6 +66,24 @@ function update_data(data) {
         }
         return;
     }
+
+    let newBoardState = JSON.stringify(
+        data.pieces
+            .map(piece => ({
+                x: piece.x,
+                y: piece.y,
+                color: piece.color,
+                mode: piece.mode,
+                is_king: piece.is_king
+            }))
+            .sort((a, b) => (a.x - b.x) || (a.y - b.y))
+    );
+
+    if (newBoardState === lastBoardState && data.status_ === CURRENT_STATUS) {
+        return;
+    }
+
+    lastBoardState = newBoardState;
 
     CURRENT_STATUS = data.status_;
     if (data.white_time !== undefined && data.black_time !== undefined) {
@@ -1054,17 +1074,23 @@ function checkGameStatus() {
 }
 
 let pollingInterval = 1000;
+let pollingTimer = null;
 
 function startPolling() {
-    setInterval(() => {
+    pollingTimer = setInterval(() => {
         server_update_request()
             .then(() => {
                 pollingInterval = 1000;
+                clearInterval(pollingTimer);
+                startPolling();
             })
             .catch(() => {
                 pollingInterval = Math.min(pollingInterval * 2, 60000);
+                clearInterval(pollingTimer);
+                startPolling();
             });
     }, pollingInterval);
+
     if (game_id && user_login) {
         setInterval(checkGameStatus, 5000);
     }
