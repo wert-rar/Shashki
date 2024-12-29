@@ -428,12 +428,9 @@ function server_move_request(selected_piece, new_pos) {
     }
   })
   .catch(error => {
-        console.error('Error:', error);
-        showError('Произошла ошибка при отправке хода.');
-    })
-    .finally(() => {
-        isProcessingMove = false;
-    });
+    console.error('Error:', error);
+    showError('Произошла ошибка при отправке хода.');
+  });
 }
 
 let isUpdating = false;
@@ -565,8 +562,6 @@ function addEventListeners() {
   window.addEventListener("resize", onResize);
 }
 
-let isProcessingMove = false;
-
 function onClick(evt) {
   if (currentView !== null) return;
   evt.preventDefault();
@@ -589,10 +584,11 @@ function onClick(evt) {
   } else {
     let move = possibleMoves.find(m => m.x === coords.x && m.y === coords.y);
     if (move) {
-        isProcessingMove = true;
-        server_move_request(SELECTED_PIECE, move).finally(() => {
-            isProcessingMove = false;
-        });
+      server_move_request(SELECTED_PIECE, move);
+    } else {
+      IS_SELECTED = false;
+      SELECTED_PIECE = null;
+      possibleMoves = [];
     }
   }
 }
