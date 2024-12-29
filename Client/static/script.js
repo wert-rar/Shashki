@@ -17,6 +17,8 @@ let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
 
+let isMoveInProgress = false;
+
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -55,7 +57,7 @@ function translate(pieces_data) {
 }
 
 function update_data(data) {
-    console.log("Received data from server:", data);
+    console.log("Получены данные от сервера:", data);
 
     if (data.error) {
         showError(data.error);
@@ -70,21 +72,39 @@ function update_data(data) {
         updateTimersDisplay(data.white_time, data.black_time);
     }
     CURRENT_PLAYER = data.current_player;
-    let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
-    if (currentView === null) {
-        if (data.pieces) {
-            pieces = data.pieces;
-            if (user_color == "b") pieces = translate(pieces);
-            console.log("Updated pieces:", pieces);
+    if (currentView !== null) {
+        return;
+    }
 
-            if (pieces && pieces.length > 0 && boardStates.length === 0) {
-              boardStates = [JSON.parse(JSON.stringify(pieces))];
+    if (!isMoveInProgress) {
+        let newPieces = data.pieces ? translate(data.pieces) : [];
+
+        function arePiecesEqual(p1, p2) {
+            if (p1.length !== p2.length) return false;
+            for (let i = 0; i < p1.length; i++) {
+                if (
+                    p1[i].color !== p2[i].color ||
+                    p1[i].x !== p2[i].x ||
+                    p1[i].y !== p2[i].y ||
+                    p1[i].mode !== p2[i].mode ||
+                    p1[i].is_king !== p2[i].is_king
+                ) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if (!arePiecesEqual(pieces, newPieces)) {
+            pieces = newPieces;
+            console.log("Обновлены фигуры:", pieces);
+
+            if (pieces.length > 0 && boardStates.length === 0) {
+                boardStates = [JSON.parse(JSON.stringify(pieces))];
             }
         } else {
-            console.error("data.pieces is undefined");
-            showError("Получены некорректные данные от сервера.");
-            return;
+            console.log("Состояние доски не изменилось.");
         }
     }
 
@@ -120,6 +140,8 @@ function update_data(data) {
     if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
         displayGameOverMessage(data);
     }
+
+    let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
 
     if (previousSelectedPiece) {
         SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
@@ -379,6 +401,9 @@ function respond_draw(response) {
 }
 
 function server_move_request(selected_piece, new_pos) {
+  if (isMoveInProgress) return;
+  isMoveInProgress = true;
+
   let data = {
     selected_piece: selected_piece,
     new_pos: new_pos,
@@ -394,6 +419,7 @@ function server_move_request(selected_piece, new_pos) {
       };
     } else {
       showError('Выбранная фигура не существует.');
+      isMoveInProgress = false;
       return;
     }
   }
@@ -430,13 +456,16 @@ function server_move_request(selected_piece, new_pos) {
   .catch(error => {
     console.error('Error:', error);
     showError('Произошла ошибка при отправке хода.');
+  })
+  .finally(() => {
+    isMoveInProgress = false;
   });
 }
 
 let isUpdating = false;
 
 function server_update_request() {
-    if (isUpdating) return Promise.resolve();
+    if (isUpdating || isMoveInProgress) return Promise.resolve();
 
     if (!game_id) {
         console.error("game_id не определён.");
@@ -804,7 +833,9 @@ function updateMovesList(moveHistory) {
   const movesList = document.querySelector('.moves-list');
   const movesContainer = document.querySelector('.moves-container');
 
-  let hasNewMoves = moveHistory.length > lastMoveCount;
+  if (moveHistory.length <= lastMoveCount) {
+    return;
+  }
 
   for (let i = lastMoveCount; i < moveHistory.length; i++) {
     let move = { ...moveHistory[i] };
@@ -830,6 +861,12 @@ function updateMovesList(moveHistory) {
     let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
     let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
     let moveText = `${fromPos} ${move.captured ? 'x' : '-'} ${toPos}`;
+
+    let lastMove = moveHistory[i - 1];
+    if (i > 0 && lastMove.player === move.player && lastMove.from.x === move.from.x && lastMove.from.y === move.from.y && lastMove.to.x === move.to.x && lastMove.to.y === move.to.y) {
+      console.warn('Дублированный ход обнаружен и пропущен:', moveText);
+      continue;
+    }
 
     let li = document.createElement('li');
     li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
@@ -868,7 +905,7 @@ function updateMovesList(moveHistory) {
 
   lastMoveCount = moveHistory.length;
 
-  if (hasNewMoves) {
+  if (moveHistory.length > lastMoveCount) {
     playMoveSound();
     movesContainer.scrollTop = movesContainer.scrollHeight;
   }
