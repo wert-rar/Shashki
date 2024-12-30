@@ -17,6 +17,9 @@
             <div>
                 <strong>Имя пользователя:</strong>
                 {{ profile_user_login }}
+                {% if profile_user_login == 'WertRar' %}
+                    <span class="crown" title="Лучший игрок">👑</span>
+                {% endif %}
             </div>
             <div><strong>Рейтинг:</strong> {{ rang }}</div>
         </div>
