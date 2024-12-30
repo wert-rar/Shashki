@@ -160,7 +160,6 @@ def is_all_kings(pieces):
 
 
 def finalize_game(game, user_login):
-    logging.info(f"Finalizing game {game.game_id} for user {user_login} with status {game.status}")
 
     if game.status == 'w3':
         winner_color = 'w'
@@ -170,8 +169,6 @@ def finalize_game(game, user_login):
         winner_color = None
     else:
         winner_color = None
-
-    logging.debug(f"Winner color determined as: {winner_color}")
 
     user_color = game.user_color(user_login)
     user_is_ghost = user_login.startswith('ghost')
@@ -189,24 +186,19 @@ def finalize_game(game, user_login):
 
     logging.debug(f"Result move: {result_move}, Points gained: {points_gained}")
 
-    # Чтобы не начислять рейтинг дважды.
     if not getattr(game, 'rank_updated', False):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
         opponent_is_ghost = opponent_login.startswith('ghost')
 
-        # 1. Начисление очков тому, кто вызвал finalize_game.
-        #    (если он не ghost, то обновляем его статистику)
         if not user_is_ghost:
             user_rank_before = get_user_rang(user_login)
 
             if result_move == 'win':
                 update_user_rank(user_login, points_gained)
                 update_user_stats(user_login, wins=1)
-                # Если оппонент не ghost, то пишем ему «поражение».
                 if not opponent_is_ghost:
                     update_user_stats(opponent_login, losses=1)
             elif result_move == 'lose':
-                # Пользователь проиграл
                 update_user_stats(user_login, losses=1)
             elif result_move == 'draw':
                 update_user_rank(user_login, points_gained)
@@ -231,31 +223,22 @@ def finalize_game(game, user_login):
                 result=result_move
             )
 
-        # 2. Отдельное начисление очков оппоненту (если он НЕ ghost)
-        #    — важно, что этот блок НЕ вложен в "if not user_is_ghost",
-        #    чтобы оппонент-не-ghost не потерял очки, если игру «финализирует» ghost.
         if not opponent_is_ghost:
             opponent_result_move = None
             opponent_points_gained = 0
             opponent_rank_before = get_user_rang(opponent_login)
 
-            # Если user_login «победитель», значит оппонент — проигравший, и наоборот.
             if result_move == 'win':
-                # У финализирующего пользователя - 'win'
-                # Значит оппонент - 'lose'
                 opponent_result_move = 'lose'
                 opponent_points_gained = 0
                 update_user_stats(opponent_login, losses=1)
             elif result_move == 'lose':
-                # У финализирующего пользователя - 'lose'
-                # Значит оппонент - 'win'
                 opponent_result_move = 'win'
                 opponent_points_gained = 10
                 update_user_rank(opponent_login, opponent_points_gained)
                 update_user_stats(opponent_login, wins=1)
             elif result_move == 'draw':
                 opponent_result_move = 'draw'
-                # При ничьей оба получают +5, если оба не ghost:
                 opponent_points_gained = 5
                 update_user_rank(opponent_login, opponent_points_gained)
                 update_user_stats(opponent_login, draws=1)
