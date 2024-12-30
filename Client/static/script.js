@@ -761,6 +761,17 @@ function updateMovesList(moveHistory) {
       li.classList.remove('new-move')
     })
     movesList.appendChild(li)
+    if (user_color === 'b') {
+      let originalFromX = move.from.x
+      let originalFromY = move.from.y
+      move.from.x = 7 - originalFromX
+      move.from.y = 7 - originalFromY
+
+      let originalToX = move.to.x
+      let originalToY = move.to.y
+      move.to.x = 7 - originalToX
+      move.to.y = 7 - originalToY
+    }
     let lastState = boardStates[boardStates.length - 1]
     let newState = applyMove(lastState, move)
     boardStates.push(newState)
