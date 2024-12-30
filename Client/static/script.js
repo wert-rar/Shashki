@@ -62,7 +62,6 @@ function update_data(data) {
   }
   CURRENT_PLAYER = data.current_player
   let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null
-
   if (!boardInitialized && data.pieces && data.pieces.length > 0) {
     let rawPieces = data.pieces
     if (user_color === "b") rawPieces = translate(rawPieces)
@@ -70,7 +69,6 @@ function update_data(data) {
     boardStates = [JSON.parse(JSON.stringify(pieces))]
     boardInitialized = true
   }
-
   document.getElementById("status").innerHTML = status[CURRENT_STATUS]
   if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
     let gameFoundSound = document.getElementById('sound-game-found')
@@ -689,9 +687,16 @@ function convertCoordinatesToNotation(x, y) {
 function updateMovesList(moveHistory) {
   const movesList = document.querySelector('.moves-list')
   const movesContainer = document.querySelector('.moves-container')
-  let hasNewMoves = moveHistory.length > lastMoveCount
+  let hasNewMoves = false
   for (let i = lastMoveCount; i < moveHistory.length; i++) {
     let move = { ...moveHistory[i] }
+    let prev = moveHistory[i - 1] || null
+    if (prev && prev.from && prev.to && prev.player === move.player &&
+        prev.from.x === move.from.x && prev.from.y === move.from.y &&
+        prev.to.x === move.to.x && prev.to.y === move.to.y) {
+      continue
+    }
+    hasNewMoves = true
     let isPlayerMove = move.player === user_login
     let isGhost = isPlayerMove ? user_login.startsWith('ghost') : opponent_login.startsWith('ghost')
     let playerClass = isPlayerMove ? 'blue' : 'red'
