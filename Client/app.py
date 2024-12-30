@@ -51,6 +51,7 @@ status_ = {
 
 
 def get_piece_at(pieces, x, y):
+    # Возвращает фигуру на заданных координатах
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
             return piece
@@ -58,6 +59,7 @@ def get_piece_at(pieces, x, y):
 
 
 def can_capture(piece, pieces):
+    # Определяет, может ли фигура выполнить захват
     x, y = piece['x'], piece['y']
     moves = []
     if piece.get('is_king', False):
@@ -93,6 +95,7 @@ def can_capture(piece, pieces):
 
 
 def can_move(piece, pieces):
+    # Определяет, может ли фигура сделать обычный ход
     x, y = piece['x'], piece['y']
     moves = []
     if piece.get('is_king', False):
@@ -122,6 +125,7 @@ def can_move(piece, pieces):
 
 
 def get_possible_moves(pieces, color, must_capture_piece=None):
+    # Получает все возможные ходы для указанного цвета
     all_moves = {}
     for piece in pieces:
         if piece['color'] != color:
@@ -140,11 +144,13 @@ def get_possible_moves(pieces, color, must_capture_piece=None):
 
 
 def can_player_move(pieces, color):
+    # Проверяет, может ли игрок с данным цветом сделать ход
     moves = get_possible_moves(pieces, color)
     return any(moves.values())
 
 
 def check_draw(pieces):
+    # Проверяет, является ли игра ничьей
     if can_player_move(pieces, 0):
         return False
     if can_player_move(pieces, 1):
@@ -153,6 +159,7 @@ def check_draw(pieces):
 
 
 def is_all_kings(pieces):
+    # Проверяет, все ли фигуры являются королями
     for piece in pieces:
         if not piece.get('is_king', False):
             return False
@@ -160,7 +167,7 @@ def is_all_kings(pieces):
 
 
 def finalize_game(game, user_login):
-
+    # Завершает игру и обновляет статистику игроков
     if game.status == 'w3':
         winner_color = 'w'
     elif game.status == 'b3':
@@ -265,6 +272,7 @@ def finalize_game(game, user_login):
 
 
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
+    # Валидирует ход игрока
     x, y = selected_piece['x'], selected_piece['y']
     dest_x, dest_y = new_pos['x'], new_pos['y']
     color = 0 if current_player == 'w' else 1
@@ -342,6 +350,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
 
 @app.route("/")
 def home():
+    # Отображает домашнюю страницу
     user_login = session.get('user')
     user_is_registered = False
     if user_login and not user_login.startswith('ghost'):
@@ -353,6 +362,7 @@ def home():
 
 @app.route('/board/<int:game_id>/<user_login>')
 def get_board(game_id, user_login):
+    # Отображает игровую доску для указанной игры и пользователя
     game = get_or_create_ephemeral_game(game_id)
     if not game:
         abort(404)
@@ -378,6 +388,7 @@ def get_board(game_id, user_login):
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    # Обрабатывает регистрацию нового пользователя
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
@@ -398,6 +409,7 @@ def register():
 
 
 def find_active_game(user_login):
+    # Находит активную игру для пользователя
     with all_games_lock:
         for g_id, g_obj in all_games_dict.items():
             if g_obj.f_user == user_login or g_obj.c_user == user_login:
@@ -408,6 +420,7 @@ def find_active_game(user_login):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    # Обрабатывает вход пользователя в систему
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
@@ -430,6 +443,7 @@ def login():
 
 @app.route('/profile/<username>')
 def profile(username):
+    # Отображает профиль указанного пользователя
     user = get_user_by_login(username)
     if username.startswith('ghost'):
         abort(403)
@@ -474,6 +488,7 @@ def profile(username):
 
 @app.route("/logout")
 def logout():
+    # Обрабатывает выход пользователя из системы
     session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
@@ -483,27 +498,32 @@ def logout():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    # Обрабатывает ошибку 404
     return render_template('404.html'), 404
 
 
 @app.errorhandler(403)
 def forbidden(e):
+    # Обрабатывает ошибку 403
     return render_template('403.html'), 403
 
 
 @app.route('/trigger_error')
 def trigger_error():
+    # Триггерит ошибку 500 для тестирования
     abort(500)
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
+    # Обрабатывает ошибку 500
     app.logger.error(f"Ошибка 500: {e}")
     return render_template('500.html'), 500
 
 
 @app.route('/start_game')
 def start_game():
+    # Инициирует начало новой игры или присоединение к существующей
     user_login = session.get('user')
     if not user_login:
         with ghost_lock:
@@ -577,6 +597,7 @@ def start_game():
 
 @app.route("/check_game_status", methods=["GET"])
 def check_game_status_route():
+    # Проверяет текущий статус игры
     game_id = session.get('game_id')
     user_login = session.get('user')
 
@@ -631,6 +652,7 @@ def check_game_status_route():
 
 @app.route("/move", methods=["POST"])
 def move():
+    # Обрабатывает ход пользователя
     data = request.json
     selected_piece = data.get("selected_piece")
     new_pos = data.get("new_pos")
@@ -750,6 +772,7 @@ def move():
 
 @app.route("/update_board", methods=["POST"])
 def update_board():
+    # Обновляет состояние доски на основе данных с сервера
     try:
         if not request.is_json:
             app.logger.debug("Запрос не является JSON.")
@@ -807,8 +830,9 @@ def update_board():
 
 @app.route("/give_up", methods=["POST"])
 def give_up_route():
+    # Обрабатывает сдачу пользователя
     try:
-        data = request.get_json()
+        data = request.json
         game_id = data.get("game_id")
         user_login = data.get("user_login")
 
@@ -851,6 +875,7 @@ def give_up_route():
 
 @app.route('/leave_game', methods=['POST'])
 def leave_game():
+    # Обрабатывает выход пользователя из игры
     game_id = session.get('game_id')
     user_login = session.get('user')
 
@@ -883,6 +908,7 @@ def leave_game():
 
 @app.route("/offer_draw", methods=["POST"])
 def offer_draw():
+    # Обрабатывает предложение ничьей
     data = request.json
     game_id = data.get("game_id")
     user_login = session.get('user')
@@ -915,6 +941,7 @@ def offer_draw():
 
 @app.route("/respond_draw", methods=["POST"])
 def respond_draw_route():
+    # Обрабатывает ответ на предложение ничьей
     data = request.json
     game_id = data.get("game_id")
     user_login = session.get('user')
@@ -970,6 +997,7 @@ def respond_draw_route():
 
 @app.route("/get_possible_moves", methods=["POST"])
 def get_possible_moves_route():
+    # Возвращает возможные ходы для выбранной фигуры
     data = request.json
     selected_piece = data.get("selected_piece")
     game_id = data.get("game_id")
@@ -1014,6 +1042,7 @@ def get_possible_moves_route():
 
 @app.route('/api/profile/<username>', methods=['GET'])
 def api_profile(username):
+    # Возвращает информацию о профиле пользователя в формате JSON
     if username.startswith('ghost'):
         return jsonify({"error": "Профиль не доступен"}), 403
     user = get_user_by_login(username)
@@ -1032,6 +1061,7 @@ def api_profile(username):
 
 @app.route('/hook', methods=['POST'])
 def webhook():
+    # Обрабатывает вебхук для автоматического обновления репозитория
     payload = request.data
     signature = request.headers.get('X-Hub-Signature-256', '')
     SECRET = b'superpupersecretkey'
@@ -1057,6 +1087,7 @@ def webhook():
 
 @app.route("/singleplayer_easy/<username>")
 def singleplayer_easy(username):
+    # Отображает страницу легкого уровня одиночной игры
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost, user_color=user_color)
@@ -1064,6 +1095,7 @@ def singleplayer_easy(username):
 
 @app.route("/singleplayer_medium/<username>")
 def singleplayer_medium(username):
+    # Отображает страницу среднего уровня одиночной игры
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost, user_color=user_color)
@@ -1071,6 +1103,7 @@ def singleplayer_medium(username):
 
 @app.route("/singleplayer_hard/<username>")
 def singleplayer_hard(username):
+    # Отображает страницу сложного уровня одиночной игры
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost, user_color=user_color)
@@ -1078,6 +1111,7 @@ def singleplayer_hard(username):
 
 @app.route("/start_singleplayer", methods=["GET", "POST"])
 def start_singleplayer():
+    # Инициирует одиночную игру с выбранным уровнем сложности
     if request.method == "POST":
         difficulty = request.form.get("difficulty")
         color = request.form.get("color")
@@ -1103,6 +1137,7 @@ def start_singleplayer():
 
 @app.route('/player_loaded', methods=['POST'])
 def player_loaded():
+    # Отмечает, что игрок загрузил игровую доску
     data = request.json
     game_id = data.get('game_id')
     user_login = session.get('user')
