@@ -14,6 +14,7 @@ let currentView = null
 let gameFoundSoundPlayed = false
 let victorySoundPlayed = false
 let defeatSoundPlayed = false
+let boardInitialized = false
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -61,19 +62,15 @@ function update_data(data) {
   }
   CURRENT_PLAYER = data.current_player
   let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null
-  if (currentView === null) {
-    if (data.pieces) {
-      pieces = data.pieces
-      if (user_color == "b") pieces = translate(pieces)
-      if (pieces && pieces.length > 0 && boardStates.length === 0) {
-        boardStates = [JSON.parse(JSON.stringify(pieces))]
-      }
-    } else {
-      console.error("data.pieces is undefined")
-      showError("Получены некорректные данные от сервера.")
-      return
-    }
+
+  if (!boardInitialized && data.pieces && data.pieces.length > 0) {
+    let rawPieces = data.pieces
+    if (user_color === "b") rawPieces = translate(rawPieces)
+    pieces = rawPieces
+    boardStates = [JSON.parse(JSON.stringify(pieces))]
+    boardInitialized = true
   }
+
   document.getElementById("status").innerHTML = status[CURRENT_STATUS]
   if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
     let gameFoundSound = document.getElementById('sound-game-found')
@@ -113,7 +110,12 @@ function update_data(data) {
       possibleMoves = []
     }
   }
-  if (data.move_history) {
+  if (data.move_history && data.move_history.length > lastMoveCount) {
+    if (currentView === null && data.pieces) {
+      let rawPieces = data.pieces
+      if (user_color === "b") rawPieces = translate(rawPieces)
+      pieces = rawPieces
+    }
     updateMovesList(data.move_history)
   }
 }
@@ -201,7 +203,7 @@ function displayGameOverMessage(data) {
 }
 
 function returnToMainMenu() {
-  var xhr = new XMLHttpRequest()
+  let xhr = new XMLHttpRequest()
   xhr.open("POST", "/leave_game", true)
   xhr.setRequestHeader("Content-type", "application/json")
   xhr.onreadystatechange = function() {
@@ -218,7 +220,7 @@ function give_up() {
 
 function confirmSurrender() {
   closeModal('surrender-modal')
-  var xhr = new XMLHttpRequest()
+  let xhr = new XMLHttpRequest()
   xhr.open("POST", "/give_up", true)
   xhr.setRequestHeader("Content-type", "application/json")
   xhr.onreadystatechange = function () {
@@ -324,10 +326,7 @@ function server_move_request(selected_piece, new_pos) {
   if (user_color == "b") {
     if (selected_piece) {
       data.selected_piece = translate([selected_piece])[0]
-      data.new_pos = {
-        x: 7 - new_pos.x,
-        y: 7 - new_pos.y
-      }
+      data.new_pos = { x: 7 - new_pos.x, y: 7 - new_pos.y }
     } else {
       showError('Выбранная фигура не существует.')
       return
