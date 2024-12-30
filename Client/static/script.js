@@ -14,6 +14,9 @@ let currentView = null
 let gameFoundSoundPlayed = false
 let victorySoundPlayed = false
 let defeatSoundPlayed = false
+
+let shownErrors = new Set()
+
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -294,6 +297,10 @@ function showNotification(message, type = 'info') {
 
 // Показывает модальное окно с ошибкой
 function showError(message) {
+  if (shownErrors.has(message)) {
+    return
+  }
+  shownErrors.add(message)
   let errorModal = document.createElement('div')
   errorModal.classList.add('modal')
   errorModal.innerHTML = `
