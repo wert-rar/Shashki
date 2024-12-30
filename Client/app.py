@@ -189,24 +189,25 @@ def finalize_game(game, user_login):
 
     logging.debug(f"Result move: {result_move}, Points gained: {points_gained}")
 
+    # Чтобы не начислять рейтинг дважды.
     if not getattr(game, 'rank_updated', False):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
         opponent_is_ghost = opponent_login.startswith('ghost')
 
-        logging.info(f"Updating stats for user {user_login} against opponent {opponent_login}")
-
+        # 1. Начисление очков тому, кто вызвал finalize_game.
+        #    (если он не ghost, то обновляем его статистику)
         if not user_is_ghost:
             user_rank_before = get_user_rang(user_login)
 
             if result_move == 'win':
                 update_user_rank(user_login, points_gained)
                 update_user_stats(user_login, wins=1)
+                # Если оппонент не ghost, то пишем ему «поражение».
                 if not opponent_is_ghost:
                     update_user_stats(opponent_login, losses=1)
-                logging.info(f"User {user_login} won against {opponent_login}")
             elif result_move == 'lose':
+                # Пользователь проиграл
                 update_user_stats(user_login, losses=1)
-                logging.info(f"User {user_login} lost against {opponent_login}")
             elif result_move == 'draw':
                 update_user_rank(user_login, points_gained)
                 if not opponent_is_ghost:
@@ -214,7 +215,6 @@ def finalize_game(game, user_login):
                 update_user_stats(user_login, draws=1)
                 if not opponent_is_ghost:
                     update_user_stats(opponent_login, draws=1)
-                logging.info(f"Game between {user_login} and {opponent_login} ended in a draw")
 
             user_rank_after = get_user_rang(user_login)
             user_rating_change = user_rank_after - user_rank_before
@@ -231,40 +231,49 @@ def finalize_game(game, user_login):
                 result=result_move
             )
 
-            if not opponent_is_ghost:
-                if result_move == 'win':
-                    opponent_result_move = 'lose'
-                    opponent_points_gained = 0
-                elif result_move == 'lose':
-                    opponent_result_move = 'win'
-                    opponent_points_gained = 10
-                elif result_move == 'draw':
-                    opponent_result_move = 'draw'
-                    opponent_points_gained = 5 if not opponent_is_ghost else 0
+        # 2. Отдельное начисление очков оппоненту (если он НЕ ghost)
+        #    — важно, что этот блок НЕ вложен в "if not user_is_ghost",
+        #    чтобы оппонент-не-ghost не потерял очки, если игру «финализирует» ghost.
+        if not opponent_is_ghost:
+            opponent_result_move = None
+            opponent_points_gained = 0
+            opponent_rank_before = get_user_rang(opponent_login)
 
-                opponent_rank_before = get_user_rang(opponent_login)
+            # Если user_login «победитель», значит оппонент — проигравший, и наоборот.
+            if result_move == 'win':
+                # У финализирующего пользователя - 'win'
+                # Значит оппонент - 'lose'
+                opponent_result_move = 'lose'
+                opponent_points_gained = 0
+                update_user_stats(opponent_login, losses=1)
+            elif result_move == 'lose':
+                # У финализирующего пользователя - 'lose'
+                # Значит оппонент - 'win'
+                opponent_result_move = 'win'
+                opponent_points_gained = 10
+                update_user_rank(opponent_login, opponent_points_gained)
+                update_user_stats(opponent_login, wins=1)
+            elif result_move == 'draw':
+                opponent_result_move = 'draw'
+                # При ничьей оба получают +5, если оба не ghost:
+                opponent_points_gained = 5
+                update_user_rank(opponent_login, opponent_points_gained)
+                update_user_stats(opponent_login, draws=1)
 
-                if opponent_result_move == 'win':
-                    update_user_rank(opponent_login, opponent_points_gained)
-                    update_user_stats(opponent_login, wins=1)
-                elif opponent_result_move == 'lose':
-                    update_user_stats(opponent_login, losses=1)
-                elif opponent_result_move == 'draw':
-                    update_user_rank(opponent_login, opponent_points_gained)
-                    update_user_stats(opponent_login, draws=1)
+            opponent_rank_after = get_user_rang(opponent_login)
+            opponent_rating_change = opponent_rank_after - opponent_rank_before
 
-                opponent_rank_after = get_user_rang(opponent_login)
-                opponent_rating_change = opponent_rank_after - opponent_rank_before
+            date_end = datetime.datetime.now().isoformat()
 
-                insert_completed_game(
-                    user_login=opponent_login,
-                    game_id=game.game_id,
-                    date_start=date_end,
-                    rating_before=opponent_rank_before,
-                    rating_after=opponent_rank_after,
-                    rating_change=opponent_rating_change,
-                    result=opponent_result_move
-                )
+            insert_completed_game(
+                user_login=opponent_login,
+                game_id=game.game_id,
+                date_start=date_end,
+                rating_before=opponent_rank_before,
+                rating_after=opponent_rank_after,
+                rating_change=opponent_rating_change,
+                result=opponent_result_move
+            )
 
         game.rank_updated = True
         update_game_status_in_db(game.game_id, 'completed')
