@@ -46,6 +46,7 @@ status_ = {
     "w4": "Белые продолжают ход",
     "b4": "Черные продолжают ход",
     "n": "Ничья",
+    "ns1": "Игра не началась из-за отсутствия хода",
     "e1": "Ошибка при запросе к серверу"
 }
 
@@ -174,11 +175,19 @@ def finalize_game(game, user_login):
         winner_color = 'b'
     elif game.status == 'n':
         winner_color = None
+    elif game.status == 'ns1':
+        winner_color = None
     else:
         winner_color = None
 
     user_color = game.user_color(user_login)
     user_is_ghost = user_login.startswith('ghost')
+
+    if game.status == 'ns1':
+        result_move = 'not_started'
+        points_gained = 0
+        update_game_status_in_db(game.game_id, 'completed')
+        return result_move, points_gained
 
     if winner_color is None:
         result_move = 'draw'
@@ -190,8 +199,6 @@ def finalize_game(game, user_login):
         else:
             result_move = 'lose'
             points_gained = 0
-
-    logging.debug(f"Result move: {result_move}, Points gained: {points_gained}")
 
     if not getattr(game, 'rank_updated', False):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
@@ -413,7 +420,7 @@ def find_active_game(user_login):
     with all_games_lock:
         for g_id, g_obj in all_games_dict.items():
             if g_obj.f_user == user_login or g_obj.c_user == user_login:
-                if g_obj.status not in ['w3', 'b3', 'n']:
+                if g_obj.status not in ['w3', 'b3', 'n', 'ns1']:
                     return g_obj
     return None
 
@@ -460,7 +467,7 @@ def profile(username):
                 game_id_int = int(session.get('game_id'))
                 game = all_games_dict.get(game_id_int)
                 if game and current_user in [game.f_user, game.c_user]:
-                    if game.f_user and game.c_user and game.status not in ['w3', 'b3', 'n']:
+                    if game.f_user and game.c_user and game.status not in ['w3', 'b3', 'n', 'ns1']:
                         in_game = True
                         game_id = game_id_int
             except (ValueError, TypeError):
@@ -549,7 +556,7 @@ def start_game():
 
         game = all_games_dict.get(game_id_int)
         if game and user_login in [game.f_user, game.c_user]:
-            if game.status in ['w3', 'b3', 'n']:
+            if game.status in ['w3', 'b3', 'n', 'ns1']:
                 session.pop('game_id', None)
                 session.pop('color', None)
                 new_game_id = create_new_game_in_db(user_login)
@@ -614,7 +621,7 @@ def check_game_status_route():
     if not game:
         return jsonify({"status": "game_not_found"}), 404
 
-    if game.status in ['w3', 'b3', 'n']:
+    if game.status in ['w3', 'b3', 'n', 'ns1']:
         response = {
             'status': game.status,
             'current_user': user_login,
@@ -695,9 +702,15 @@ def move():
         }
         game.move_history.append(move_record)
 
+        if not game.game_started:
+            game.game_started = True
+            game.white_time_remaining = 900
+            game.black_time_remaining = 900
+            game.last_update_time = time.time()
+
         game.update_timers()
 
-        if game.status in ['w3', 'b3', 'n']:
+        if game.status in ['w3', 'b3', 'n', 'ns1']:
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": game.status,
@@ -817,7 +830,7 @@ def update_board():
                 response_data['draw_response'] = game.draw_response['response']
                 game.draw_response = None
 
-        if game.status in ['w3', 'b3', 'n']:
+        if game.status in ['w3', 'b3', 'n', 'ns1']:
             result_move, points_gained = finalize_game(game, user_login)
             response_data['points_gained'] = points_gained
             response_data['result'] = result_move

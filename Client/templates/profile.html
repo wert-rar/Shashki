@@ -122,8 +122,12 @@
                     resultTd.innerHTML = '<span style="color: green;">Победа</span>';
                 } else if (record.result === "lose") {
                     resultTd.innerHTML = '<span style="color: red;">Поражение</span>';
-                } else {
+                } else if (record.result === "draw") {
                     resultTd.innerHTML = '<span style="color: yellow;">Ничья</span>';
+                } else if (record.result === "not_started") {
+                    resultTd.innerHTML = '<span style="color: gray;">Не началась</span>';
+                } else {
+                    resultTd.innerHTML = '<span style="color: orange;">Неизвестный результат</span>';
                 }
                 tr.appendChild(resultTd);
 

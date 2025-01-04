@@ -46,9 +46,11 @@ class Game:
         self.draw_response = None
         self.move_history = []
 
-        self.white_time_remaining = 900
-        self.black_time_remaining = 900
+        self.white_time_remaining = 30
+        self.black_time_remaining = 30
         self.last_update_time = None
+
+        self.game_started = False
 
         self.lock = threading.Lock()
 
@@ -63,16 +65,28 @@ class Game:
         elapsed = now - self.last_update_time
         self.last_update_time = now
 
-        if self.current_player == 'w':
-            self.white_time_remaining -= elapsed
-            if self.white_time_remaining <= 0:
-                self.white_time_remaining = 0
-                self.status = 'b3'
+        if not self.game_started:
+            if self.current_player == 'w':
+                self.white_time_remaining -= elapsed
+                if self.white_time_remaining <= 0:
+                    self.white_time_remaining = 0
+                    self.status = 'ns1'
+            else:
+                self.black_time_remaining -= elapsed
+                if self.black_time_remaining <= 0:
+                    self.black_time_remaining = 0
+                    self.status = 'ns1'
         else:
-            self.black_time_remaining -= elapsed
-            if self.black_time_remaining <= 0:
-                self.black_time_remaining = 0
-                self.status = 'w3'
+            if self.current_player == 'w':
+                self.white_time_remaining -= elapsed
+                if self.white_time_remaining <= 0:
+                    self.white_time_remaining = 0
+                    self.status = 'b3'
+            else:
+                self.black_time_remaining -= elapsed
+                if self.black_time_remaining <= 0:
+                    self.black_time_remaining = 0
+                    self.status = 'w3'
 
     def user_color(self, user_login):
         # Возвращает цвет пользователя в игре

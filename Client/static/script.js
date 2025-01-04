@@ -27,6 +27,7 @@ let status = {
   w4: "Белые продолжают ход",
   b4: "Черные продолжают ход",
   n: "Ничья!",
+  ns1: "Игра не началась из-за отсутствия хода",
   e1: "Ошибка при запросе к серверу"
 }
 let colors = {
@@ -102,7 +103,7 @@ function update_data(data) {
   } else {
     document.getElementById("draw-offer-modal").style.display = "none"
   }
-  if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n") {
+  if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n" || CURRENT_STATUS === "ns1") {
     displayGameOverMessage(data)
   }
   if (previousSelectedPiece) {
@@ -138,73 +139,77 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
 
 // Отображает сообщение о завершении игры
 function displayGameOverMessage(data) {
-  let modal = document.getElementById("game-over-modal")
-  if (modal.style.display === "block") return
-  let title = document.getElementById("game-over-title")
-  let message = document.getElementById("game-over-message")
-  let resultText = ""
-  let isVictory = false
-  let isDefeat = false
-  let gameResult = data.result
-  if (!gameResult) {
-    if (CURRENT_STATUS === 'w3') {
-      gameResult = (user_color === 'w') ? 'win' : 'lose'
-    } else if (CURRENT_STATUS === 'b3') {
-      gameResult = (user_color === 'b') ? 'win' : 'lose'
-    } else if (CURRENT_STATUS === 'n') {
-      gameResult = 'draw'
+    let modal = document.getElementById("game-over-modal")
+    if (modal.style.display === "block") return
+    let title = document.getElementById("game-over-title")
+    let message = document.getElementById("game-over-message")
+    let resultText = ""
+    let isVictory = false
+    let isDefeat = false
+    let gameResult = data.result
+    if (!gameResult) {
+        if (CURRENT_STATUS === 'w3') {
+            gameResult = (user_color === 'w') ? 'win' : 'lose'
+        } else if (CURRENT_STATUS === 'b3') {
+            gameResult = (user_color === 'b') ? 'win' : 'lose'
+        } else if (CURRENT_STATUS === 'n') {
+            gameResult = 'draw'
+        } else if (CURRENT_STATUS === 'ns1') {
+            gameResult = 'not_started'
+        }
     }
-  }
-  let userIsGhost = is_ghost
-  let opponentIsGhost = opponent_login.startsWith('ghost')
-  if (userIsGhost) {
-    resultText = "Вы не получаете очки, пока не зарегистрированы."
-  } else {
-    if (gameResult === "win") {
-      resultText = "Вы победили!"
-      isVictory = true
-    } else if (gameResult === "lose") {
-      resultText = "Вы проиграли."
-      isDefeat = true
-    } else if (gameResult === "draw") {
-      resultText = "Ничья."
+    let userIsGhost = is_ghost
+    let opponentIsGhost = opponent_login.startsWith('ghost')
+    if (userIsGhost) {
+        resultText = "Вы не получаете очки, пока не зарегистрированы."
+    } else {
+        if (gameResult === "win") {
+            resultText = "Вы победили!"
+            isVictory = true
+        } else if (gameResult === "lose") {
+            resultText = "Вы проиграли."
+            isDefeat = true
+        } else if (gameResult === "draw") {
+            resultText = "Ничья."
+        } else if (gameResult === "not_started") {
+            resultText = "Игра не началась из-за отсутствия хода."
+        }
     }
-  }
-  let points_gained = data.points_gained || 0
-  title.innerText = "Игра окончена"
-  if (userIsGhost) {
-    message.innerHTML = resultText
-  } else {
-    message.innerHTML = resultText + "<br>Вы получили " + points_gained + " очков к рангу."
-  }
-  const modalButtons = modal.querySelector('.modal-buttons')
-  const mainMenuButton = document.getElementById('main-menu-button')
-  const registerButton = document.getElementById('register-button')
-  if (userIsGhost) {
-    registerButton.style.display = 'inline-block'
-    modalButtons.classList.add('two-buttons')
-    modalButtons.classList.remove('single-button')
-  } else {
-    registerButton.style.display = 'none'
-    modalButtons.classList.remove('two-buttons')
-    modalButtons.classList.add('single-button')
-  }
-  const modalContent = modal.querySelector('.modal-content')
-  if (userIsGhost) {
-    modalContent.classList.add('guest')
-    modalContent.classList.remove('registered')
-  } else {
-    modalContent.classList.remove('guest')
-    modalContent.classList.add('registered')
-  }
-  modal.style.display = "block"
-  if (isVictory && !victorySoundPlayed) {
-    playVictorySound()
-    victorySoundPlayed = true
-  } else if (isDefeat && !defeatSoundPlayed) {
-    playDefeatSound()
-    defeatSoundPlayed = true
-  }
+    let points_gained = data.points_gained || 0
+    title.innerText = "Игра окончена"
+    if (userIsGhost) {
+        message.innerHTML = resultText
+    } else {
+        message.innerHTML = resultText + "<br>Вы получили " + points_gained + " очков к рангу."
+    }
+    const modalButtons = modal.querySelector('.modal-buttons')
+    const mainMenuButton = document.getElementById('main-menu-button')
+    const registerButton = document.getElementById('register-button')
+    if (userIsGhost) {
+        registerButton.style.display = 'inline-block'
+        modalButtons.classList.add('two-buttons')
+        modalButtons.classList.remove('single-button')
+    } else {
+        registerButton.style.display = 'none'
+        modalButtons.classList.remove('two-buttons')
+        modalButtons.classList.add('single-button')
+    }
+    const modalContent = modal.querySelector('.modal-content')
+    if (userIsGhost) {
+        modalContent.classList.add('guest')
+        modalContent.classList.remove('registered')
+    } else {
+        modalContent.classList.remove('guest')
+        modalContent.classList.add('registered')
+    }
+    modal.style.display = "block"
+    if (isVictory && !victorySoundPlayed) {
+        playVictorySound()
+        victorySoundPlayed = true
+    } else if (isDefeat && !defeatSoundPlayed) {
+        playDefeatSound()
+        defeatSoundPlayed = true
+    }
 }
 
 // Возвращает пользователя в главное меню
