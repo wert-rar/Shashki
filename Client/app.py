@@ -46,12 +46,12 @@ status_ = {
     "w4": "Белые продолжают ход",
     "b4": "Черные продолжают ход",
     "n": "Ничья",
+    "ns1": "Игра не началась из-за отсутствия хода",
     "e1": "Ошибка при запросе к серверу"
 }
 
 
 def get_piece_at(pieces, x, y):
-    # Возвращает фигуру на заданных координатах
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
             return piece
@@ -59,7 +59,6 @@ def get_piece_at(pieces, x, y):
 
 
 def can_capture(piece, pieces):
-    # Определяет, может ли фигура выполнить захват
     x, y = piece['x'], piece['y']
     moves = []
     if piece.get('is_king', False):
@@ -95,7 +94,6 @@ def can_capture(piece, pieces):
 
 
 def can_move(piece, pieces):
-    # Определяет, может ли фигура сделать обычный ход
     x, y = piece['x'], piece['y']
     moves = []
     if piece.get('is_king', False):
@@ -125,7 +123,6 @@ def can_move(piece, pieces):
 
 
 def get_possible_moves(pieces, color, must_capture_piece=None):
-    # Получает все возможные ходы для указанного цвета
     all_moves = {}
     for piece in pieces:
         if piece['color'] != color:
@@ -144,13 +141,11 @@ def get_possible_moves(pieces, color, must_capture_piece=None):
 
 
 def can_player_move(pieces, color):
-    # Проверяет, может ли игрок с данным цветом сделать ход
     moves = get_possible_moves(pieces, color)
     return any(moves.values())
 
 
 def check_draw(pieces):
-    # Проверяет, является ли игра ничьей
     if can_player_move(pieces, 0):
         return False
     if can_player_move(pieces, 1):
@@ -159,7 +154,6 @@ def check_draw(pieces):
 
 
 def is_all_kings(pieces):
-    # Проверяет, все ли фигуры являются королями
     for piece in pieces:
         if not piece.get('is_king', False):
             return False
@@ -167,12 +161,13 @@ def is_all_kings(pieces):
 
 
 def finalize_game(game, user_login):
-    # Завершает игру и обновляет статистику игроков
     if game.status == 'w3':
         winner_color = 'w'
     elif game.status == 'b3':
         winner_color = 'b'
     elif game.status == 'n':
+        winner_color = None
+    elif game.status == 'ns1':
         winner_color = None
     else:
         winner_color = None
@@ -180,7 +175,40 @@ def finalize_game(game, user_login):
     user_color = game.user_color(user_login)
     user_is_ghost = user_login.startswith('ghost')
 
-    if winner_color is None:
+    if game.status == 'ns1':
+        result_move = 'not_started'
+        points_gained = 0
+        if not getattr(game, 'rank_updated', False):
+            update_game_status_in_db(game.game_id, 'completed')
+            if not user_is_ghost:
+                user_rank_before = get_user_rang(user_login)
+                date_end = datetime.datetime.now().isoformat()
+                insert_completed_game(
+                    user_login=user_login,
+                    game_id=game.game_id,
+                    date_start=date_end,
+                    rating_before=user_rank_before,
+                    rating_after=user_rank_before,
+                    rating_change=0,
+                    result=result_move
+                )
+            opponent_login = game.f_user if game.f_user != user_login else game.c_user
+            if opponent_login and not opponent_login.startswith('ghost'):
+                opp_rank_before = get_user_rang(opponent_login)
+                date_end = datetime.datetime.now().isoformat()
+                insert_completed_game(
+                    user_login=opponent_login,
+                    game_id=game.game_id,
+                    date_start=date_end,
+                    rating_before=opp_rank_before,
+                    rating_after=opp_rank_before,
+                    rating_change=0,
+                    result=result_move
+                )
+            game.rank_updated = True
+        return result_move, points_gained
+
+    if winner_color is None and game.status == 'n':
         result_move = 'draw'
         points_gained = 5 if not user_is_ghost else 0
     else:
@@ -191,15 +219,12 @@ def finalize_game(game, user_login):
             result_move = 'lose'
             points_gained = 0
 
-    logging.debug(f"Result move: {result_move}, Points gained: {points_gained}")
-
     if not getattr(game, 'rank_updated', False):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
         opponent_is_ghost = opponent_login.startswith('ghost')
 
         if not user_is_ghost:
             user_rank_before = get_user_rang(user_login)
-
             if result_move == 'win':
                 update_user_rank(user_login, points_gained)
                 update_user_stats(user_login, wins=1)
@@ -217,9 +242,7 @@ def finalize_game(game, user_login):
 
             user_rank_after = get_user_rang(user_login)
             user_rating_change = user_rank_after - user_rank_before
-
             date_end = datetime.datetime.now().isoformat()
-
             insert_completed_game(
                 user_login=user_login,
                 game_id=game.game_id,
@@ -231,10 +254,7 @@ def finalize_game(game, user_login):
             )
 
         if not opponent_is_ghost:
-            opponent_result_move = None
-            opponent_points_gained = 0
             opponent_rank_before = get_user_rang(opponent_login)
-
             if result_move == 'win':
                 opponent_result_move = 'lose'
                 opponent_points_gained = 0
@@ -249,21 +269,23 @@ def finalize_game(game, user_login):
                 opponent_points_gained = 5
                 update_user_rank(opponent_login, opponent_points_gained)
                 update_user_stats(opponent_login, draws=1)
+            else:
+                opponent_result_move = None
+                opponent_points_gained = 0
 
-            opponent_rank_after = get_user_rang(opponent_login)
-            opponent_rating_change = opponent_rank_after - opponent_rank_before
-
-            date_end = datetime.datetime.now().isoformat()
-
-            insert_completed_game(
-                user_login=opponent_login,
-                game_id=game.game_id,
-                date_start=date_end,
-                rating_before=opponent_rank_before,
-                rating_after=opponent_rank_after,
-                rating_change=opponent_rating_change,
-                result=opponent_result_move
-            )
+            if opponent_result_move is not None:
+                opponent_rank_after = get_user_rang(opponent_login)
+                opponent_rating_change = opponent_rank_after - opponent_rank_before
+                date_end = datetime.datetime.now().isoformat()
+                insert_completed_game(
+                    user_login=opponent_login,
+                    game_id=game.game_id,
+                    date_start=date_end,
+                    rating_before=opponent_rank_before,
+                    rating_after=opponent_rank_after,
+                    rating_change=opponent_rating_change,
+                    result=opponent_result_move
+                )
 
         game.rank_updated = True
         update_game_status_in_db(game.game_id, 'completed')
@@ -272,7 +294,6 @@ def finalize_game(game, user_login):
 
 
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
-    # Валидирует ход игрока
     x, y = selected_piece['x'], selected_piece['y']
     dest_x, dest_y = new_pos['x'], new_pos['y']
     color = 0 if current_player == 'w' else 1
@@ -287,7 +308,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         return {'move_result': 'invalid'}
 
     new_pieces = [piece.copy() for piece in pieces]
-
     captured = False
     captured_pieces = []
     moved_piece = None
@@ -350,7 +370,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
 
 @app.route("/")
 def home():
-    # Отображает домашнюю страницу
     user_login = session.get('user')
     user_is_registered = False
     if user_login and not user_login.startswith('ghost'):
@@ -362,7 +381,6 @@ def home():
 
 @app.route('/board/<int:game_id>/<user_login>')
 def get_board(game_id, user_login):
-    # Отображает игровую доску для указанной игры и пользователя
     game = get_or_create_ephemeral_game(game_id)
     if not game:
         abort(404)
@@ -388,7 +406,6 @@ def get_board(game_id, user_login):
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    # Обрабатывает регистрацию нового пользователя
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
@@ -409,18 +426,16 @@ def register():
 
 
 def find_active_game(user_login):
-    # Находит активную игру для пользователя
     with all_games_lock:
         for g_id, g_obj in all_games_dict.items():
             if g_obj.f_user == user_login or g_obj.c_user == user_login:
-                if g_obj.status not in ['w3', 'b3', 'n']:
+                if g_obj.status not in ['w3', 'b3', 'n', 'ns1']:
                     return g_obj
     return None
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # Обрабатывает вход пользователя в систему
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
@@ -443,7 +458,6 @@ def login():
 
 @app.route('/profile/<username>')
 def profile(username):
-    # Отображает профиль указанного пользователя
     user = get_user_by_login(username)
     if username.startswith('ghost'):
         abort(403)
@@ -460,7 +474,7 @@ def profile(username):
                 game_id_int = int(session.get('game_id'))
                 game = all_games_dict.get(game_id_int)
                 if game and current_user in [game.f_user, game.c_user]:
-                    if game.f_user and game.c_user and game.status not in ['w3', 'b3', 'n']:
+                    if game.f_user and game.c_user and game.status not in ['w3', 'b3', 'n', 'ns1']:
                         in_game = True
                         game_id = game_id_int
             except (ValueError, TypeError):
@@ -488,7 +502,6 @@ def profile(username):
 
 @app.route("/logout")
 def logout():
-    # Обрабатывает выход пользователя из системы
     session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
@@ -498,32 +511,27 @@ def logout():
 
 @app.errorhandler(404)
 def page_not_found(e):
-    # Обрабатывает ошибку 404
     return render_template('404.html'), 404
 
 
 @app.errorhandler(403)
 def forbidden(e):
-    # Обрабатывает ошибку 403
     return render_template('403.html'), 403
 
 
 @app.route('/trigger_error')
 def trigger_error():
-    # Триггерит ошибку 500 для тестирования
     abort(500)
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    # Обрабатывает ошибку 500
     app.logger.error(f"Ошибка 500: {e}")
     return render_template('500.html'), 500
 
 
 @app.route('/start_game')
 def start_game():
-    # Инициирует начало новой игры или присоединение к существующей
     user_login = session.get('user')
     if not user_login:
         with ghost_lock:
@@ -549,7 +557,7 @@ def start_game():
 
         game = all_games_dict.get(game_id_int)
         if game and user_login in [game.f_user, game.c_user]:
-            if game.status in ['w3', 'b3', 'n']:
+            if game.status in ['w3', 'b3', 'n', 'ns1']:
                 session.pop('game_id', None)
                 session.pop('color', None)
                 new_game_id = create_new_game_in_db(user_login)
@@ -597,7 +605,6 @@ def start_game():
 
 @app.route("/check_game_status", methods=["GET"])
 def check_game_status_route():
-    # Проверяет текущий статус игры
     game_id = session.get('game_id')
     user_login = session.get('user')
 
@@ -614,7 +621,7 @@ def check_game_status_route():
     if not game:
         return jsonify({"status": "game_not_found"}), 404
 
-    if game.status in ['w3', 'b3', 'n']:
+    if game.status in ['w3', 'b3', 'n', 'ns1']:
         response = {
             'status': game.status,
             'current_user': user_login,
@@ -652,7 +659,6 @@ def check_game_status_route():
 
 @app.route("/move", methods=["POST"])
 def move():
-    # Обрабатывает ход пользователя
     data = request.json
     selected_piece = data.get("selected_piece")
     new_pos = data.get("new_pos")
@@ -681,6 +687,8 @@ def move():
         return jsonify({"error": "Not your turn"}), 403
 
     with game.lock:
+        game.update_timers()
+
         result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
         if result['move_result'] == 'invalid':
             return jsonify({"error": "Invalid move"}), 400
@@ -695,18 +703,36 @@ def move():
         }
         game.move_history.append(move_record)
 
+        if not game.game_started:
+            game.game_started = True
+            game.white_time_remaining = 900
+            game.black_time_remaining = 900
+            game.last_update_time = time.time()
+
+        if user_color == 'w':
+            game.white_idle_time = 0
+            game.white_in_countdown = False
+            game.white_countdown_remaining = 0
+        else:
+            game.black_idle_time = 0
+            game.black_in_countdown = False
+            game.black_countdown_remaining = 0
+
+        game.last_update_time = time.time()
         game.update_timers()
 
-        if game.status in ['w3', 'b3', 'n']:
+        if game.status in ['w3', 'b3', 'n', 'ns1']:
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": game.status,
                 "pieces": game.pieces,
-                "white_time": max(int(game.white_time_remaining), 0),
-                "black_time": max(int(game.black_time_remaining), 0),
+                "white_time": max(round(game.white_time_remaining), 0),
+                "black_time": max(round(game.black_time_remaining), 0),
                 "move_history": game.move_history,
                 "result": result_move,
-                "points_gained": points_gained
+                "points_gained": points_gained,
+                "white_countdown": round(game.white_countdown_remaining),
+                "black_countdown": round(game.black_countdown_remaining)
             }
             return jsonify(response_data)
 
@@ -717,7 +743,9 @@ def move():
                 "status_": game.status,
                 "pieces": game.pieces,
                 "move_history": game.move_history,
-                "multiple_capture": True
+                "multiple_capture": True,
+                "white_countdown": int(game.white_countdown_remaining),
+                "black_countdown": int(game.black_countdown_remaining)
             })
         elif result['move_result'] == 'valid':
             game.pieces = result['new_pieces']
@@ -729,15 +757,29 @@ def move():
         if is_all_kings(game.pieces):
             game.status = "n"
             result_move, points_gained = finalize_game(game, user_login)
-            response_data = {"status_": "n", "pieces": game.pieces, "move_history": game.move_history,
-                             "result": result_move, "points_gained": points_gained}
+            response_data = {
+                "status_": "n",
+                "pieces": game.pieces,
+                "move_history": game.move_history,
+                "result": result_move,
+                "points_gained": points_gained,
+                "white_countdown": int(game.white_countdown_remaining),
+                "black_countdown": int(game.black_countdown_remaining)
+            }
             return jsonify(response_data)
 
         if check_draw(game.pieces):
             game.status = "n"
             result_move, points_gained = finalize_game(game, user_login)
-            response_data = {"status_": "n", "pieces": game.pieces, "move_history": game.move_history,
-                             "result": result_move, "points_gained": points_gained}
+            response_data = {
+                "status_": "n",
+                "pieces": game.pieces,
+                "move_history": game.move_history,
+                "result": result_move,
+                "points_gained": points_gained,
+                "white_countdown": int(game.white_countdown_remaining),
+                "black_countdown": int(game.black_countdown_remaining)
+            }
             return jsonify(response_data)
 
         opponent_color = 'b' if current_player == 'w' else 'w'
@@ -751,7 +793,9 @@ def move():
                 "pieces": game.pieces,
                 "move_history": game.move_history,
                 "result": result_move,
-                "points_gained": points_gained
+                "points_gained": points_gained,
+                "white_countdown": int(game.white_countdown_remaining),
+                "black_countdown": int(game.black_countdown_remaining)
             }
             return jsonify(response_data)
 
@@ -763,16 +807,22 @@ def move():
                 "pieces": game.pieces,
                 "move_history": game.move_history,
                 "result": result_move,
-                "points_gained": points_gained
+                "points_gained": points_gained,
+                "white_countdown": int(game.white_countdown_remaining),
+                "black_countdown": int(game.black_countdown_remaining)
             }
             return jsonify(response_data)
 
-        return jsonify({"status_": game.status, "pieces": game.pieces, "move_history": game.move_history})
-
+        return jsonify({
+            "status_": game.status,
+            "pieces": game.pieces,
+            "move_history": game.move_history,
+            "white_countdown": int(game.white_countdown_remaining),
+            "black_countdown": int(game.black_countdown_remaining)
+        })
 
 @app.route("/update_board", methods=["POST"])
 def update_board():
-    # Обновляет состояние доски на основе данных с сервера
     try:
         if not request.is_json:
             app.logger.debug("Запрос не является JSON.")
@@ -804,9 +854,11 @@ def update_board():
         response_data = {
             "status_": game.status,
             "pieces": game.pieces,
-            "white_time": max(int(game.white_time_remaining), 0),
-            "black_time": max(int(game.black_time_remaining), 0),
-            "move_history": game.move_history
+            "white_time": max(round(game.white_time_remaining), 0),
+            "black_time": max(round(game.black_time_remaining), 0),
+            "move_history": game.move_history,
+            "white_countdown": int(game.white_countdown_remaining),
+            "black_countdown": int(game.black_countdown_remaining)
         }
 
         if game.draw_offer:
@@ -817,7 +869,7 @@ def update_board():
                 response_data['draw_response'] = game.draw_response['response']
                 game.draw_response = None
 
-        if game.status in ['w3', 'b3', 'n']:
+        if game.status in ['w3', 'b3', 'n', 'ns1']:
             result_move, points_gained = finalize_game(game, user_login)
             response_data['points_gained'] = points_gained
             response_data['result'] = result_move
@@ -830,7 +882,6 @@ def update_board():
 
 @app.route("/give_up", methods=["POST"])
 def give_up_route():
-    # Обрабатывает сдачу пользователя
     try:
         data = request.json
         game_id = data.get("game_id")
@@ -875,7 +926,6 @@ def give_up_route():
 
 @app.route('/leave_game', methods=['POST'])
 def leave_game():
-    # Обрабатывает выход пользователя из игры
     game_id = session.get('game_id')
     user_login = session.get('user')
 
@@ -908,7 +958,6 @@ def leave_game():
 
 @app.route("/offer_draw", methods=["POST"])
 def offer_draw():
-    # Обрабатывает предложение ничьей
     data = request.json
     game_id = data.get("game_id")
     user_login = session.get('user')
@@ -941,7 +990,6 @@ def offer_draw():
 
 @app.route("/respond_draw", methods=["POST"])
 def respond_draw_route():
-    # Обрабатывает ответ на предложение ничьей
     data = request.json
     game_id = data.get("game_id")
     user_login = session.get('user')
@@ -997,7 +1045,6 @@ def respond_draw_route():
 
 @app.route("/get_possible_moves", methods=["POST"])
 def get_possible_moves_route():
-    # Возвращает возможные ходы для выбранной фигуры
     data = request.json
     selected_piece = data.get("selected_piece")
     game_id = data.get("game_id")
@@ -1042,7 +1089,6 @@ def get_possible_moves_route():
 
 @app.route('/api/profile/<username>', methods=['GET'])
 def api_profile(username):
-    # Возвращает информацию о профиле пользователя в формате JSON
     if username.startswith('ghost'):
         return jsonify({"error": "Профиль не доступен"}), 403
     user = get_user_by_login(username)
@@ -1061,7 +1107,6 @@ def api_profile(username):
 
 @app.route('/hook', methods=['POST'])
 def webhook():
-    # Обрабатывает вебхук для автоматического обновления репозитория
     payload = request.data
     signature = request.headers.get('X-Hub-Signature-256', '')
     SECRET = b'superpupersecretkey'
@@ -1087,7 +1132,6 @@ def webhook():
 
 @app.route("/singleplayer_easy/<username>")
 def singleplayer_easy(username):
-    # Отображает страницу легкого уровня одиночной игры
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost, user_color=user_color)
@@ -1095,7 +1139,6 @@ def singleplayer_easy(username):
 
 @app.route("/singleplayer_medium/<username>")
 def singleplayer_medium(username):
-    # Отображает страницу среднего уровня одиночной игры
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost, user_color=user_color)
@@ -1103,7 +1146,6 @@ def singleplayer_medium(username):
 
 @app.route("/singleplayer_hard/<username>")
 def singleplayer_hard(username):
-    # Отображает страницу сложного уровня одиночной игры
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost, user_color=user_color)
@@ -1111,7 +1153,6 @@ def singleplayer_hard(username):
 
 @app.route("/start_singleplayer", methods=["GET", "POST"])
 def start_singleplayer():
-    # Инициирует одиночную игру с выбранным уровнем сложности
     if request.method == "POST":
         difficulty = request.form.get("difficulty")
         color = request.form.get("color")
@@ -1137,7 +1178,6 @@ def start_singleplayer():
 
 @app.route('/player_loaded', methods=['POST'])
 def player_loaded():
-    # Отмечает, что игрок загрузил игровую доску
     data = request.json
     game_id = data.get('game_id')
     user_login = session.get('user')
