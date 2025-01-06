@@ -41,7 +41,6 @@ let b_colors = {
 let pieces = []
 let possibleMoves = []
 
-// Переводит координаты фигур в соответствии с цветом пользователя
 function translate(pieces_data) {
   return pieces_data.map(piece => ({
     color: piece.color,
@@ -52,7 +51,6 @@ function translate(pieces_data) {
   }))
 }
 
-// Обновляет данные игры на основе полученной информации от сервера
 function update_data(data) {
   if (data.error) {
     showError(data.error)
@@ -65,7 +63,9 @@ function update_data(data) {
   if (data.white_time !== undefined && data.black_time !== undefined) {
     updateTimersDisplay(data.white_time, data.black_time)
   }
-  CURRENT_PLAYER = data.current_player
+  if (data.white_countdown !== undefined && data.black_countdown !== undefined) {
+    updateCountdownDisplay(data.white_countdown, data.black_countdown)
+  }
   let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null
   if (currentView === null) {
     if (data.pieces) {
@@ -124,7 +124,6 @@ function update_data(data) {
   }
 }
 
-// Обновляет отображение таймеров для белых и черных
 function updateTimersDisplay(whiteSeconds, blackSeconds) {
   function formatTime(s) {
     let m = Math.floor(s / 60)
@@ -137,7 +136,43 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
   document.getElementById('black-timer').textContent = formatTime(blackSeconds)
 }
 
-// Отображает сообщение о завершении игры
+function updateCountdownDisplay(wCountdown, bCountdown) {
+  const whiteTimer = document.getElementById('white-timer')
+  const blackTimer = document.getElementById('black-timer')
+
+  if (wCountdown > 0 && CURRENT_STATUS !== 'ns1' && CURRENT_STATUS !== 'w3' && CURRENT_STATUS !== 'b3' && CURRENT_STATUS !== 'n') {
+    let m = Math.floor(wCountdown / 60)
+    let s = Math.floor(wCountdown % 60)
+    let mm = m < 10 ? '0' + m : m
+    let ss = s < 10 ? '0' + s : s
+    whiteTimer.textContent = mm + ':' + ss
+
+    if (Math.floor(wCountdown) % 2 === 0) {
+      whiteTimer.style.color = '#FF0000'
+    } else {
+      whiteTimer.style.color = '#FFFFFF'
+    }
+  } else {
+    whiteTimer.style.color = '#FFFFFF'
+  }
+
+  if (bCountdown > 0 && CURRENT_STATUS !== 'ns1' && CURRENT_STATUS !== 'w3' && CURRENT_STATUS !== 'b3' && CURRENT_STATUS !== 'n') {
+    let m = Math.floor(bCountdown / 60)
+    let s = Math.floor(bCountdown % 60)
+    let mm = m < 10 ? '0' + m : m
+    let ss = s < 10 ? '0' + s : s
+    blackTimer.textContent = mm + ':' + ss
+
+    if (Math.floor(bCountdown) % 2 === 0) {
+      blackTimer.style.color = '#FF0000'
+    } else {
+      blackTimer.style.color = '#FFFFFF'
+    }
+  } else {
+    blackTimer.style.color = '#FFFFFF'
+  }
+}
+
 function displayGameOverMessage(data) {
     let modal = document.getElementById("game-over-modal")
     if (modal.style.display === "block") return
@@ -212,7 +247,6 @@ function displayGameOverMessage(data) {
     }
 }
 
-// Возвращает пользователя в главное меню
 function returnToMainMenu() {
   var xhr = new XMLHttpRequest()
   xhr.open("POST", "/leave_game", true)
@@ -225,12 +259,10 @@ function returnToMainMenu() {
   xhr.send(JSON.stringify({}))
 }
 
-// Показывает модальное окно сдачи
 function give_up() {
   document.getElementById('surrender-modal').style.display = 'block'
 }
 
-// Подтверждает сдачу и отправляет запрос на сервер
 function confirmSurrender() {
   closeModal('surrender-modal')
   var xhr = new XMLHttpRequest()
@@ -249,12 +281,10 @@ function confirmSurrender() {
   xhr.send(JSON.stringify({game_id: game_id, user_login: user_login}))
 }
 
-// Показывает модальное окно предложения ничьей
 function give_draw() {
   document.getElementById('offer-draw-modal').style.display = 'block'
 }
 
-// Подтверждает предложение ничьей и отправляет запрос на сервер
 function confirmOfferDraw() {
   closeModal('offer-draw-modal')
   let body = { game_id: game_id }
@@ -276,12 +306,10 @@ function confirmOfferDraw() {
   })
 }
 
-// Закрывает указанное модальное окно
 function closeModal(modalId) {
   document.getElementById(modalId).style.display = 'none'
 }
 
-// Показывает уведомление пользователю
 function showNotification(message, type = 'info') {
   let notification = document.createElement('div')
   notification.classList.add('notification')
@@ -300,7 +328,6 @@ function showNotification(message, type = 'info') {
   })
 }
 
-// Показывает модальное окно с ошибкой
 function showError(message) {
   if (shownErrors.has(message)) {
     return
@@ -319,7 +346,6 @@ function showError(message) {
   errorModal.style.display = 'block'
 }
 
-// Отвечает на предложение ничьей
 function respond_draw(response) {
   let body = { game_id: game_id, response: response }
   fetch('/respond_draw', {
@@ -340,7 +366,6 @@ function respond_draw(response) {
   })
 }
 
-// Отправляет запрос на сервер для выполнения хода
 function server_move_request(selected_piece, new_pos) {
   let data = {
     selected_piece: selected_piece,
@@ -392,7 +417,6 @@ function server_move_request(selected_piece, new_pos) {
 
 let isUpdating = false
 
-// Отправляет запрос на сервер для обновления состояния доски
 function server_update_request() {
   if (isUpdating) return Promise.resolve()
   if (!game_id) {
@@ -433,7 +457,6 @@ function server_update_request() {
   })
 }
 
-// Получает возможные ходы для выбранной фигуры с сервера
 function server_get_possible_moves(selected_piece, callback) {
   let data = {
     selected_piece: selected_piece,
@@ -477,7 +500,6 @@ function server_get_possible_moves(selected_piece, callback) {
   })
 }
 
-// Применяет ход к состоянию доски
 function applyMove(boardState, move) {
   let newState = boardState.map(piece => ({...piece}))
   let movingPiece = newState.find(p => p.x === move.from.x && p.y === move.from.y)
@@ -499,13 +521,11 @@ function applyMove(boardState, move) {
   return newState
 }
 
-// Добавляет обработчики событий для канваса и окна
 function addEventListeners() {
   CANVAS.addEventListener("click", onClick)
   window.addEventListener("resize", onResize)
 }
 
-// Обрабатывает клик по канвасу
 function onClick(evt) {
   if (currentView !== null) return
   evt.preventDefault()
@@ -532,12 +552,10 @@ function onClick(evt) {
   }
 }
 
-// Обрабатывает изменение размера окна
 function onResize() {
   adjustScreen()
 }
 
-// Возвращает фигуру на указанных координатах
 function getPieceAt(x, y) {
   for (let piece of pieces) {
     if (piece.x === x && piece.y === y) {
@@ -547,7 +565,6 @@ function getPieceAt(x, y) {
   return null
 }
 
-// Настраивает размеры экрана и канваса
 function adjustScreen() {
   const screenWidth = window.innerWidth
   const screenHeight = window.innerHeight
@@ -577,7 +594,6 @@ function adjustScreen() {
   CTX.clearRect(0, 0, CANVAS.width / dpr, CANVAS.height / dpr)
 }
 
-// Рисует круг на канвасе
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
   CTX.beginPath()
   CTX.arc(x, y, r, 0, 2 * Math.PI, false)
@@ -593,7 +609,6 @@ function draw_circle(x, y, r, width, strokeColor, fillColor) {
   CTX.closePath()
 }
 
-// Рисует фигуру на канвасе
 function draw_piece(piece, user_color) {
   let fillStyle = colors[piece.color]
   let strokeStyle = colors[piece.color ? 0 : 1]
@@ -628,7 +643,6 @@ function draw_piece(piece, user_color) {
   }
 }
 
-// Рисует возможные ходы на канвасе
 function draw_possible_moves() {
   CTX.save()
   CTX.lineWidth = 4
@@ -643,7 +657,6 @@ function draw_possible_moves() {
   CTX.restore()
 }
 
-// Отрисовывает доску
 function render_Board() {
   CTX.fillStyle = "#121212"
   CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1))
@@ -666,7 +679,6 @@ function render_Board() {
   drawLabels()
 }
 
-// Рисует метки на доске
 function drawLabels() {
   CTX.fillStyle = "#f0f0f0"
   let fontSize = CELL_SIZE / 3
@@ -697,7 +709,6 @@ function drawLabels() {
   }
 }
 
-// Отрисовывает все фигуры на доске
 function render_Pieces() {
   for (let i = 0; i < pieces.length; i++) {
     draw_piece(pieces[i], user_color)
@@ -707,7 +718,6 @@ function render_Pieces() {
   }
 }
 
-// Основной цикл обновления канваса
 function update() {
   CTX.clearRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1))
   render_Board()
@@ -715,7 +725,6 @@ function update() {
   window.requestAnimationFrame(update)
 }
 
-// Преобразует координаты в шахматную нотацию
 function convertCoordinatesToNotation(x, y) {
   const letters = ['A','B','C','D','E','F','G','H']
   if (user_color == 'w') {
@@ -729,7 +738,6 @@ function convertCoordinatesToNotation(x, y) {
   }
 }
 
-// Обновляет список ходов в истории игры
 function updateMovesList(moveHistory) {
   const movesList = document.querySelector('.moves-list')
   const movesContainer = document.querySelector('.moves-container')
@@ -796,7 +804,6 @@ function updateMovesList(moveHistory) {
   addProfileClickListeners()
 }
 
-// Отображает состояние доски на определенном ходу
 function viewBoardState(moveIndex) {
   if (moveIndex < 0 || moveIndex > boardStates.length - 1) return
   let selectedState = boardStates[moveIndex].map(piece => ({...piece}))
@@ -805,7 +812,6 @@ function viewBoardState(moveIndex) {
   showHistoryViewIndicator()
 }
 
-// Возвращает к текущему виду доски
 function returnToCurrentView() {
   let currentState = boardStates[boardStates.length - 1].map(piece => ({...piece}))
   pieces = currentState
@@ -817,14 +823,12 @@ function returnToCurrentView() {
   document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'))
 }
 
-// Показывает индикатор просмотра истории
 function showHistoryViewIndicator() {
   let indicator = document.getElementById('history-view-indicator')
   if (!indicator) return
   indicator.style.display = 'block'
 }
 
-// Добавляет обработчики кликов на имена игроков для открытия контекстного меню
 function addProfileClickListeners() {
   const playerNames = document.querySelectorAll('.player-name')
   playerNames.forEach(name => {
@@ -844,7 +848,6 @@ function addProfileClickListeners() {
   })
 }
 
-// Показывает контекстное меню рядом с указанными координатами
 function showContextMenu(x, y, username) {
   const menu = document.getElementById('context-menu')
   if (!menu) return
@@ -863,7 +866,6 @@ function showContextMenu(x, y, username) {
   })
 }
 
-// Создает контекстное меню для профилей игроков
 function createContextMenu() {
   let menu = document.createElement('div')
   menu.id = 'context-menu'
@@ -887,7 +889,6 @@ function createContextMenu() {
 
 createContextMenu()
 
-// Получает профиль пользователя с сервера
 function fetchProfile(username) {
   fetch('/api/profile/' + username)
   .then(response => response.json())
@@ -903,7 +904,6 @@ function fetchProfile(username) {
   })
 }
 
-// Отображает модальное окно с информацией о профиле пользователя
 function displayProfileModal(profileData) {
   let modal = document.getElementById("profile-modal")
   if (!modal) {
@@ -937,7 +937,6 @@ function displayProfileModal(profileData) {
   modal.style.display = 'block'
 }
 
-// Проверяет статус игры на сервере
 function checkGameStatus() {
   fetch('/check_game_status', {
     method: 'GET',
@@ -954,7 +953,6 @@ function checkGameStatus() {
 
 let pollingInterval = 1000
 
-// Запускает опрос сервера для обновления состояния игры
 function startPolling() {
   setInterval(() => {
     server_update_request()
@@ -970,7 +968,6 @@ function startPolling() {
   }
 }
 
-// Инициализирует игру при загрузке страницы
 function onLoad() {
   CANVAS = document.getElementById("board")
   CTX = CANVAS.getContext("2d")
@@ -993,7 +990,6 @@ function onLoad() {
   })
 }
 
-// Отключает функции профиля для гостей
 function disableProfileFeatures() {
   const ghostPlayers = document.querySelectorAll('.player-name[data-username^="ghost"]')
   ghostPlayers.forEach(button => {
@@ -1003,7 +999,6 @@ function disableProfileFeatures() {
   })
 }
 
-// Преобразует координаты клика в координаты доски
 function getCoordinates(loc) {
   let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE)
   let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE)
@@ -1013,7 +1008,6 @@ function getCoordinates(loc) {
   return { x: -1, y: -1 }
 }
 
-// Проигрывает звук хода
 function playMoveSound() {
   const moveSound = document.getElementById('sound-move')
   if (moveSound) {
@@ -1023,7 +1017,6 @@ function playMoveSound() {
   }
 }
 
-// Проигрывает звук победы
 function playVictorySound() {
   const victorySound = document.getElementById('sound-victory')
   if (victorySound) {
@@ -1033,7 +1026,6 @@ function playVictorySound() {
   }
 }
 
-// Проигрывает звук поражения
 function playDefeatSound() {
   const defeatSound = document.getElementById('sound-defeat')
   if (defeatSound) {
@@ -1043,7 +1035,6 @@ function playDefeatSound() {
   }
 }
 
-// Уведомляет сервер о загрузке игрока
 function notify_player_loaded() {
   if (typeof game_id === 'undefined' || typeof user_login === 'undefined') {
     return

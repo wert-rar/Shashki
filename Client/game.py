@@ -53,12 +53,17 @@ class Game:
         self.game_started = False
 
         self.lock = threading.Lock()
-
         self.f_player_loaded = False
         self.c_player_loaded = False
 
+        self.white_idle_time = 0
+        self.black_idle_time = 0
+        self.white_in_countdown = False
+        self.black_in_countdown = False
+        self.white_countdown_remaining = 0
+        self.black_countdown_remaining = 0
+
     def update_timers(self):
-        # Обновляет оставшееся время для текущего игрока и проверяет, не истекло ли время
         if self.last_update_time is None:
             return
         now = time.time()
@@ -76,20 +81,44 @@ class Game:
                 if self.black_time_remaining <= 0:
                     self.black_time_remaining = 0
                     self.status = 'ns1'
-        else:
-            if self.current_player == 'w':
-                self.white_time_remaining -= elapsed
-                if self.white_time_remaining <= 0:
-                    self.white_time_remaining = 0
-                    self.status = 'b3'
+            return
+
+
+        if self.current_player == 'w':
+            self.white_time_remaining -= elapsed
+            if self.white_time_remaining <= 0:
+                self.white_time_remaining = 0
+                self.status = 'b3'
+
+            self.white_idle_time += elapsed
+            if not self.white_in_countdown:
+                if self.white_idle_time >= 50:
+                    self.white_in_countdown = True
+                    self.white_countdown_remaining = 120
             else:
-                self.black_time_remaining -= elapsed
-                if self.black_time_remaining <= 0:
-                    self.black_time_remaining = 0
+                self.white_countdown_remaining -= elapsed
+                if self.white_countdown_remaining <= 0:
+                    self.white_countdown_remaining = 0
+                    self.status = 'b3'
+
+        else:
+            self.black_time_remaining -= elapsed
+            if self.black_time_remaining <= 0:
+                self.black_time_remaining = 0
+                self.status = 'w3'
+
+            self.black_idle_time += elapsed
+            if not self.black_in_countdown:
+                if self.black_idle_time >= 50:
+                    self.black_in_countdown = True
+                    self.black_countdown_remaining = 120
+            else:
+                self.black_countdown_remaining -= elapsed
+                if self.black_countdown_remaining <= 0:
+                    self.black_countdown_remaining = 0
                     self.status = 'w3'
 
     def user_color(self, user_login):
-        # Возвращает цвет пользователя в игре
         if user_login == self.f_user:
             return 'w'
         elif user_login == self.c_user:
@@ -97,7 +126,6 @@ class Game:
         return None
 
     def update_pieces(self, new_pieces) -> bool:
-        # Обновляет позиции фигур в игре
         with self.lock:
             if len(new_pieces) != len(self.pieces):
                 return False
@@ -105,24 +133,20 @@ class Game:
             return True
 
     def update_status(self):
-        # Обновляет статус игры в зависимости от текущего игрока
         if self.current_player == "w":
             self.status = "w1"
         else:
             self.status = "b1"
 
     def switch_turn(self):
-        # Меняет текущего игрока и обновляет статус игры
         self.current_player = 'b' if self.current_player == 'w' else 'w'
         self.update_status()
         self.last_update_time = time.time()
 
     def __str__(self):
-        # Возвращает строковое представление игры
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
 def get_or_create_ephemeral_game(game_id):
-    # Получает существующую игру по ID или создает временную игру, если она существует в базе данных
     with all_games_lock:
         if game_id in all_games_dict:
             return all_games_dict[game_id]
@@ -145,7 +169,6 @@ def get_or_create_ephemeral_game(game_id):
         return new_game
 
 def find_waiting_game_in_db():
-    # Ищет игру, ожидающую второго игрока, в базе данных
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(
         DBGame.status == 'unstarted',
@@ -155,7 +178,6 @@ def find_waiting_game_in_db():
     return db_game
 
 def update_game_with_user_in_db(game_id, user_login, color):
-    # Присоединяет пользователя к игре в базе данных с указанным цветом
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
 
@@ -201,7 +223,6 @@ def update_game_with_user_in_db(game_id, user_login, color):
     return True
 
 def create_new_game_in_db(user_login):
-    # Создает новую игру в базе данных с указанным пользователем как белыми
     import random
     db_session = SessionLocal()
     while True:
@@ -227,7 +248,6 @@ def create_new_game_in_db(user_login):
     return game_id_candidate
 
 def remove_game_in_db(game_id):
-    # Удаляет игру из базы данных, устанавливая её статус как завершённую
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if db_game:
@@ -240,7 +260,6 @@ def remove_game_in_db(game_id):
             del all_games_dict[game_id]
 
 def get_game_status_internally(game_id):
-    # Получает внутренний статус игры из базы данных
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if not db_game:
@@ -251,7 +270,6 @@ def get_game_status_internally(game_id):
     return status
 
 def update_game_status_in_db(game_id, new_status):
-    # Обновляет статус игры в базе данных
     db_session = SessionLocal()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if db_game:
