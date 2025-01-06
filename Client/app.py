@@ -161,6 +161,9 @@ def is_all_kings(pieces):
 
 
 def finalize_game(game, user_login):
+    if not game.c_user:
+        remove_game_in_db(game.game_id)
+        return None, 0
     if game.status == 'w3':
         winner_color = 'w'
     elif game.status == 'b3':
@@ -947,6 +950,13 @@ def leave_game():
         game.c_user = None
     else:
         return jsonify({"error": "User is not in the game"}), 403
+
+    if game.status == 'unstarted':
+        remove_game_in_db(game_id_int)
+        session.pop('game_id', None)
+        session.pop('color', None)
+        flash('Поиск игры отменен и игра удалена.', 'info')
+        return jsonify({"message": "Left the game successfully and game was removed"}), 200
 
     if (game.f_user is None) and (game.c_user is None):
         remove_game_in_db(game_id_int)
