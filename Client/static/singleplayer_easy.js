@@ -55,6 +55,8 @@ let is_ghost = window.is_ghost || false;
 
 let positionHistory = {};
 
+let userTurnTimer = null;
+
 function initializePieces(userColor) {
     if (userColor === 'w') {
         return [
@@ -188,7 +190,7 @@ function restoreMovesHistory() {
         div.classList.add('move-content');
         let sp1 = document.createElement('span');
         sp1.classList.add('move-player');
-        sp1.textContent = move.player === 'w' ? username : 'Бот Vova(ГАУ)';
+        sp1.textContent = move.player === 'w' ? username : 'Бот Мастер Манго';
         let sp2 = document.createElement('span');
         sp2.classList.add('move-description');
         sp2.textContent = `${convertPosToNotation(move.from)} -> ${convertPosToNotation(move.to)}`;
@@ -369,6 +371,7 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
 function switchTurn() {
     current_player = (current_player === 'w' ? 'b' : 'w');
     document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
+    updateTurnTimer();
 }
 
 function isGameOver() {
@@ -411,6 +414,7 @@ function isGameOver() {
 
 function endGame(forceStatus = null) {
     game_over = true;
+    clearTimeout(userTurnTimer);
     let msg;
     let color = (current_player === 'w' ? 0 : 1);
     let moves = get_possible_moves(pieces, color, must_capture_piece);
@@ -443,10 +447,13 @@ function endGame(forceStatus = null) {
 
 function returnToMainMenu() {
     window.location.href = '/';
-    localStorage.removeItem('checkers_game_state');
+    localStorage.clear()
 }
+window.addEventListener('beforeunload', () => {
+    localStorage.clear();
+});
 function newGame() {
-    localStorage.removeItem('checkers_game_state');
+    localStorage.clear()
     location.reload();
 }
 function give_up() {
@@ -619,7 +626,7 @@ function addMoveToHistory(result, playerMove = true){
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
 
-            sp1.textContent = 'Бот Vova(ГАУ)';
+            sp1.textContent = 'Бот Мастер Манго';
 
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
@@ -910,7 +917,13 @@ window.onload = function() {
     let diffSel = document.getElementById('difficulty-select');
     if (diffSel) {
         diffSel.value = difficulty;
-        diffSel.addEventListener('change', (e) => { difficulty = e.target.value; saveGameState(); });
+        diffSel.addEventListener('change', (e) => {
+            difficulty = e.target.value;
+            saveGameState();
+        });
+    }
+    if (!game_over && current_player === user_color) {
+        updateTurnTimer();
     }
 };
 
@@ -979,4 +992,16 @@ function showReturnToCurrentButton() {
 function hideReturnToCurrentButton() {
     let btn = document.getElementById('history-view-button');
     if (btn) btn.style.display = 'none';
+}
+
+function updateTurnTimer() {
+    clearTimeout(userTurnTimer);
+    if (current_player === user_color && !game_over) {
+        userTurnTimer = setTimeout(() => {
+            if (current_player === user_color && !game_over) {
+                if (user_color === 'w') endGame('b3');
+                else endGame('w3');
+            }
+        }, 120000);
+    }
 }
