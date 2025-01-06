@@ -31,7 +31,6 @@ let selected_piece = null;
 let possibleMoves = [];
 let movesList = [];
 let game_over = false;
-
 let CANVAS, CTX;
 let CELL_SIZE, BOARD_OFFSET_X, BOARD_OFFSET_Y;
 let difficulty = 'hard';
@@ -43,21 +42,15 @@ let lastFrom = null, lastTo = null;
 let botFrom = null, botTo = null;
 let selected_pos = null;
 let LABEL_PADDING = 36;
-
 let historyViewMode = false;
 let currentPiecesSnapshot = null;
-
 let username = window.username || "ghost1";
 let is_ghost = window.is_ghost || false;
-
 let user_color_num = 0;
 let bot_color = 'b';
 let bot_color_num = 1;
-
-let moveRepetition = {
-    'w': {},
-    'b': {}
-};
+let moveRepetition = {'w': {}, 'b': {}};
+let userTurnTimer = null;
 
 function initializePieces(userColor) {
     if (userColor === 'w') {
@@ -117,7 +110,6 @@ function initializePieces(userColor) {
     }
 }
 
-
 function copyPieces(pcs) {
     return pcs.map(p => ({...p}));
 }
@@ -141,11 +133,11 @@ function saveGameState() {
         movesList,
         moveRepetition
     };
-    localStorage.setItem('checkers_game_state', JSON.stringify(state));
+    sessionStorage.setItem('checkers_game_state', JSON.stringify(state));
 }
 
 function loadGameState() {
-    let stateStr = localStorage.getItem('checkers_game_state');
+    let stateStr = sessionStorage.getItem('checkers_game_state');
     if(stateStr) {
         let state = JSON.parse(stateStr);
         pieces = state.pieces;
@@ -160,14 +152,11 @@ function loadGameState() {
         user_color = state.user_color || 'w';
         movesList = state.movesList || [];
         moveRepetition = state.moveRepetition || { 'w': {}, 'b': {} };
-
         user_color_num = (user_color === 'w') ? 0 : 1;
         bot_color_num = 1 - user_color_num;
         bot_color = (bot_color_num === 0) ? 'w' : 'b';
-
         document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
         restoreMovesHistory();
-
         if (!game_over && current_player === bot_color) {
             setTimeout(makeBotMove, 1000);
         }
@@ -335,7 +324,6 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
             break;
         }
     }
-
     let newMustCapture = null;
     if(captured){
         let cap_moves = can_capture(moved_piece, new_pieces);
@@ -355,7 +343,6 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
     } else {
         newMustCapture = null;
     }
-
     return{
         move_result: 'valid',
         new_pieces,
@@ -369,32 +356,30 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
 function switchTurn(){
     current_player = (current_player === 'w' ? 'b' : 'w');
     document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
+    updateTurnTimer();
 }
 
 function isGameOver(){
     if(game_over) return true;
-
     let allKings = pieces.every(p => p.is_king);
     if(allKings) {
         endGame('draw_kings');
         return true;
     }
-
     let color_num = (current_player === 'w') ? 0 : 1;
     let moves = get_possible_moves(pieces, color_num, must_capture_piece);
     let canMove = false;
     for(let k in moves){ if(moves[k].length > 0){ canMove = true; break; } }
     if(!canMove) return true;
-
     let opponentColor = (current_player === 'w') ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
     if(oppPieces.length === 0) return true;
-
     return false;
 }
 
 function endGame(forceStatus = null){
     game_over = true;
+    clearTimeout(userTurnTimer);
     let msg;
     let color = (current_player === 'w' ? 0 : 1);
     let moves = get_possible_moves(pieces, color, must_capture_piece);
@@ -402,7 +387,6 @@ function endGame(forceStatus = null){
     for(let k in moves){ if(moves[k].length > 0){ canMove = true; break; } }
     let opponentColor = (current_player === 'w') ? 1 : 0;
     let oppPieces = pieces.filter(p => p.color === opponentColor);
-
     if(forceStatus){
         if(forceStatus === 'w3') msg = 'Победили белые!';
         else if(forceStatus === 'b3') msg = 'Победили черные!';
@@ -419,26 +403,33 @@ function endGame(forceStatus = null){
             msg = 'Ничья!';
         }
     }
-
     document.getElementById('game-over-message').textContent = msg;
     document.getElementById('game-over-modal').style.display = 'block';
     saveGameState();
 }
 
 function returnToMainMenu(){
+    sessionStorage.clear();
     window.location.href = '/';
-    localStorage.removeItem('checkers_game_state');
 }
+
+window.addEventListener('beforeunload', () => {
+    sessionStorage.clear();
+});
+
 function newGame(){
-    localStorage.removeItem('checkers_game_state');
+    sessionStorage.clear();
     location.reload();
 }
+
 function give_up(){
     document.getElementById('surrender-modal').style.display = 'block';
 }
+
 function closeModal(id){
     document.getElementById(id).style.display = 'none';
 }
+
 function confirmSurrender(){
     closeModal('surrender-modal');
     if(current_player === 'w'){ endGame('b3'); }
@@ -457,17 +448,16 @@ function afterPlayerMove(result){
     } else {
         moveRepetition['w'][moveStr] = 1;
     }
-
     if(moveRepetition['w'][moveStr] > 3){
         endGame('lose_repetition');
         return;
     }
-
     if(isGameOver()){ endGame(); return; }
     if(result.move_result === 'continue_capture'){
         must_capture_piece = result.newMustCapture;
         document.getElementById('status').textContent = (current_player === 'w' ? 'Продолжают ходить белые' : 'Продолжают ходить черные');
         updatePossibleMoves();
+        updateTurnTimer();
     } else {
         must_capture_piece = null;
         switchTurn();
@@ -475,7 +465,9 @@ function afterPlayerMove(result){
             endGame();
             return;
         }
-        if (current_player === bot_color) { setTimeout(makeBotMove, 1000); }
+        if (current_player === bot_color) {
+            setTimeout(makeBotMove, 1000);
+        }
     }
     saveGameState();
 }
@@ -492,12 +484,10 @@ function afterBotMove(result){
     } else {
         moveRepetition['b'][moveStr] = 1;
     }
-
     if(moveRepetition['b'][moveStr] > 3){
         endGame('lose_repetition');
         return;
     }
-
     if(isGameOver()){ endGame(); return; }
     if(result.move_result === 'continue_capture'){
         must_capture_piece = result.newMustCapture;
@@ -516,7 +506,6 @@ function afterBotMove(result){
 
 function evaluatePosition(pcs) {
     let score = 0;
-
     for (let p of pcs) {
         if (p.color === 1) {
             score += p.is_king ? 10 : 7;
@@ -542,11 +531,9 @@ function evaluatePosition(pcs) {
             }
         }
     }
-
     let botMoves = generateAllMoves(pcs, 1, must_capture_piece).length;
     let playerMoves = generateAllMoves(pcs, 0, must_capture_piece).length;
     score += (botMoves - playerMoves) * 1;
-
     for (let p of pcs) {
         let opponentColor = p.color === 1 ? 0 : 1;
         let opponentPieces = pcs.filter(op => op.color === opponentColor);
@@ -556,16 +543,12 @@ function evaluatePosition(pcs) {
             }
         }
     }
-
     return score;
 }
 
-
 function isCorner(x, y) {
-    return (x === 0 && y === 0) || (x === 7 && y === 0) ||
-           (x === 0 && y === 7) || (x === 7 && y === 7);
+    return (x === 0 && y === 0) || (x === 7 && y === 0) || (x === 0 && y === 7) || (x === 7 && y === 7);
 }
-
 
 function isCenter(x, y){
     return (x >= 2 && x <=5) && (y >=2 && y <=5);
@@ -586,18 +569,15 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
             moves.push({from: {x: px, y: py}, to: m, piece: piece});
         }
     }
-
     moves.sort((a, b) => {
         let aCapture = Math.abs(a.to.x - a.from.x) === 2;
         let bCapture = Math.abs(b.to.x - b.from.x) === 2;
         if (aCapture && !bCapture) return -1;
         if (!aCapture && bCapture) return 1;
-
         let aCenterDist = Math.abs(a.to.x - 3.5) + Math.abs(a.to.y - 3.5);
         let bCenterDist = Math.abs(b.to.x - 3.5) + Math.abs(b.to.y - 3.5);
         return aCenterDist - bCenterDist;
     });
-
     return moves;
 }
 
@@ -624,14 +604,11 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
     if (depth === 0 || isTerminalNode(pcs, mustCapturePieceLoc, maximizingPlayer)) {
         return { score: evaluatePosition(pcs) };
     }
-
     let color = maximizingPlayer ? 1 : 0;
     let moves = generateAllMoves(pcs, color, mustCapturePieceLoc);
-
     if (moves.length === 0) {
         return { score: evaluatePosition(pcs) };
     }
-
     if (maximizingPlayer) {
         let maxEval = -Infinity;
         let bestMove = null;
@@ -646,7 +623,6 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
                 let child = minimax(res.newPcs, depth - 1, alpha, beta, false, null);
                 evalScore = child.score;
             }
-
             if (evalScore > maxEval) {
                 maxEval = evalScore;
                 bestMove = move;
@@ -671,7 +647,6 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
                 let child = minimax(res.newPcs, depth - 1, alpha, beta, true, null);
                 evalScore = child.score;
             }
-
             if (evalScore < minEval) {
                 minEval = evalScore;
                 bestMove = move;
@@ -695,13 +670,11 @@ function makeBotMove() {
         endGame();
         return;
     }
-
     botFrom = {x: chosen_move.from.x, y: chosen_move.from.y};
     botTo = {x: chosen_move.to.x, y: chosen_move.to.y};
     let sel_piece = get_piece_at(pieces, chosen_move.from.x, chosen_move.from.y);
     let res = validate_move(sel_piece, chosen_move.to, bot_color, pieces, must_capture_piece);
     if(res.move_result === 'invalid'){
-        console.error("Бот выбрал неверный ход");
         endGame();
         return;
     }
@@ -733,9 +706,7 @@ function addMoveToHistory(result, playerMove = true){
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-
             sp1.textContent = username;
-
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(lastFrom)} -> ${convertPosToNotation(lastTo)}`;
@@ -761,9 +732,7 @@ function addMoveToHistory(result, playerMove = true){
             div.classList.add('move-content');
             let sp1 = document.createElement('span');
             sp1.classList.add('move-player');
-
             sp1.textContent = 'Бот Vova(ГАУ)';
-
             let sp2 = document.createElement('span');
             sp2.classList.add('move-description');
             sp2.textContent = `${convertPosToNotation(botFrom)} -> ${convertPosToNotation(botTo)}`;
@@ -783,13 +752,11 @@ function convertPosToNotation(pos){
     let letters = ['A','B','C','D','E','F','G','H'];
     let file = letters[pos.x];
     let rank;
-
     if (user_color === 'w') {
         rank = 8 - pos.y;
     } else {
         rank = pos.y + 1;
     }
-
     return file + rank;
 }
 
@@ -800,7 +767,11 @@ function onClick(evt){
     if(coords.x === -1 || coords.y === -1) return;
     if(!selected_piece){
         let p = get_piece_at(pieces, coords.x, coords.y);
-        if (p && p.color === user_color_num && current_player === user_color) { selected_piece = p; IS_SELECTED = true; updatePossibleMoves(); }
+        if (p && p.color === user_color_num && current_player === user_color) {
+            selected_piece = p;
+            IS_SELECTED = true;
+            updatePossibleMoves();
+        }
     } else {
         let move = possibleMoves.find(m => m.x === coords.x && m.y === coords.y);
         if(move){
@@ -808,7 +779,12 @@ function onClick(evt){
             lastTo = {x: coords.x, y: coords.y};
             selected_pos = {x: coords.x, y: coords.y};
             let res = validate_move(selected_piece, move, user_color, pieces, must_capture_piece);
-            if(res.move_result === 'invalid'){ selected_piece = null; IS_SELECTED = false; possibleMoves = []; return; }
+            if(res.move_result === 'invalid'){
+                selected_piece = null;
+                IS_SELECTED = false;
+                possibleMoves = [];
+                return;
+            }
             pieces = res.new_pieces;
             if(res.move_result === 'continue_capture'){
                 must_capture_piece = res.newMustCapture;
@@ -818,11 +794,15 @@ function onClick(evt){
                 afterPlayerMove(res);
             } else if(res.move_result === 'valid'){
                 must_capture_piece = null;
-                selected_piece = null; IS_SELECTED = false; possibleMoves = [];
+                selected_piece = null;
+                IS_SELECTED = false;
+                possibleMoves = [];
                 afterPlayerMove(res);
             }
         } else {
-            selected_piece = null; IS_SELECTED = false; possibleMoves = [];
+            selected_piece = null;
+            IS_SELECTED = false;
+            possibleMoves = [];
         }
     }
     saveGameState();
@@ -838,11 +818,9 @@ function updatePossibleMoves(){
 function getCoordinates(loc){
     let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
     let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
-
     if (user_color === 'b') {
         gridY = 7 - gridY;
     }
-
     if(gridX < 0 || gridX > 7 || gridY < 0 || gridY > 7) return {x: -1, y: -1};
     if((gridX + gridY) % 2 === 0) return {x: -1, y: -1};
     return {x: gridX, y: gridY};
@@ -922,7 +900,6 @@ function draw_piece(piece, user_color_param) {
         CTX.restore();
     }
 }
-
 
 function draw_possible_moves(){
     CTX.save();
@@ -1012,35 +989,35 @@ window.onload = function(){
     CTX = CANVAS.getContext("2d");
     CTX.imageSmoothingEnabled = true;
     adjustScreen();
-
     user_color = window.user_color || 'w';
     user_color_num = (user_color === 'w') ? 0 : 1;
     bot_color_num = 1 - user_color_num;
     bot_color = (bot_color_num === 0) ? 'w' : 'b';
-
-    let stateStr = localStorage.getItem('checkers_game_state');
+    let stateStr = sessionStorage.getItem('checkers_game_state');
     if (stateStr) {
         loadGameState();
     } else {
         pieces = initializePieces(user_color);
-
         current_player = 'w';
         document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
         saveGameState();
-
         if (bot_color === 'w') {
             setTimeout(makeBotMove, 1000);
         }
     }
-
     if(selected_piece) updatePossibleMoves();
-
     update();
     CANVAS.addEventListener('click', onClick);
     let diffSel = document.getElementById('difficulty-select');
     if(diffSel){
         diffSel.value = difficulty;
-        diffSel.addEventListener('change', (e) => { difficulty = e.target.value; saveGameState(); });
+        diffSel.addEventListener('change', (e) => {
+            difficulty = e.target.value;
+            saveGameState();
+        });
+    }
+    if (!game_over && current_player === user_color) {
+        updateTurnTimer();
     }
 };
 
@@ -1057,22 +1034,17 @@ function showHistoryState(index) {
         currentPiecesSnapshot = copyPieces(pieces);
     }
     historyViewMode = true;
-
     let snapshot = movesList[index].piecesSnapshot;
     pieces = copyPieces(snapshot);
     IS_SELECTED = false;
     selected_piece = null;
     possibleMoves = [];
     must_capture_piece = null;
-
     let historyContainer = document.getElementById('history-view-container');
     historyContainer.style.display = 'flex';
-
     let historyLabel = document.getElementById('history-view-label');
     historyLabel.style.display = 'inline';
-
     showReturnToCurrentButton();
-
     update();
 }
 
@@ -1085,15 +1057,11 @@ function returnToCurrentState() {
     selected_piece = null;
     IS_SELECTED = false;
     possibleMoves = [];
-
     let historyContainer = document.getElementById('history-view-container');
     historyContainer.style.display = 'none';
-
     let historyLabel = document.getElementById('history-view-label');
     historyLabel.style.display = 'none';
-
     hideReturnToCurrentButton();
-
     updatePossibleMoves();
     update();
 }
@@ -1109,4 +1077,16 @@ function showReturnToCurrentButton() {
 function hideReturnToCurrentButton() {
     let btn = document.getElementById('history-view-button');
     if (btn) btn.style.display = 'none';
+}
+
+function updateTurnTimer() {
+    clearTimeout(userTurnTimer);
+    if (current_player === user_color && !game_over) {
+        userTurnTimer = setTimeout(() => {
+            if (current_player === user_color && !game_over) {
+                if (user_color === 'w') endGame('b3');
+                else endGame('w3');
+            }
+        }, 120000);
+    }
 }
