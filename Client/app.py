@@ -567,6 +567,7 @@ def start_game():
                 if new_game_id:
                     session['game_id'] = new_game_id
                     session['color'] = 'w'
+                    session['search_start_time'] = time.time()
                     return render_template('waiting.html', game_id=new_game_id, user_login=user_login)
                 else:
                     flash('Не удалось начать новую игру.', 'error')
@@ -575,6 +576,7 @@ def start_game():
                 if game.f_user and game.c_user:
                     return redirect(url_for('get_board', game_id=game_id_int, user_login=user_login))
                 else:
+                    session['search_start_time'] = time.time()
                     return render_template('waiting.html', game_id=game_id_int, user_login=user_login)
 
     waiting_game = find_waiting_game_in_db()
@@ -598,6 +600,7 @@ def start_game():
         return redirect(url_for('home'))
     session['game_id'] = game_id_new
     session['color'] = 'w'
+    session['search_start_time'] = time.time()
 
     g = get_or_create_ephemeral_game(session['game_id'])
     if g and g.f_user and g.c_user:
@@ -619,6 +622,12 @@ def check_game_status_route():
     except (ValueError, TypeError):
         app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
         return jsonify({"status": "invalid_game_id"}), 400
+
+    search_start_time = session.get('search_start_time')
+    if search_start_time:
+        elapsed = time.time() - search_start_time
+        if elapsed >= 600:
+            return jsonify({"status": "timeout"}), 200
 
     game = get_or_create_ephemeral_game(game_id_int)
     if not game:
@@ -933,37 +942,39 @@ def leave_game():
     user_login = session.get('user')
 
     if not game_id or not user_login:
-        return jsonify({"error": "No game to leave"}), 400
+        return jsonify({"error": "Нет активной игры или пользователя"}), 400
 
     try:
         game_id_int = int(game_id)
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid game ID"}), 400
+        return jsonify({"error": "Некорректный ID игры"}), 400
 
     game = get_or_create_ephemeral_game(game_id_int)
     if not game:
-        return jsonify({"error": "Game not found"}), 404
+        return jsonify({"error": "Игра не найдена"}), 404
 
     if game.f_user == user_login:
         game.f_user = None
     elif game.c_user == user_login:
         game.c_user = None
     else:
-        return jsonify({"error": "User is not in the game"}), 403
+        return jsonify({"error": "Пользователь не участвует в игре"}), 403
 
     if game.status == 'unstarted':
         remove_game_in_db(game_id_int)
         session.pop('game_id', None)
         session.pop('color', None)
+        session.pop('search_start_time', None)
         flash('Поиск игры отменен и игра удалена.', 'info')
-        return jsonify({"message": "Left the game successfully and game was removed"}), 200
+        return jsonify({"message": "Покинул игру и игра была удалена"}), 200
 
     if (game.f_user is None) and (game.c_user is None):
         remove_game_in_db(game_id_int)
 
     session.pop('game_id', None)
     session.pop('color', None)
-    return jsonify({"message": "Left the game successfully"}), 200
+    session.pop('search_start_time', None)
+    return jsonify({"message": "Покинул игру успешно"}), 200
 
 
 @app.route("/offer_draw", methods=["POST"])

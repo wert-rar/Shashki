@@ -6,19 +6,44 @@
     <title>Главная страничка</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        :root {
+            --background-color: #0e0e1a;
+            --card-background: #1a1a2e;
+            --accent-color: #9C27B0;
+            --text-color: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: #2a2a44;
+            --button-background: #9C27B0;
+            --button-hover: #8E24AA;
+            --crown-color: #ffd700;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --error-color-hover: #b71c1c;
+            --warning-color: #ffc107;
+            --warning-color-hover: #8810a6;
+            --info-color: #17a2b8;
+            --scrollbar-bg: #1a1a2e;
+            --scrollbar-thumb: #9C27B0;
+            --scrollbar-thumb-hover: #8E24AA;
+        }
 
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Roboto', sans-serif;
             min-height: 100vh;
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #121212, #1e1e1e);
             display: flex;
             justify-content: center;
             align-items: center;
-            color: white;
+            padding: 20px;
             position: relative;
             overflow: hidden;
         }
@@ -35,59 +60,35 @@
         }
 
         .container {
-            position: relative;
-            background: rgba(20, 20, 20, 0.95);
+            background-color: var(--card-background);
+            padding: 40px;
             border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
             text-align: center;
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-            z-index: 1;
-            overflow: visible;
-        }
-
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 90%;
-            height: 150%;
-            transform: translate(-50%, -50%) rotate(90deg);
-            background-image: url('{{ url_for('static', filename='girlianda.png') }}');
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-position: center;
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        .container > h1,
-        .container > .button,
-        .navigation-menu a,
-        .message,
-        .message li {
             position: relative;
             z-index: 1;
+            overflow: hidden;
         }
 
-        h1 {
+        .container > h1 {
             font-size: 2rem;
             font-weight: 700;
             letter-spacing: 1px;
-            color: #ffffff;
+            color: var(--text-color);
             margin-bottom: 20px;
             position: relative;
             z-index: 2;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
         }
 
         .button {
             display: inline-block;
             width: 220px;
             margin: 15px auto;
-            background-color: #4CAF50;
-            color: white;
+            background-color: var(--button-background);
+            color: #fff;
             padding: 15px 20px;
             border: none;
             border-radius: 30px;
@@ -98,6 +99,7 @@
             overflow: hidden;
             z-index: 2;
             transition: background-color 0.3s, transform 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
         .button:before {
@@ -107,7 +109,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
             transition: left 0.3s;
             z-index: -1;
         }
@@ -117,7 +119,7 @@
         }
 
         .button:hover {
-            background-color: #45a049;
+            background-color: var(--button-hover);
             transform: scale(1.05);
         }
 
@@ -131,22 +133,22 @@
         }
 
         .navigation-menu a {
-            color: white;
+            color: var(--text-color);
             text-decoration: none;
             font-size: 14px;
             padding: 10px 15px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--border-color);
             border-radius: 25px;
             transition: background-color 0.3s ease-out, transform 0.3s ease-out, border-color 0.3s ease-out;
             position: relative;
             z-index: 2;
+            background-color: transparent;
         }
 
         .navigation-menu a:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: scale(1.05) translateZ(0);
-            will-change: transform, background-color, border-color;
+            background-color: rgba(156, 39, 176, 0.2);
+            border-color: var(--button-hover);
+            transform: scale(1.05);
         }
 
         .message {
@@ -170,7 +172,7 @@
             margin-bottom: 10px;
             border-radius: 10px;
             font-size: 14px;
-            color: #e0e0e0;
+            color: var(--text-color);
             position: relative;
             z-index: 2;
             transition: background 0.3s;
@@ -196,8 +198,8 @@
         #return-to-game {
             position: absolute;
             bottom: 20px;
-            background: rgba(30, 30, 30, 0.95);
-            border: 2px solid #4CAF50;
+            background: var(--card-background);
+            border: 2px solid var(--button-background);
             border-radius: 15px;
             padding: 20px;
             width: 80%;
@@ -210,7 +212,7 @@
 
         #return-to-game h2 {
             font-size: 1.5rem;
-            color: #4CAF50;
+            color: var(--success-color);
             margin-bottom: 10px;
             position: relative;
             z-index: 2;
@@ -218,23 +220,23 @@
 
         #return-to-game p {
             font-size: 1rem;
-            color: #ffffff;
+            color: var(--text-color);
             margin-bottom: 20px;
             position: relative;
             z-index: 2;
         }
 
         #return-to-game .button {
-            background-color: #FF9800;
+            background-color: var(--warning-color);
             z-index: 2;
         }
 
         #return-to-game .button.leave-button {
-            background-color: #f44336;
+            background-color: var(--error-color);
         }
 
         #return-to-game .button.leave-button:hover {
-            background-color: #d32f2f;
+            background-color: var(--error-color-hover);
         }
 
         #return-to-game .button + .button {
@@ -264,11 +266,11 @@
         }
 
         .modal-content {
-            background: rgba(30, 30, 30, 0.95);
+            background: var(--card-background);
             padding: 30px;
             border-radius: 20px;
             text-align: center;
-            color: white;
+            color: var(--text-color);
             max-width: 90%;
             width: 400px;
             box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
@@ -279,14 +281,14 @@
 
         #leave-game-modal .modal-content h2 {
             margin-bottom: 20px;
-            color: #FF5722;
+            color: var(--error-color);
             position: relative;
             z-index: 4;
         }
 
         #game-over-modal .modal-content h2 {
             margin-bottom: 20px;
-            color: #FFD700;
+            color: var(--warning-color);
             position: relative;
             z-index: 4;
         }
@@ -306,11 +308,11 @@
         }
 
         #leave-game-modal .button.confirm-button {
-            background-color: #f44336;
+            background-color: var(--error-color);
         }
 
         #leave-game-modal .button.confirm-button:hover {
-            background-color: #d32f2f;
+            background-color: var(--error-color-hover);
         }
 
         #game-over-modal .modal-content {
@@ -351,11 +353,11 @@
         }
 
         .modal-content.difficulty-modal {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            background: var(--card-background);
             padding: 40px;
             border-radius: 20px;
             text-align: center;
-            color: #e0e0e0;
+            color: var(--text-color);
             max-width: 500px;
             width: 90%;
             box-shadow:
@@ -399,7 +401,7 @@
 
         .selection-section h3 {
             margin-bottom: 15px;
-            color: #ffffff;
+            color: var(--text-color);
             font-size: 1.2rem;
         }
 
@@ -430,7 +432,7 @@
         }
 
         .card.selected {
-            border-color: #FFD700;
+            border-color: var(--warning-color);
             background: rgba(255, 215, 0, 0.2);
             box-shadow: 0 0 25px gold;
             transition: background 0.3s, border-color 0.3s, transform 0.3s, box-shadow 0.3s;
@@ -468,7 +470,7 @@
         .card-content h4 {
             margin: 0;
             font-size: 1rem;
-            color: #ffffff;
+            color: var(--text-color);
         }
 
         .play-button {
@@ -476,8 +478,8 @@
             width: 100%;
             max-width: 300px;
             margin: 30px auto 0;
-            background-color: #FFD700;
-            color: #000;
+            background-color: var(--button-background);
+            color: white;
             padding: 15px 20px;
             border: none;
             border-radius: 30px;
@@ -487,6 +489,7 @@
             transition: background-color 0.3s, transform 0.3s;
             opacity: 0.8;
             pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
         .play-button.active {
@@ -495,8 +498,27 @@
         }
 
         .play-button:hover {
-            background-color: #FFC107;
-            transform: scale(1.05);
+            background-color: var(--warning-color-hover);
+        }
+
+        .modal-content.difficulty-modal {
+            background: var(--card-background);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: var(--text-color);
+            max-width: 90%;
+            width: 700px;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.8),
+                0 0 20px rgba(80, 70, 150, 0.6),
+                0 0 40px rgba(100, 90, 200, 0.4);
+            position: relative;
+            animation: fadeInScale 0.5s ease-out;
+            z-index: 10;
+            transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
+            will-change: box-shadow, transform;
+            transform: translateY(0);
         }
     </style>
 </head>
@@ -601,242 +623,8 @@
     <script>
         var user_login = "{{ session['user'] if 'user' in session else '' }}";
         var game_id = "{{ session['game_id'] if 'game_id' in session else '' }}";
-        var modal = document.getElementById("selectionModal");
-        var btn = document.getElementById("singleplayer-button");
-        var span = document.getElementById("closeModal");
-        var playButton = document.getElementById("playButton");
-        var selectedDifficulty = document.getElementById("selectedDifficulty");
-        var selectedColor = document.getElementById("selectedColor");
-
-        let selections = {
-            difficulty: null,
-            color: null
-        };
-
-        btn.onclick = function() {
-            modal.style.display = "flex";
-        }
-
-        span.onclick = function() {
-            modal.style.display = "none";
-            resetSelections();
-        }
-
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
-                resetSelections();
-            }
-        }
-
-        document.querySelectorAll('.card').forEach(function(card) {
-            card.addEventListener('click', function() {
-                let type = this.getAttribute('data-type');
-                let value = this.getAttribute('data-value');
-
-                if (this.classList.contains('selected')) {
-                    this.classList.remove('selected');
-                    selections[type] = null;
-
-                    if (type === 'difficulty') selectedDifficulty.value = '';
-                    if (type === 'color') selectedColor.value = '';
-                } else {
-                    document.querySelectorAll(`.card[data-type="${type}"]`).forEach(function(otherCard) {
-                        otherCard.classList.remove('selected');
-                    });
-
-                    this.classList.add('selected');
-                    selections[type] = value;
-
-                    if (type === 'difficulty') selectedDifficulty.value = value;
-                    if (type === 'color') selectedColor.value = value;
-                }
-
-                if (selections.difficulty && selections.color) {
-                    playButton.classList.add('active');
-                } else {
-                    playButton.classList.remove('active');
-                }
-            });
-        });
-
-        function resetSelections() {
-            selections.difficulty = null;
-            selections.color = null;
-
-            selectedDifficulty.value = '';
-            selectedColor.value = '';
-
-            document.querySelectorAll('.card').forEach(function(card) {
-                card.classList.remove('selected');
-            });
-
-            playButton.classList.remove('active');
-        }
-
-        function startMultiplayerGame() {
-            window.location.href = '/start_game';
-        }
-
-        function returnToGame() {
-            if (game_id && user_login) {
-                window.location.href = `/board/${game_id}/${user_login}`;
-            } else {
-                alert("Активная игра не найдена.");
-            }
-        }
-
-        function showLeaveGameModal() {
-            document.getElementById('leave-game-modal').style.display = 'flex';
-        }
-
-        function hideLeaveGameModal() {
-            document.getElementById('leave-game-modal').style.display = 'none';
-        }
-
-        function hideGameOverModal() {
-            document.getElementById('game-over-modal').style.display = 'none';
-        }
-
-        function leaveGame() {
-            if (game_id && user_login) {
-                fetch('/give_up', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({game_id: game_id, user_login: user_login})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        hideLeaveGameModal();
-                        document.getElementById('return-to-game').style.display = 'none';
-                        displayGameOverMessage(data);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Произошла ошибка при покидании игры.');
-                });
-            } else {
-                alert("Активная игра не найдена.");
-            }
-        }
-
-        function displayGameOverMessage(data) {
-            let modal = document.getElementById("game-over-modal");
-            let message = document.getElementById("game-over-message");
-
-            let resultText = "";
-            if (data.result === "win") {
-                resultText = "Поздравляем! Вы победили!";
-            } else if (data.result === "lose") {
-                resultText = "Вы проиграли.";
-            } else if (data.result === "draw") {
-                resultText = "Ничья.";
-            }
-
-            let points_gained = data.points_gained || 0;
-            let points_text = points_gained >= 0 ? `Вы получили ${points_gained} очков к рангу.` : `Вы потеряли ${Math.abs(points_gained)} очков к рангу.`;
-
-            message.innerHTML = `
-                ${resultText}<br>
-                ${points_text}
-            `;
-
-            modal.style.display = "flex";
-        }
-
-        function checkForActiveGame() {
-            fetch('/check_game_status')
-                .then(response => {
-                    if (response.status === 200) {
-                        return response.json();
-                    } else {
-                        throw new Error('Нет активной игры.');
-                    }
-                })
-                .then(data => {
-                    if (data.status === 'active') {
-                        if (data.game_id) {
-                            game_id = data.game_id;
-                        }
-                        document.getElementById('return-to-game').style.display = 'block';
-                    } else {
-                        document.getElementById('return-to-game').style.display = 'none';
-                    }
-                })
-                .catch(error => {
-                    console.log(error.message);
-                    document.getElementById('return-to-game').style.display = 'none';
-                });
-        }
-
-        function handlePageShow(event) {
-            if (event.persisted) {
-                checkForActiveGame();
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            checkForActiveGame();
-            setInterval(checkForActiveGame, 5000);
-            createSnowflakes();
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    let messages = {{ messages|tojson }};
-                    messages.forEach(function(message) {
-                        let category = message[0];
-                        let text = message[1];
-                        let icon = 'info';
-                        let title = 'Информация';
-
-                        if (category === 'success') {
-                            icon = 'success';
-                            title = 'Успех';
-                        } else if (category === 'error') {
-                            icon = 'error';
-                            title = 'Ошибка';
-                        } else if (category === 'info') {
-                            icon = 'info';
-                            title = 'Информация';
-                        }
-
-                        Swal.fire({
-                            icon: icon,
-                            title: title,
-                            text: text,
-                            background: '#1e1e2e',
-                            color: '#fff',
-                            confirmButtonColor: category === 'error' ? '#e74c3c' : '#2ecc71'
-                        });
-                    });
-                {% endif %}
-            {% endwith %}
-        });
-
-        window.addEventListener('pageshow', handlePageShow);
-
-        function createSnowflakes() {
-            const snowContainer = document.getElementById('snow-container');
-            const snowflakeCount = 50;
-
-            for (let i = 0; i < snowflakeCount; i++) {
-                const snowflake = document.createElement('div');
-                snowflake.classList.add('snowflake');
-                snowflake.textContent = '❄';
-                snowflake.style.left = Math.random() * 100 + 'vw';
-                snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
-                snowflake.style.opacity = Math.random();
-                snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
-                snowflake.style.animationDelay = Math.random() * 10 + 's';
-                snowContainer.appendChild(snowflake);
-            }
-        }
+        var messages = {{ get_flashed_messages(with_categories=true)|tojson }};
     </script>
+    <script src="{{ url_for('static', filename='script_home.js') }}"></script>
 </body>
 </html>
