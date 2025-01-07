@@ -70,6 +70,9 @@ class Game:
         elapsed = now - self.last_update_time
         self.last_update_time = now
 
+        if self.status == 'unstarted':
+            return
+
         if not self.game_started:
             if self.current_player == 'w':
                 self.white_time_remaining -= elapsed
@@ -82,7 +85,6 @@ class Game:
                     self.black_time_remaining = 0
                     self.status = 'ns1'
             return
-
 
         if self.current_player == 'w':
             self.white_time_remaining -= elapsed
