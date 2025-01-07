@@ -2,17 +2,30 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Доступ запрещен</title>
-    <link rel="preload" href="/static/favicon.ico" as="image">
-    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="{{ url_for('static', filename='favicon.ico') }}" as="image">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
     <style>
         :root {
-            --background-color: #1e1e1e;
-            --text-color: #ffffff;
-            --accent-color: #e74c3c;
-            --button-color: #3498db;
-            --button-hover-color: #2980b9;
+            --background-color: #0e0e1a;
+            --card-background: #1a1a2e;
+            --accent-color: #9C27B0;
+            --text-color: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: #2a2a44;
+            --button-background: #9C27B0;
+            --button-hover: #8E24AA;
+            --crown-color: #ffd700;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --warning-color: #f1c40f;
+            --info-color: #17a2b8;
+            --scrollbar-bg: #1a1a2e;
+            --scrollbar-thumb: #9C27B0;
+            --scrollbar-thumb-hover: #8E24AA;
             --transition-speed: 0.3s;
         }
 
@@ -26,45 +39,70 @@
         body {
             background-color: var(--background-color);
             color: var(--text-color);
-            height: 100vh;
+            font-family: 'Roboto', sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
+            padding: 20px;
             position: relative;
+            overflow: hidden;
         }
 
-        .particles {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: transparent;
+        body::before {
+            content: '';
+            position: fixed;
             top: 0;
             left: 0;
-            z-index: -1;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
+            z-index: -2;
+        }
+
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: #FFF;
+            user-select: none;
+            pointer-events: none;
+            z-index: 5;
+            font-size: 1em;
+            opacity: 0.8;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
         }
 
         .error-container {
+            background-color: var(--card-background);
+            padding: 40px 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            z-index: 5;
             text-align: center;
+            position: relative;
         }
 
         .error-container h1 {
-            font-size: 5rem;
-            margin-bottom: 20px;
-            color: var(--text-color);
-            position: relative;
+            font-size: 2.8em;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 25px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        .error-container h1 .four,
-        .error-container h1 .three {
-            display: inline-block;
-            position: relative;
-        }
-
-        .error-container h1 .checker-svg {
+        .checker-svg {
             width: 80px;
             height: 80px;
             margin: 0 10px;
@@ -93,7 +131,7 @@
         .error-container a {
             display: inline-block;
             padding: 12px 30px;
-            background-color: var(--button-color);
+            background-color: var(--button-background);
             color: #fff;
             text-decoration: none;
             border-radius: 30px;
@@ -121,7 +159,7 @@
         }
 
         .error-container a:hover {
-            background-color: var(--button-hover-color);
+            background-color: var(--button-hover);
             transform: translateY(-3px);
         }
 
@@ -130,11 +168,15 @@
         }
 
         @media (max-width: 600px) {
-            .error-container h1 {
-                font-size: 3rem;
+            .error-container {
+                padding: 40px 20px;
             }
 
-            .error-container h1 .checker-svg {
+            .error-container h1 {
+                font-size: 2em;
+            }
+
+            .checker-svg {
                 width: 60px;
                 height: 60px;
                 margin: 0 5px;
@@ -149,10 +191,22 @@
                 font-size: 0.9rem;
             }
         }
+
+        #snowflakes-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 5;
+        }
     </style>
 </head>
 <body>
-    <div class="particles" id="particles-js"></div>
+    <div id="particles-js"></div>
+    <div id="snowflakes-container"></div>
 
     <div class="error-container">
         <h1>
@@ -180,77 +234,22 @@
         <p>У вас нет доступа к этой игре.</p>
         <a href="{{ url_for('home') }}">Вернуться на главную</a>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script>
-        particlesJS("particles-js", {
-            "particles": {
-                "number": {
-                    "value": 40,
-                    "density": {
-                        "enable": true,
-                        "value_area": 800
-                    }
-                },
-                "color": {
-                    "value": "#ffffff"
-                },
-                "shape": {
-                    "type": "circle",
-                    "stroke": {
-                        "width": 0,
-                        "color": "#000000"
-                    }
-                },
-                "opacity": {
-                    "value": 0.3,
-                    "random": true
-                },
-                "size": {
-                    "value": 3,
-                    "random": true
-                },
-                "line_linked": {
-                    "enable": true,
-                    "distance": 150,
-                    "color": "#ffffff",
-                    "opacity": 0.2,
-                    "width": 1
-                },
-                "move": {
-                    "enable": true,
-                    "speed": 2,
-                    "direction": "none",
-                    "random": false,
-                    "straight": false,
-                    "out_mode": "out",
-                    "bounce": false
-                }
-            },
-            "interactivity": {
-                "detect_on": "canvas",
-                "events": {
-                    "onhover": {
-                        "enable": true,
-                        "mode": "repulse"
-                    },
-                    "onclick": {
-                        "enable": true,
-                        "mode": "push"
-                    },
-                    "resize": true
-                },
-                "modes": {
-                    "repulse": {
-                        "distance": 100,
-                        "duration": 0.4
-                    },
-                    "push": {
-                        "particles_nb": 4
-                    }
-                }
-            },
-            "retina_detect": true
+        function generateSnowflakes() {
+            const container = document.getElementById('snowflakes-container');
+            for (let i = 0; i < 50; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.classList.add('snowflake');
+                snowflake.textContent = '❄';
+                snowflake.style.fontSize = `${Math.random() * 10 + 10}px`;
+                snowflake.style.left = `${Math.random() * 100}vw`;
+                snowflake.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                snowflake.style.animationDelay = `${Math.random() * 5}s`;
+                container.appendChild(snowflake);
+            }
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            generateSnowflakes();
         });
     </script>
 </body>

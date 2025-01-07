@@ -13,19 +13,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btn.onclick = function() {
         modal.style.display = "flex";
-    }
+    };
 
     span.onclick = function() {
         modal.style.display = "none";
         resetSelections();
-    }
+    };
 
     window.onclick = function(event) {
         if (event.target == modal) {
             modal.style.display = "none";
             resetSelections();
         }
-    }
+    };
 
     document.querySelectorAll('.card').forEach(function(card) {
         card.addEventListener('click', function() {
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.startMultiplayerGame = function() {
         window.location.href = '/start_game';
-    }
+    };
 
     window.returnToGame = function() {
         if (game_id && user_login) {
@@ -82,19 +82,19 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             alert("Активная игра не найдена.");
         }
-    }
+    };
 
     window.showLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'flex';
-    }
+    };
 
     window.hideLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'none';
-    }
+    };
 
     window.hideGameOverModal = function() {
         document.getElementById('game-over-modal').style.display = 'none';
-    }
+    };
 
     window.leaveGame = function() {
         if (game_id && user_login) {
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             alert("Активная игра не найдена.");
         }
-    }
+    };
 
     function displayGameOverMessage(data) {
         const modal = document.getElementById("game-over-modal");
@@ -183,35 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(checkForActiveGame, 5000);
     createSnowflakes();
 
-    if (messages && messages.length > 0) {
-        messages.forEach(function(message) {
-            let category = message[0];
-            let text = message[1];
-            let icon = 'info';
-            let title = 'Информация';
-
-            if (category === 'success') {
-                icon = 'success';
-                title = 'Успех';
-            } else if (category === 'error') {
-                icon = 'error';
-                title = 'Ошибка';
-            } else if (category === 'info') {
-                icon = 'info';
-                title = 'Информация';
-            }
-
-            Swal.fire({
-                icon: icon,
-                title: title,
-                text: text,
-                background: '#1e1e2e',
-                color: '#fff',
-                confirmButtonColor: category === 'error' ? '#e74c3c' : '#2ecc71'
-            });
-        });
-    }
-
     window.addEventListener('pageshow', handlePageShow);
 
     function createSnowflakes() {
@@ -231,3 +202,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+      const notifications = document.querySelectorAll('.notification');
+      notifications.forEach((notif) => {
+        notif.addEventListener('click', () => {
+          notif.remove();
+        });
+        setTimeout(() => {
+          notif.remove();
+        }, 2000);
+      });
+    });

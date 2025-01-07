@@ -412,19 +412,16 @@ def register():
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
-
         if user_login.lower().startswith('ghost'):
-            flash('Невозможно использовать имя, начинающееся с ghost.', 'error')
+            flash('Имя пользователя не может начинаться с "ghost"', 'error')
             return redirect(url_for('register'))
-
         if not check_user_exists(user_login):
             register_user(user_login, user_password)
-            flash('Пользователь успешно зарегистрирован!', 'success')
+            flash('Регистрация прошла успешно!', 'success')
             return redirect(url_for('login'))
         else:
-            flash('Такой пользователь уже зарегистрирован!', 'error')
+            flash('Пользователь уже существует', 'error')
             return redirect(url_for('register'))
-
     return render_template('register.html')
 
 
@@ -442,20 +439,18 @@ def login():
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
-
         user = authenticate_user(user_login, user_password)
         if user:
             session['user'] = user_login
+            flash('Вход выполнен', 'success')
             game = find_active_game(user_login)
             if game:
                 session['game_id'] = game.game_id
                 session['color'] = game.user_color(user_login)
-            flash('Успешный вход!', 'success')
             return redirect(url_for('home'))
         else:
-            flash('Неправильное имя пользователя или пароль.', 'error')
+            flash('Неверные данные для входа', 'error')
             return redirect(url_for('login'))
-
     return render_template('login.html')
 
 
@@ -508,7 +503,7 @@ def logout():
     session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
-    flash('Вы вышли из системы.', 'info')
+    flash('Вы вышли из аккаунта', 'info')
     return redirect(url_for('home'))
 
 
