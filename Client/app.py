@@ -384,6 +384,9 @@ def home():
 
 @app.route('/board/<int:game_id>/<user_login>')
 def get_board(game_id, user_login):
+    if session.get('user') != user_login:
+        abort(403)
+
     game = get_or_create_ephemeral_game(game_id)
     if not game:
         abort(404)
