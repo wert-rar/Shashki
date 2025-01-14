@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selections = { difficulty: null, color: null };
     let startX = 0;
     let endX = 0;
+    let currentIndex = 0;
 
     btn.onclick = function() {
         modal.style.display = "flex";
@@ -67,8 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         const swipeContainer = document.getElementById("difficultySwipe");
         const difficultyCards = swipeContainer.querySelectorAll('.card');
-        let currentIndex = 0;
-
 
         function updateSwipe() {
             swipeContainer.style.transform = `translateX(-${currentIndex * 120}px)`;
