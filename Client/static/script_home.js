@@ -5,10 +5,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const playButton = document.getElementById("playButton");
     const selectedDifficulty = document.getElementById("selectedDifficulty");
     const selectedColor = document.getElementById("selectedColor");
+    const hamburger = document.getElementById("hamburger");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("overlay");
+
     let selections = { difficulty: null, color: null };
     let startX = 0;
     let endX = 0;
     let currentIndex = 0;
+
+    if (!sidebar.classList.contains("active")) {
+        sidebar.style.transform = 'translateX(300px)';
+    }
 
     btn.onclick = function() {
         modal.style.display = "flex";
@@ -230,13 +238,73 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    const hamburger = document.getElementById("hamburger");
-    const sidebar = document.getElementById("sidebar");
+    function openSidebar() {
+        sidebar.classList.add("active");
+        sidebar.style.transition = 'transform 0.3s ease-out';
+        sidebar.style.transform = 'translateX(0)';
+        overlay.classList.add("active");
+        hamburger.classList.add("open");
+    }
+
+    function closeSidebar() {
+        sidebar.style.transition = 'transform 0.5s ease-out';
+        sidebar.style.transform = 'translateX(300px)';
+        overlay.classList.remove("active");
+        hamburger.classList.remove("open");
+        sidebar.addEventListener('transitionend', function handler() {
+            sidebar.classList.remove("active");
+            sidebar.removeEventListener('transitionend', handler);
+        });
+    }
+
+    overlay.addEventListener("click", () => {
+        closeSidebar();
+    });
 
     hamburger.addEventListener("click", () => {
-        hamburger.classList.toggle("open");
-        sidebar.classList.toggle("active");
+        if (sidebar.classList.contains("active")) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
     });
+
+    if (window.innerWidth <= 530) {
+        sidebar.style.transform = 'translateX(300px)';
+        let touchStartX = null;
+        let currentTranslateX = 0;
+        const sidebarWidth = sidebar.offsetWidth;
+
+        sidebar.style.transition = 'none';
+
+        sidebar.addEventListener("touchstart", (e) => {
+            touchStartX = e.touches[0].clientX;
+            sidebar.style.transition = 'none';
+        }, false);
+
+        sidebar.addEventListener("touchmove", (e) => {
+            if (touchStartX === null) return;
+            const touchCurrentX = e.touches[0].clientX;
+            let deltaX = touchCurrentX - touchStartX;
+            if (deltaX < 0) deltaX = 0;
+            if (deltaX > sidebarWidth) deltaX = sidebarWidth;
+            currentTranslateX = deltaX;
+            sidebar.style.transform = `translateX(${deltaX}px)`;
+        }, false);
+
+        sidebar.addEventListener("touchend", () => {
+            sidebar.style.transition = 'transform 0.5s ease-out';
+
+            if (currentTranslateX > sidebarWidth / 3) {
+                closeSidebar();
+            } else {
+                sidebar.style.transform = 'translateX(0)';
+            }
+
+            touchStartX = null;
+            currentTranslateX = 0;
+        }, false);
+    }
 
     function handlePageShow(event) {
         if (event.persisted) {
