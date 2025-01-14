@@ -1,835 +1,845 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль {{ profile_user_login }}</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
-
-    <style>
-        :root {
-            --background-color: #0e0e1a;
-            --card-background: #1a1a2e;
-            --accent-color: #9C27B0;
-            --text-color: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --border-color: #2a2a44;
-            --button-background: #991cb1;
-            --button-hover: #8E24AA;
-            --crown-color: #ffd700;
-            --success-color: #28a745;
-            --error-color: #dc3545;
-            --warning-color: #f1c40f;
-            --info-color: #17a2b8;
-            --scrollbar-bg: #1a1a2e;
-            --scrollbar-thumb: #9C27B0;
-            --scrollbar-thumb-hover: #8E24AA;
-        }
-
-        .snowflake {
-            position: absolute;
-            top: -10px;
-            color: #FFF;
-            user-select: none;
-            pointer-events: none;
-            z-index: 5;
-            font-size: 1em;
-            opacity: 0.8;
-            animation: fall linear infinite;
-        }
-
-        @keyframes fall {
-            to {
-                transform: translateY(100vh);
-                opacity: 0;
-            }
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: var(--background-color);
-            color: var(--text-color);
-            font-family: 'Roboto', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            position: relative;
-        }
-
-        .container {
-            background-color: var(--card-background);
-            padding: 40px 30px;
-            border-radius: 15px;
-            max-width: 40%;
-            width: 100%;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-            z-index: 5;
-        }
-
-        #snowflakes-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            pointer-events: none;
-            z-index: 5;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background-color: #333;
-            background-image: url('{{ user_avatar_url|default('/static/default_avatar.png') }}');
-            background-size: cover;
-            background-position: center;
-            margin-right: 20px;
-            border: 3px solid var(--accent-color);
-        }
-
-        .header-info {
-            flex: 1;
-        }
-
-        .header-info h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            color: var(--text-color);
-        }
-
-        .header-info h1 .crown {
-            margin-left: 10px;
-            color: var(--crown-color);
-            font-size: 1.5em;
-        }
-
-        .header-info p {
-            font-size: 1.1em;
-            color: var(--text-secondary);
-        }
-
-        .stats, .user-info {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-        }
-
-        .stat-card, .info-card {
-            background-color: var(--background-color);
-            padding: 20px;
-            border-radius: 10px;
-            flex: 1 1 30%;
-            margin: 10px;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover, .info-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stat-card h3, .info-card h3 {
-            margin-bottom: 10px;
-            font-size: 1.2em;
-            color: var(--accent-color);
-        }
-
-        .stat-card p, .info-card p {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: var(--text-color);
-        }
-
-        .history-game {
-            margin-bottom: 30px;
-        }
-
-        .history-game h2 {
-            margin-bottom: 20px;
-            color: var(--accent-color);
-            text-align: center;
-        }
-
-        .history-table-wrapper {
-            max-height: 450px;
-            overflow-y: auto;
-            border-radius: 10px;
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color);
-            padding: 0 10px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background-color: var(--accent-color);
-            position: sticky;
-            top: 0;
-            z-index: 1;
-            border-radius: 10px 10px 0 0;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            color: var(--text-color);
-        }
-
-        th {
-            font-weight: 500;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: #2a2a44;
-        }
-
-        tbody tr:hover {
-            background-color: #3a3a58;
-        }
-
-        .result-win {
-            color: var(--success-color);
-            font-weight: bold;
-        }
-
-        .result-lose {
-            color: var(--error-color);
-            font-weight: bold;
-        }
-
-        .result-draw {
-            color: var(--warning-color);
-            font-weight: bold;
-        }
-
-        .result-not_started {
-            color: var(--text-secondary);
-            font-weight: bold;
-        }
-
-        .result-unknown {
-            color: var(--info-color);
-            font-weight: bold;
-        }
-
-        .buttons {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .buttons button {
-            background-color: var(--button-background);
-            color: #fff;
-            border: none;
-            padding: 12px 25px;
-            margin: 0 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .buttons button:hover {
-            background-color: var(--button-hover);
-            transform: translateY(-3px);
-        }
-
-        .load-more-button, .hide-button {
-            background-color: var(--accent-color);
-        }
-
-        .hide-button {
-            display: none;
-            background-color: #555;
-        }
-
-        .crown {
-            color: var(--crown-color);
-            margin-left: 8px;
-            font-size: 1.2em;
-        }
-
-        .history-table-wrapper::-webkit-scrollbar {
-            width: 12px;
-        }
-
-        .history-table-wrapper::-webkit-scrollbar-track {
-            background: var(--scrollbar-bg);
-            border-radius: 10px;
-        }
-
-        .history-table-wrapper::-webkit-scrollbar-thumb {
-            background-color: var(--scrollbar-thumb);
-            border-radius: 10px;
-            border: 3px solid var(--scrollbar-bg);
-        }
-
-        .history-table-wrapper::-webkit-scrollbar-thumb:hover {
-            background-color: var(--scrollbar-thumb-hover);
-        }
-
-        .history-table-wrapper {
-            scrollbar-width: thin;
-            scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
-        }
-
-        @keyframes fade-down-custom {
-            from {
-                opacity: 0;
-                transform: translateY(-40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        [data-aos="fade-down-custom"] {
-            animation: fade-down-custom 1s ease forwards;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease forwards;
-            opacity: 0;
-        }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-            }
-        }
-
-        .fade-out {
-            animation: fadeOut 0.3s ease forwards;
-        }
-
-        @keyframes fadeOut {
-            to {
-                opacity: 0;
-                height: 0;
-                padding: 0;
-                margin: 0;
-            }
-        }
-
-        @media (max-width: 1690px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 45%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 1510px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 50%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 1360px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 55%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 1240px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 60%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 1145px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 65%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 1060px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 70%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 985px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 75%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 920px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 80%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 870px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 85%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 820px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 90%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 775px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 95%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-
-        @media (max-width: 735px) {
-            .container {
-                background-color: var(--card-background);
-                padding: 40px 30px;
-                border-radius: 15px;
-                max-width: 100%;
-                width: 100%;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-                z-index: 5;
-            }
-        }
-        @media (max-width: 370px) {
-            .buttons button {
-                padding: 8px 15px;
-                font-size: 0.9em;
-                margin: 0 5px;
-            }
-        }
-        @media (max-width: 405px) {
-            .user-info .info-card {
-              padding: 15px;
-              margin: 8px;
-          }
-
-          .user-info .info-card h3 {
-              font-size: 1em;
-          }
-
-          .user-info .info-card p {
-              font-size: 1.2em;
-          }
-          .avatar {
-              width: 80px;
-              height: 80px;
-          }
-
-          .header-info h1 {
-              font-size: 1.5em;
-          }
-
-          .header-info p {
-              font-size: 0.9em;
-          }
-
-          .history-table-wrapper th,
-          .history-table-wrapper td {
-              font-size: 0.85em;
-              padding: 8px 10px;
-          }
-        }
-        @media (max-width: 300px) {
-            .user-info .info-card {
-                padding: calc(15px - 0.2rem);
-                margin: calc(8px - 0.2rem);
-            }
-
-            .user-info .info-card h3 {
-                font-size: calc(1em - 0.2rem);
-            }
-
-            .user-info .info-card p {
-                font-size: calc(1.2em - 0.2rem);
-            }
-
-            .avatar {
-                width: calc(80px - 0.2rem);
-                height: calc(80px - 0.2rem);
-            }
-
-            .header-info h1 {
-                font-size: calc(1.5em - 0.2rem);
-            }
-
-            .header-info p {
-                font-size: calc(0.9em - 0.2rem);
-            }
-
-            .history-table-wrapper th,
-            .history-table-wrapper td {
-                font-size: calc(0.85em - 0.2rem);
-                padding: calc(8px - 0.2rem) calc(10px - 0.2rem);
-            }
-            .buttons button {
-                padding: 8px 15px;
-                font-size: 0.5em;
-                margin: 0 5px;
-            }
-        }
-        @media (max-width: 270px){
-            .avatar {
-              width: 60px;
-              height: 60px;
-          }
-        }
-    </style>
+    <meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Профиль {{ profile_user_login }}</title>
+	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
+	<style>
+		:root {
+			--background-color: #0e0e1a;
+			--card-background: #1a1a2e;
+			--accent-color: #9c27b0;
+			--text-color: #e0e0e0;
+			--text-secondary: #a0a0a0;
+			--border-color: #2a2a44;
+			--button-background: #991cb1;
+			--button-hover: #8e24aa;
+			--crown-color: #ffd700;
+			--success-color: #28a745;
+			--error-color: #dc3545;
+			--warning-color: #f1c40f;
+			--info-color: #17a2b8;
+			--scrollbar-bg: #1a1a2e;
+			--scrollbar-thumb: #9c27b0;
+			--scrollbar-thumb-hover: #8e24aa;
+		}
+		.snowflake {
+			position: absolute;
+			top: -10px;
+			color: #fff;
+			user-select: none;
+			pointer-events: none;
+			z-index: 5;
+			font-size: 1em;
+			opacity: 0.8;
+			animation: fall linear infinite;
+		}
+		@keyframes fall {
+			to {
+				transform: translateY(100vh);
+				opacity: 0;
+			}
+		}
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		body {
+			background-color: var(--background-color);
+			color: var(--text-color);
+			font-family: "Roboto", sans-serif;
+			min-height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding: 20px;
+			position: relative;
+		}
+		.container {
+			background-color: var(--card-background);
+			padding: 40px 30px;
+			border-radius: 15px;
+			max-width: 40%;
+			width: 100%;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+			z-index: 5;
+		}
+		#snowflakes-container {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			pointer-events: none;
+			z-index: 5;
+		}
+		.header {
+			display: flex;
+			align-items: center;
+			margin-bottom: 30px;
+		}
+		.avatar {
+			width: 100px;
+			height: 100px;
+			border-radius: 50%;
+			background-color: #333;
+			background-image: url('{{ user_avatar_url|default("/static/default_avatar.png") }}');
+			background-size: cover;
+			background-position: center;
+			margin-right: 20px;
+			border: 3px solid var(--accent-color);
+		}
+		.header-info {
+			flex: 1;
+		}
+		.header-info h1 {
+			font-size: 2em;
+			margin-bottom: 10px;
+			display: flex;
+			align-items: center;
+			color: var(--text-color);
+		}
+		.header-info h1 .crown {
+			margin-left: 10px;
+			color: var(--crown-color);
+			font-size: 1.5em;
+		}
+		.header-info p {
+			font-size: 1.1em;
+			color: var(--text-secondary);
+		}
+		.stats,
+		.user-info {
+			display: flex;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			margin-bottom: 30px;
+		}
+		.stat-card,
+		.info-card {
+			background-color: var(--background-color);
+			padding: 20px;
+			border-radius: 10px;
+			flex: 1 1 30%;
+			margin: 10px;
+			text-align: center;
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+			transition: transform 0.3s ease;
+		}
+		.stat-card:hover,
+		.info-card:hover {
+			transform: translateY(-5px);
+		}
+		.stat-card h3,
+		.info-card h3 {
+			margin-bottom: 10px;
+			font-size: 1.2em;
+			color: var(--accent-color);
+		}
+		.stat-card p,
+		.info-card p {
+			font-size: 1.5em;
+			font-weight: bold;
+			color: var(--text-color);
+		}
+		.history-game {
+			margin-bottom: 30px;
+		}
+		.history-game h2 {
+			margin-bottom: 20px;
+			color: var(--accent-color);
+			text-align: center;
+		}
+		.history-table-wrapper {
+			max-height: 450px;
+			overflow-y: auto;
+			border-radius: 10px;
+			background-color: var(--background-color);
+			border: 1px solid var(--border-color);
+			padding: 0 10px;
+			box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+		}
+		table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+		thead {
+			background-color: var(--accent-color);
+			position: sticky;
+			top: 0;
+			z-index: 1;
+			border-radius: 10px 10px 0 0;
+		}
+		th,
+		td {
+			padding: 12px 15px;
+			text-align: left;
+			color: var(--text-color);
+		}
+		th {
+			font-weight: 500;
+		}
+		tbody tr:nth-child(even) {
+			background-color: #2a2a44;
+		}
+		tbody tr:hover {
+			background-color: #3a3a58;
+		}
+		.result-win {
+			color: var(--success-color);
+			font-weight: bold;
+		}
+		.result-lose {
+			color: var(--error-color);
+			font-weight: bold;
+		}
+		.result-draw {
+			color: var(--warning-color);
+			font-weight: bold;
+		}
+		.result-not_started {
+			color: var(--text-secondary);
+			font-weight: bold;
+		}
+		.result-unknown {
+			color: var(--info-color);
+			font-weight: bold;
+		}
+		.buttons {
+			text-align: center;
+			margin-top: 20px;
+		}
+		.buttons button {
+			background-color: var(--button-background);
+			color: #fff;
+			border: none;
+			padding: 12px 25px;
+			margin: 0 10px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 1em;
+			transition: background-color 0.3s ease, transform 0.2s ease;
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+		}
+		.buttons button:hover {
+			background-color: var(--button-hover);
+			transform: translateY(-3px);
+		}
+		.load-more-button,
+		.hide-button {
+			background-color: var(--accent-color);
+		}
+		.hide-button {
+			display: none;
+			background-color: #555;
+		}
+		.crown {
+			color: var(--crown-color);
+			margin-left: 8px;
+			font-size: 1.2em;
+		}
+		.history-table-wrapper::-webkit-scrollbar {
+			width: 12px;
+		}
+		.history-table-wrapper::-webkit-scrollbar-track {
+			background: var(--scrollbar-bg);
+			border-radius: 10px;
+		}
+		.history-table-wrapper::-webkit-scrollbar-thumb {
+			background-color: var(--scrollbar-thumb);
+			border-radius: 10px;
+			border: 3px solid var(--scrollbar-bg);
+		}
+		.history-table-wrapper::-webkit-scrollbar-thumb:hover {
+			background-color: var(--scrollbar-thumb-hover);
+		}
+		.history-table-wrapper {
+			scrollbar-width: thin;
+			scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+		}
+		@keyframes fade-down-custom {
+			from {
+				opacity: 0;
+				transform: translateY(-40px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+		[data-aos="fade-down-custom"] {
+			animation: fade-down-custom 1s ease forwards;
+		}
+		.fade-in {
+			animation: fadeIn 0.5s ease forwards;
+			opacity: 0;
+		}
+		@keyframes fadeIn {
+			to {
+				opacity: 1;
+			}
+		}
+		.fade-out {
+			animation: fadeOut 0.3s ease forwards;
+		}
+		@keyframes fadeOut {
+			to {
+				opacity: 0;
+				height: 0;
+				padding: 0;
+				margin: 0;
+			}
+		}
+		@media (max-width: 1690px) {
+			.container {
+				max-width: 45%;
+			}
+		}
+		@media (max-width: 1510px) {
+			.container {
+				max-width: 50%;
+			}
+		}
+		@media (max-width: 1360px) {
+			.container {
+				max-width: 55%;
+			}
+		}
+		@media (max-width: 1240px) {
+			.container {
+				max-width: 60%;
+			}
+		}
+		@media (max-width: 1145px) {
+			.container {
+				max-width: 65%;
+			}
+		}
+		@media (max-width: 1060px) {
+			.container {
+				max-width: 70%;
+			}
+		}
+		@media (max-width: 985px) {
+			.container {
+				max-width: 75%;
+			}
+		}
+		@media (max-width: 920px) {
+			.container {
+				max-width: 80%;
+			}
+		}
+		@media (max-width: 870px) {
+			.container {
+				max-width: 85%;
+			}
+		}
+		@media (max-width: 820px) {
+			.container {
+				max-width: 90%;
+			}
+		}
+		@media (max-width: 775px) {
+			.container {
+				max-width: 95%;
+			}
+		}
+		@media (max-width: 735px) {
+			.container {
+				max-width: 100%;
+			}
+		}
+		@media (max-width: 370px) {
+			.buttons button {
+				padding: 8px 15px;
+				font-size: 0.9em;
+				margin: 0 5px;
+			}
+			.user-info .info-card {
+				padding: 15px;
+				margin: 8px;
+			}
+			.user-info .info-card h3 {
+				font-size: 1em;
+			}
+			.user-info .info-card p {
+				font-size: 1.2em;
+			}
+			.avatar {
+				width: 80px;
+				height: 80px;
+			}
+			.header-info h1 {
+				font-size: 1.5em;
+			}
+			.header-info p {
+				font-size: 0.9em;
+			}
+			.history-table-wrapper th,
+			.history-table-wrapper td {
+				font-size: 0.85em;
+				padding: 8px 10px;
+			}
+		}
+		@media (max-width: 425px) {
+			.history-table-wrapper th,
+			.history-table-wrapper td {
+				font-size: calc(0.85em - 0.1rem);
+				padding: calc(8px - 0.1rem) calc(10px - 0.1rem);
+			}
+			.user-info .info-card {
+				padding: calc(15px - 0.2rem);
+				margin: calc(8px - 0.2rem);
+			}
+			.user-info .info-card h3 {
+				font-size: calc(1em - 0.2rem);
+			}
+			.user-info .info-card p {
+				font-size: calc(1.2em - 0.2rem);
+			}
+			.avatar {
+				width: calc(80px - 0.2rem);
+				height: calc(80px - 0.2rem);
+			}
+			.header-info h1 {
+				font-size: calc(1.5em - 0.2rem);
+			}
+			.header-info p {
+				font-size: calc(0.9em - 0.2rem);
+			}
+			.buttons button {
+				padding: 8px 15px;
+				font-size: 0.75em;
+				margin: 0 5px;
+			}
+		}
+		@media (max-width: 370px) {
+			.history-table-wrapper th,
+			.history-table-wrapper td {
+				font-size: calc(0.85em - 0.2rem);
+				padding: calc(8px - 0.2rem) calc(10px - 0.2rem);
+			}
+		}
+		@media (max-width: 300px) {
+			.user-info .info-card {
+				padding: calc(15px - 0.2rem);
+				margin: calc(8px - 0.2rem);
+			}
+			.user-info .info-card h3 {
+				font-size: calc(1em - 0.2rem);
+			}
+			.user-info .info-card p {
+				font-size: calc(1.2em - 0.2rem);
+			}
+			.avatar {
+				width: calc(80px - 0.2rem);
+				height: calc(80px - 0.2rem);
+			}
+			.header-info h1 {
+				font-size: calc(1.5em - 0.2rem);
+			}
+			.header-info p {
+				font-size: calc(0.9em - 0.2rem);
+			}
+			.history-table-wrapper th,
+			.history-table-wrapper td {
+				font-size: calc(0.85em - 0.2rem);
+				padding: calc(8px - 0.2rem) calc(10px - 0.2rem);
+			}
+			.buttons button {
+				padding: 8px 15px;
+				font-size: 0.5em;
+				margin: 0 5px;
+			}
+		}
+        @media (max-width: 270px) {
+			.avatar {
+				width: 60px;
+				height: 60px;
+			}
+		}
+		@media (max-width: 700px) {
+			.user-info {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+			.user-info .info-card:nth-child(1),
+			.user-info .info-card:nth-child(2),
+			.user-info .info-card:nth-child(3) {
+				display: none;
+			}
+			.user-info .info-card:nth-child(4) {
+				margin: 0 auto;
+				cursor: pointer;
+			}
+		}
+		.info-modal {
+			display: none;
+			position: fixed;
+			z-index: 9999;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.7);
+			justify-content: center;
+			align-items: center;
+			opacity: 0;
+			transition: opacity 0.3s ease;
+		}
+		.info-modal.show {
+			display: flex;
+			opacity: 1;
+		}
+		@media (min-width: 701px) {
+			.info-modal {
+				display: none !important;
+			}
+		}
+		.info-modal-content {
+			background: linear-gradient(145deg, #2a2a50, #1a1a2e);
+			padding: 40px 50px;
+			border-radius: 15px;
+			color: #ffffff;
+			text-align: center;
+			position: relative;
+			max-width: 90%;
+			width: 500px;
+			margin: 0 auto;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+			animation: fadeInModal 0.4s ease forwards;
+			transform: scale(0.9);
+		}
+		@keyframes fadeInModal {
+			to {
+				transform: scale(1);
+			}
+		}
+		.info-modal-content h3 {
+			margin: 20px 0;
+			font-size: 1.4em;
+			color: #ffffff;
+		}
+		.close-button {
+			position: absolute;
+			top: 15px;
+			right: 20px;
+			cursor: pointer;
+			color: #ffffff;
+			font-size: 1.8rem;
+			transition: color 0.3s ease;
+		}
+		.close-button:hover {
+			color: var(--accent-color);
+		}
+		@media (max-width: 290px) {
+			.info-modal-content h3 {
+				margin: 20px 0;
+				font-size: 1.1em;
+				color: #ffffff;
+			}
+		}
+		@media (max-width: 250px) {
+			.info-modal-content h3 {
+				margin: 20px 0;
+				font-size: 1em;
+				color: #ffffff;
+			}
+		}
+	</style>
 </head>
 <body>
-    <div id="snowflakes-container"></div>
-    <div class="container">
-        <div class="header">
-            <div class="avatar" data-aos="fade-down-custom" style="background-image: url('{{ user_avatar_url|default('/static/default_avatar.png') }}');"></div>
-            <div class="header-info" data-aos="fade-left">
-                <h1>
-                    {{ profile_user_login }}
-                    {% if profile_user_login == 'WertRar' %}
-                        <span class="crown" title="Лучший игрок">👑</span>
-                    {% endif %}
-                </h1>
-                <p>Рейтинг: {{ rang }}</p>
-            </div>
-        </div>
+	<div id="snowflakes-container"></div>
+	<div class="container">
+		<div class="header">
+			<div
+				class="avatar"
+				data-aos="fade-down-custom"
+				style="background-image: url('{{ user_avatar_url|default('/static/default_avatar.png') }}');"
+			></div>
+			<div class="header-info" data-aos="fade-left">
+				<h1>
+					{{ profile_user_login }}
+					{% if profile_user_login == 'WertRar' %}
+						<span class="crown" title="Лучший игрок">👑</span>
+					{% endif %}
+				</h1>
+				<p>Рейтинг: {{ rang }}</p>
+			</div>
+		</div>
+		<div class="user-info">
+			<div class="info-card" data-aos="fade-up" data-aos-delay="100">
+				<h3>Побед</h3>
+				<p>{{ wins }}</p>
+			</div>
+			<div class="info-card" data-aos="fade-up" data-aos-delay="200">
+				<h3>Ничьих</h3>
+				<p>{{ draws }}</p>
+			</div>
+			<div class="info-card" data-aos="fade-up" data-aos-delay="300">
+				<h3>Поражений</h3>
+				<p>{{ losses }}</p>
+			</div>
+			<div class="info-card" data-aos="fade-up" data-aos-delay="400" onclick="openInfoModal()">
+				<h3>Игры сыграно</h3>
+				<p>{{ total_games }}</p>
+			</div>
+		</div>
+		<div class="history-game" id="history-game" data-aos="fade-up" data-aos-delay="500">
+			<h2>История игр</h2>
+			<div class="history-table-wrapper" id="history-table-wrapper">
+				<table>
+					<thead>
+						<tr>
+							<th>Дата (окончания)</th>
+							<th>Рейтинг</th>
+							<th>Результат</th>
+						</tr>
+					</thead>
+					<tbody id="history-tbody"></tbody>
+				</table>
+			</div>
+			<div class="buttons">
+				<button id="loadMoreButton" class="load-more-button">
+					Загрузить ещё
+				</button>
+				<button id="hideButton" class="hide-button">
+					Скрыть
+				</button>
+			</div>
+		</div>
+		<div class="buttons">
+			{% if is_own_profile %}
+				<button class="home-button" onclick="goHome()">Вернуться</button>
+				<button class="logout-button" onclick="logout()">Выйти</button>
+			{% endif %}
+		</div>
+	</div>
+	<div id="info-modal" class="info-modal">
+		<div class="info-modal-content" id="modal-content">
+			<span class="close-button" onclick="closeInfoModal()">&times;</span>
+			<h3>Побед: {{ wins }}</h3>
+			<h3>Ничьих: {{ draws }}</h3>
+			<h3>Поражений: {{ losses }}</h3>
+		</div>
+	</div>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script>
+		const allRecords = {{ user_history|tojson }}.reverse();
+		let currentIndex = 0;
+		const pageSize = 9;
 
-        <div class="user-info">
-            <div class="info-card" data-aos="fade-up" data-aos-delay="100">
-                <h3>Побед</h3>
-                <p>{{ wins }}</p>
-            </div>
-            <div class="info-card" data-aos="fade-up" data-aos-delay="200">
-                <h3>Ничьих</h3>
-                <p>{{ draws }}</p>
-            </div>
-            <div class="info-card" data-aos="fade-up" data-aos-delay="300">
-                <h3>Поражений</h3>
-                <p>{{ losses }}</p>
-            </div>
-            <div class="info-card" data-aos="fade-up" data-aos-delay="400">
-                <h3>Игры сыграно</h3>
-                <p>{{ total_games }}</p>
-            </div>
-        </div>
+		document.addEventListener("DOMContentLoaded", () => {
+			AOS.init({
+				duration: 800,
+				easing: "ease-in-out",
+				once: true,
+			});
 
-        <div class="history-game" id="history-game" data-aos="fade-up" data-aos-delay="500">
-            <h2>История игр</h2>
+			loadRecords();
+			document.getElementById("loadMoreButton").addEventListener("click", loadRecords);
+			document.getElementById("hideButton").addEventListener("click", hideRecords);
+			document.getElementById("info-modal").addEventListener("click", (e) => {
+				if (e.target === document.getElementById("info-modal")) {
+					closeInfoModal();
+				}
+			});
+		});
 
-            <div class="history-table-wrapper" id="history-table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Дата (окончания)</th>
-                            <th>Рейтинг</th>
-                            <th>Результат</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-tbody">
-                    </tbody>
-                </table>
-            </div>
+		function returnToGame() {
+			const gameId = profileData.gameId;
+			const userLogin = profileData.currentUserLogin;
+			window.location.href = `/board/${gameId}/${userLogin}`;
+		}
 
-            <div class="buttons">
-                <button id="loadMoreButton" class="load-more-button">Загрузить ещё</button>
-                <button id="hideButton" class="hide-button">Скрыть</button>
-            </div>
-        </div>
+		function createSnowflakes() {
+			const snowContainer = document.getElementById("snow-container");
+			const snowflakeCount = 50;
+			for (let i = 0; i < snowflakeCount; i++) {
+				const snowflake = document.createElement("div");
+				snowflake.classList.add("snowflake");
+				snowflake.textContent = "❄";
+				snowflake.style.left = Math.random() * 100 + "vw";
+				snowflake.style.fontSize = Math.random() * 10 + 10 + "px";
+				snowflake.style.opacity = Math.random();
+				snowflake.style.animationDuration = Math.random() * 5 + 5 + "s";
+				snowflake.style.animationDelay = Math.random() * 10 + "s";
+				snowContainer.appendChild(snowflake);
+			}
+		}
 
-        <div class="buttons">
-            {% if is_own_profile %}
-                <button class="home-button" onclick="goHome()">Вернуться</button>
-                <button class="logout-button" onclick="logout()">Выйти</button>
-            {% endif %}
-        </div>
-    </div>
+		document.addEventListener("DOMContentLoaded", () => {
+			createSnowflakes();
+		});
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		function formatDate(dateString) {
+			const options = {
+				year: "numeric",
+				month: "2-digit",
+				day: "2-digit",
+				hour: "2-digit",
+				minute: "2-digit",
+				second: "2-digit",
+			};
+			const date = new Date(dateString);
+			return date.toLocaleString("ru-RU", options);
+		}
 
-    <script>
-        const allRecords = {{ user_history|tojson }}.reverse();
-        let currentIndex = 0;
-        const pageSize = 9;
+		function loadRecords() {
+			const tbody = document.getElementById("history-tbody");
+			const endIndex = Math.min(currentIndex + pageSize, allRecords.length);
+			for (let i = currentIndex; i < endIndex; i++) {
+				const record = allRecords[i];
+				const tr = document.createElement("tr");
+				tr.classList.add("fade-in");
 
-        document.addEventListener("DOMContentLoaded", () => {
-            AOS.init({
-                duration: 800,
-                easing: 'ease-in-out',
-                once: true
-            });
+				const dateTd = document.createElement("td");
+				dateTd.textContent = formatDate(record.date_start);
+				tr.appendChild(dateTd);
 
-            loadRecords();
+				const ratingTd = document.createElement("td");
+				const ratingChange =
+					record.rating_change >= 0
+						? `(+${record.rating_change})`
+						: `(${record.rating_change})`;
+				ratingTd.textContent = `${record.rating_after} ${ratingChange}`;
+				tr.appendChild(ratingTd);
 
-            document.getElementById("loadMoreButton").addEventListener("click", loadRecords);
-            document.getElementById("hideButton").addEventListener("click", hideRecords);
-        });
+				const resultTd = document.createElement("td");
+				let resultClass = "";
+				let resultText = "";
+				switch (record.result) {
+					case "win":
+						resultClass = "result-win";
+						resultText = "Победа";
+						break;
+					case "lose":
+						resultClass = "result-lose";
+						resultText = "Поражение";
+						break;
+					case "draw":
+						resultClass = "result-draw";
+						resultText = "Ничья";
+						break;
+					case "not_started":
+						resultClass = "result-not_started";
+						resultText = "Не началась";
+						break;
+					default:
+						resultClass = "result-unknown";
+						resultText = "Неизвестный результат";
+				}
+				const span = document.createElement("span");
+				span.className = resultClass;
+				span.textContent = resultText;
+				resultTd.appendChild(span);
+				tr.appendChild(resultTd);
 
-        function returnToGame() {
-            const gameId = profileData.gameId;
-            const userLogin = profileData.currentUserLogin;
-            window.location.href = `/board/${gameId}/${userLogin}`;
-        }
-        function createSnowflakes() {
-            const snowContainer = document.getElementById('snow-container');
-            const snowflakeCount = 50;
+				tbody.appendChild(tr);
+			}
+			currentIndex = endIndex;
+			updateButtons();
+			AOS.refresh();
+		}
 
-            for (let i = 0; i < snowflakeCount; i++) {
-                const snowflake = document.createElement('div');
-                snowflake.classList.add('snowflake');
-                snowflake.textContent = '❄';
-                snowflake.style.left = Math.random() * 100 + 'vw';
-                snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
-                snowflake.style.opacity = Math.random();
-                snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
-                snowflake.style.animationDelay = Math.random() * 10 + 's';
-                snowContainer.appendChild(snowflake);
-            }
-        }
+		function hideRecords() {
+			const tbody = document.getElementById("history-tbody");
+			const rows = tbody.querySelectorAll("tr");
+			for (let i = pageSize; i < rows.length; i++) {
+				rows[i].classList.remove("fade-in");
+				rows[i].classList.add("fade-out");
+				setTimeout(() => rows[i].remove(), 300);
+			}
+			setTimeout(() => {
+				currentIndex = pageSize;
+				updateButtons();
+			}, 300);
+		}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            createSnowflakes();
-        });
+		function updateButtons() {
+			const loadMoreBtn = document.getElementById("loadMoreButton");
+			const hideBtn = document.getElementById("hideButton");
+			if (currentIndex > pageSize) {
+				hideBtn.style.display = "inline-block";
+			} else {
+				hideBtn.style.display = "none";
+			}
+			if (currentIndex >= allRecords.length) {
+				loadMoreBtn.style.display = "none";
+			} else {
+				loadMoreBtn.style.display = "inline-block";
+			}
+		}
 
+		function generateSnowflakes() {
+			const container = document.getElementById("snowflakes-container");
+			for (let i = 0; i < 50; i++) {
+				const snowflake = document.createElement("div");
+				snowflake.classList.add("snowflake");
+				snowflake.textContent = "❄";
+				snowflake.style.fontSize = Math.random() * 10 + 10 + "px";
+				snowflake.style.left = Math.random() * 100 + "vw";
+				snowflake.style.animationDuration = Math.random() * 3 + 2 + "s";
+				snowflake.style.animationDelay = Math.random() * 5 + "s";
+				container.appendChild(snowflake);
+			}
+		}
 
-        function formatDate(dateString) {
-            const options = {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            };
-            const date = new Date(dateString);
-            return date.toLocaleString('ru-RU', options);
-        }
+		document.addEventListener("DOMContentLoaded", () => {
+			generateSnowflakes();
+		});
 
-        function loadRecords() {
-            const tbody = document.getElementById("history-tbody");
-            const wrapper = document.getElementById("history-table-wrapper");
+		function goHome() {
+			window.location.href = "/";
+		}
 
-            const endIndex = Math.min(currentIndex + pageSize, allRecords.length);
+		function logout() {
+			window.location.href = "/logout";
+		}
 
-            for (let i = currentIndex; i < endIndex; i++) {
-                const record = allRecords[i];
+		function openInfoModal() {
+			const modal = document.getElementById("info-modal");
+			if (window.innerWidth <= 700) {
+				modal.classList.add("show");
+			}
+		}
 
-                const tr = document.createElement("tr");
-                tr.classList.add("fade-in");
-
-                const dateTd = document.createElement("td");
-                dateTd.textContent = formatDate(record.date_start);
-                tr.appendChild(dateTd);
-
-                const ratingTd = document.createElement("td");
-                const ratingChange = record.rating_change >= 0
-                    ? `(+${record.rating_change})`
-                    : `(${record.rating_change})`;
-                ratingTd.textContent = `${record.rating_after} ${ratingChange}`;
-                tr.appendChild(ratingTd);
-
-                const resultTd = document.createElement("td");
-                let resultClass = '';
-                let resultText = '';
-
-                switch(record.result) {
-                    case "win":
-                        resultClass = 'result-win';
-                        resultText = 'Победа';
-                        break;
-                    case "lose":
-                        resultClass = 'result-lose';
-                        resultText = 'Поражение';
-                        break;
-                    case "draw":
-                        resultClass = 'result-draw';
-                        resultText = 'Ничья';
-                        break;
-                    case "not_started":
-                        resultClass = 'result-not_started';
-                        resultText = 'Не началась';
-                        break;
-                    default:
-                        resultClass = 'result-unknown';
-                        resultText = 'Неизвестный результат';
-                }
-
-                const span = document.createElement("span");
-                span.className = resultClass;
-                span.textContent = resultText;
-                resultTd.appendChild(span);
-                tr.appendChild(resultTd);
-
-                tbody.appendChild(tr);
-            }
-
-            currentIndex = endIndex;
-            updateButtons();
-
-            AOS.refresh();
-        }
-
-        function hideRecords() {
-            const tbody = document.getElementById("history-tbody");
-            const rows = tbody.querySelectorAll("tr");
-
-            for (let i = pageSize; i < rows.length; i++) {
-                rows[i].classList.remove("fade-in");
-                rows[i].classList.add("fade-out");
-                setTimeout(() => rows[i].remove(), 300);
-            }
-
-            setTimeout(() => {
-                currentIndex = pageSize;
-                updateButtons();
-            }, 300);
-        }
-
-        function updateButtons() {
-            const loadMoreBtn = document.getElementById("loadMoreButton");
-            const hideBtn = document.getElementById("hideButton");
-
-            if (currentIndex > pageSize) {
-                hideBtn.style.display = "inline-block";
-            } else {
-                hideBtn.style.display = "none";
-            }
-
-            if (currentIndex >= allRecords.length) {
-                loadMoreBtn.style.display = "none";
-            } else {
-                loadMoreBtn.style.display = "inline-block";
-            }
-        }
-
-        function generateSnowflakes() {
-            const container = document.getElementById('snowflakes-container');
-            for (let i = 0; i < 50; i++) {
-                const snowflake = document.createElement('div');
-                snowflake.classList.add('snowflake');
-                snowflake.textContent = '❄';
-                snowflake.style.fontSize = `${Math.random() * 10 + 10}px`;
-                snowflake.style.left = `${Math.random() * 100}vw`;
-                snowflake.style.animationDuration = `${Math.random() * 3 + 2}s`;
-                snowflake.style.animationDelay = `${Math.random() * 5}s`;
-                container.appendChild(snowflake);
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            generateSnowflakes();
-        });
-        function goHome() { window.location.href = "/"; }
-        function logout() { window.location.href = "/logout"; }
-    </script>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div id="notification-container">
-          {% for category, message in messages %}
-            <div class="notification {{ category }}">
-              {{ message }}
-              <div class="progress-bar"></div>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const notifications = document.querySelectorAll('.notification');
-        notifications.forEach((notif) => {
-          notif.addEventListener('click', () => {
-            notif.remove();
-          });
-          setTimeout(() => {
-            notif.remove();
-          }, 2000);
-        });
-      });
-    </script>
+		function closeInfoModal() {
+			const modal = document.getElementById("info-modal");
+			modal.classList.remove("show");
+		}
+	</script>
+	{% with messages = get_flashed_messages(with_categories=true) %}
+		{% if messages %}
+			<div id="notification-container">
+				{% for category, message in messages %}
+					<div class="notification {{ category }}">
+						{{ message }}
+						<div class="progress-bar"></div>
+					</div>
+				{% endfor %}
+			</div>
+		{% endif %}
+	{% endwith %}
+	<script>
+		document.addEventListener("DOMContentLoaded", function () {
+			const notifications = document.querySelectorAll(".notification");
+			notifications.forEach((notif) => {
+				notif.addEventListener("click", () => {
+					notif.remove();
+				});
+				setTimeout(() => {
+					notif.remove();
+				}, 2000);
+			});
+		});
+	</script>
 </body>
 </html>
