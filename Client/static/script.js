@@ -14,9 +14,7 @@ let currentView = null
 let gameFoundSoundPlayed = false
 let victorySoundPlayed = false
 let defeatSoundPlayed = false
-
 let shownErrors = new Set()
-
 let status = {
   w1: "Ход белых",
   b1: "Ход черных",
@@ -49,6 +47,10 @@ function translate(pieces_data) {
     mode: piece.mode,
     is_king: piece.is_king
   }))
+}
+
+function generateMoveId() {
+  return Math.random().toString(36).substr(2, 9)
 }
 
 function update_data(data) {
@@ -139,14 +141,12 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
 function updateCountdownDisplay(wCountdown, bCountdown) {
   const whiteTimer = document.getElementById('white-timer')
   const blackTimer = document.getElementById('black-timer')
-
   if (wCountdown > 0 && CURRENT_STATUS !== 'ns1' && CURRENT_STATUS !== 'w3' && CURRENT_STATUS !== 'b3' && CURRENT_STATUS !== 'n') {
     let m = Math.floor(wCountdown / 60)
     let s = Math.floor(wCountdown % 60)
     let mm = m < 10 ? '0' + m : m
     let ss = s < 10 ? '0' + s : s
     whiteTimer.textContent = mm + ':' + ss
-
     if (Math.floor(wCountdown) % 2 === 0) {
       whiteTimer.style.color = '#FF0000'
     } else {
@@ -155,14 +155,12 @@ function updateCountdownDisplay(wCountdown, bCountdown) {
   } else {
     whiteTimer.style.color = '#FFFFFF'
   }
-
   if (bCountdown > 0 && CURRENT_STATUS !== 'ns1' && CURRENT_STATUS !== 'w3' && CURRENT_STATUS !== 'b3' && CURRENT_STATUS !== 'n') {
     let m = Math.floor(bCountdown / 60)
     let s = Math.floor(bCountdown % 60)
     let mm = m < 10 ? '0' + m : m
     let ss = s < 10 ? '0' + s : s
     blackTimer.textContent = mm + ':' + ss
-
     if (Math.floor(bCountdown) % 2 === 0) {
       blackTimer.style.color = '#FF0000'
     } else {
@@ -174,77 +172,77 @@ function updateCountdownDisplay(wCountdown, bCountdown) {
 }
 
 function displayGameOverMessage(data) {
-    let modal = document.getElementById("game-over-modal")
-    if (modal.style.display === "block") return
-    let title = document.getElementById("game-over-title")
-    let message = document.getElementById("game-over-message")
-    let resultText = ""
-    let isVictory = false
-    let isDefeat = false
-    let gameResult = data.result
-    if (!gameResult) {
-        if (CURRENT_STATUS === 'w3') {
-            gameResult = (user_color === 'w') ? 'win' : 'lose'
-        } else if (CURRENT_STATUS === 'b3') {
-            gameResult = (user_color === 'b') ? 'win' : 'lose'
-        } else if (CURRENT_STATUS === 'n') {
-            gameResult = 'draw'
-        } else if (CURRENT_STATUS === 'ns1') {
-            gameResult = 'not_started'
-        }
+  let modal = document.getElementById("game-over-modal")
+  if (modal.style.display === "block") return
+  let title = document.getElementById("game-over-title")
+  let message = document.getElementById("game-over-message")
+  let resultText = ""
+  let isVictory = false
+  let isDefeat = false
+  let gameResult = data.result
+  if (!gameResult) {
+    if (CURRENT_STATUS === 'w3') {
+      gameResult = (user_color === 'w') ? 'win' : 'lose'
+    } else if (CURRENT_STATUS === 'b3') {
+      gameResult = (user_color === 'b') ? 'win' : 'lose'
+    } else if (CURRENT_STATUS === 'n') {
+      gameResult = 'draw'
+    } else if (CURRENT_STATUS === 'ns1') {
+      gameResult = 'not_started'
     }
-    let userIsGhost = is_ghost
-    let opponentIsGhost = opponent_login.startsWith('ghost')
-    if (userIsGhost) {
-        resultText = "Вы не получаете очки, пока не зарегистрированы."
-    } else {
-        if (gameResult === "win") {
-            resultText = "Вы победили!"
-            isVictory = true
-        } else if (gameResult === "lose") {
-            resultText = "Вы проиграли."
-            isDefeat = true
-        } else if (gameResult === "draw") {
-            resultText = "Ничья."
-        } else if (gameResult === "not_started") {
-            resultText = "Игра не началась из-за отсутствия хода."
-        }
+  }
+  let userIsGhost = is_ghost
+  let opponentIsGhost = opponent_login.startsWith('ghost')
+  if (userIsGhost) {
+    resultText = "Вы не получаете очки, пока не зарегистрированы."
+  } else {
+    if (gameResult === "win") {
+      resultText = "Вы победили!"
+      isVictory = true
+    } else if (gameResult === "lose") {
+      resultText = "Вы проиграли."
+      isDefeat = true
+    } else if (gameResult === "draw") {
+      resultText = "Ничья."
+    } else if (gameResult === "not_started") {
+      resultText = "Игра не началась из-за отсутствия хода."
     }
-    let points_gained = data.points_gained || 0
-    title.innerText = "Игра окончена"
-    if (userIsGhost) {
-        message.innerHTML = resultText
-    } else {
-        message.innerHTML = resultText + "<br>Вы получили " + points_gained + " очков к рангу."
-    }
-    const modalButtons = modal.querySelector('.modal-buttons')
-    const mainMenuButton = document.getElementById('main-menu-button')
-    const registerButton = document.getElementById('register-button')
-    if (userIsGhost) {
-        registerButton.style.display = 'inline-block'
-        modalButtons.classList.add('two-buttons')
-        modalButtons.classList.remove('single-button')
-    } else {
-        registerButton.style.display = 'none'
-        modalButtons.classList.remove('two-buttons')
-        modalButtons.classList.add('single-button')
-    }
-    const modalContent = modal.querySelector('.modal-content')
-    if (userIsGhost) {
-        modalContent.classList.add('guest')
-        modalContent.classList.remove('registered')
-    } else {
-        modalContent.classList.remove('guest')
-        modalContent.classList.add('registered')
-    }
-    modal.style.display = "block"
-    if (isVictory && !victorySoundPlayed) {
-        playVictorySound()
-        victorySoundPlayed = true
-    } else if (isDefeat && !defeatSoundPlayed) {
-        playDefeatSound()
-        defeatSoundPlayed = true
-    }
+  }
+  let points_gained = data.points_gained || 0
+  title.innerText = "Игра окончена"
+  if (userIsGhost) {
+    message.innerHTML = resultText
+  } else {
+    message.innerHTML = resultText + "<br>Вы получили " + points_gained + " очков к рангу."
+  }
+  const modalButtons = modal.querySelector('.modal-buttons')
+  const mainMenuButton = document.getElementById('main-menu-button')
+  const registerButton = document.getElementById('register-button')
+  if (userIsGhost) {
+    registerButton.style.display = 'inline-block'
+    modalButtons.classList.add('two-buttons')
+    modalButtons.classList.remove('single-button')
+  } else {
+    registerButton.style.display = 'none'
+    modalButtons.classList.remove('two-buttons')
+    modalButtons.classList.add('single-button')
+  }
+  const modalContent = modal.querySelector('.modal-content')
+  if (userIsGhost) {
+    modalContent.classList.add('guest')
+    modalContent.classList.remove('registered')
+  } else {
+    modalContent.classList.remove('guest')
+    modalContent.classList.add('registered')
+  }
+  modal.style.display = "block"
+  if (isVictory && !victorySoundPlayed) {
+    playVictorySound()
+    victorySoundPlayed = true
+  } else if (isDefeat && !defeatSoundPlayed) {
+    playDefeatSound()
+    defeatSoundPlayed = true
+  }
 }
 
 function returnToMainMenu() {
@@ -367,10 +365,12 @@ function respond_draw(response) {
 }
 
 function server_move_request(selected_piece, new_pos) {
+  let move_id = generateMoveId()
   let data = {
     selected_piece: selected_piece,
     new_pos: new_pos,
-    game_id: game_id
+    game_id: game_id,
+    move_id: move_id
   }
   if (user_color == "b") {
     if (selected_piece) {
@@ -665,12 +665,7 @@ function render_Board() {
     for (let j = 0; j < 8; j++) {
       if ((i + j) % 2 === 1) {
         CTX.fillStyle = b_colors[step % 2]
-        CTX.fillRect(
-          BOARD_OFFSET_X + CELL_SIZE * j,
-          BOARD_OFFSET_Y + CELL_SIZE * i,
-          CELL_SIZE,
-          CELL_SIZE
-        )
+        CTX.fillRect(BOARD_OFFSET_X + CELL_SIZE * j, BOARD_OFFSET_Y + CELL_SIZE * i, CELL_SIZE, CELL_SIZE)
       }
       step++
     }
@@ -742,45 +737,60 @@ function updateMovesList(moveHistory) {
   const movesList = document.querySelector('.moves-list')
   const movesContainer = document.querySelector('.moves-container')
   let hasNewMoves = moveHistory.length > lastMoveCount
+
   for (let i = lastMoveCount; i < moveHistory.length; i++) {
     let move = { ...moveHistory[i] }
+
     let isPlayerMove = move.player === user_login
     let isGhost = isPlayerMove ? user_login.startsWith('ghost') : opponent_login.startsWith('ghost')
     let playerClass = isPlayerMove ? 'blue' : 'red'
     let playerNameClass = isGhost ? 'ghost-player' : ''
     let playerName = isPlayerMove ? user_login : opponent_login
     let crown = ''
+
     if (playerName === 'WertRar') {
       crown = ' <span class="crown" title="Лучший игрок">👑</span>'
     }
+
     let player = isPlayerMove
       ? '<span class="player-name ' + playerClass + ' ' + playerNameClass + '" data-username="' + user_login + '">' + playerName + crown + '</span>'
       : '<span class="player-name ' + playerClass + ' ' + playerNameClass + '" data-username="' + opponent_login + '">' + playerName + crown + '</span>'
+
     let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y)
     let toPos = convertCoordinatesToNotation(move.to.x, move.to.y)
-    let moveText = fromPos + (move.captured ? ' x ' : ' - ') + toPos
+    let moveIdInfo = move.move_id ? ' (ID: ' + move.move_id + ')' : ''
+    let moveText = fromPos + (move.captured ? ' x ' : ' - ') + toPos + moveIdInfo
+
     let li = document.createElement('li')
     li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move')
+
     let moveContent = document.createElement('div')
     moveContent.classList.add('move-content')
+
     let playerLabel = document.createElement('span')
     playerLabel.classList.add('move-player')
     playerLabel.innerHTML = player
+
     let moveDescription = document.createElement('span')
     moveDescription.classList.add('move-description')
     moveDescription.textContent = moveText
+
     moveContent.appendChild(playerLabel)
     moveContent.appendChild(moveDescription)
     li.appendChild(moveContent)
+
     li.addEventListener('click', () => {
       document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'))
       li.classList.add('selected')
       viewBoardState(i + 1)
     })
+
     li.addEventListener('animationend', () => {
       li.classList.remove('new-move')
     })
+
     movesList.appendChild(li)
+
     if (user_color === 'b') {
       let originalFromX = move.from.x
       let originalFromY = move.from.y
@@ -792,15 +802,19 @@ function updateMovesList(moveHistory) {
       move.to.x = 7 - originalToX
       move.to.y = 7 - originalToY
     }
+
     let lastState = boardStates[boardStates.length - 1]
     let newState = applyMove(lastState, move)
     boardStates.push(newState)
   }
+
   lastMoveCount = moveHistory.length
+
   if (hasNewMoves) {
     playMoveSound()
     movesContainer.scrollTop = movesContainer.scrollHeight
   }
+
   addProfileClickListeners()
 }
 
