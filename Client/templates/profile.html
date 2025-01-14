@@ -481,12 +481,88 @@
                 z-index: 5;
             }
         }
-
-        @media (max-width: 700px) {
-            /* Придумал: Короче в профиле для каждого раздела должна будет быть своя кнопка - например чтоб просмотреть историю игр - будет отдельная вкладка например */
+        @media (max-width: 370px) {
+            .buttons button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+                margin: 0 5px;
+            }
         }
-        @media (max-width: 527px) {
-             /* Включая 527 надо сделать что то с history-table-wrapper */
+        @media (max-width: 405px) {
+            .user-info .info-card {
+              padding: 15px;
+              margin: 8px;
+          }
+
+          .user-info .info-card h3 {
+              font-size: 1em;
+          }
+
+          .user-info .info-card p {
+              font-size: 1.2em;
+          }
+          .avatar {
+              width: 80px;
+              height: 80px;
+          }
+
+          .header-info h1 {
+              font-size: 1.5em;
+          }
+
+          .header-info p {
+              font-size: 0.9em;
+          }
+
+          .history-table-wrapper th,
+          .history-table-wrapper td {
+              font-size: 0.85em;
+              padding: 8px 10px;
+          }
+        }
+        @media (max-width: 300px) {
+            .user-info .info-card {
+                padding: calc(15px - 0.2rem);
+                margin: calc(8px - 0.2rem);
+            }
+
+            .user-info .info-card h3 {
+                font-size: calc(1em - 0.2rem);
+            }
+
+            .user-info .info-card p {
+                font-size: calc(1.2em - 0.2rem);
+            }
+
+            .avatar {
+                width: calc(80px - 0.2rem);
+                height: calc(80px - 0.2rem);
+            }
+
+            .header-info h1 {
+                font-size: calc(1.5em - 0.2rem);
+            }
+
+            .header-info p {
+                font-size: calc(0.9em - 0.2rem);
+            }
+
+            .history-table-wrapper th,
+            .history-table-wrapper td {
+                font-size: calc(0.85em - 0.2rem);
+                padding: calc(8px - 0.2rem) calc(10px - 0.2rem);
+            }
+            .buttons button {
+                padding: 8px 15px;
+                font-size: 0.5em;
+                margin: 0 5px;
+            }
+        }
+        @media (max-width: 270px){
+            .avatar {
+              width: 60px;
+              height: 60px;
+          }
         }
     </style>
 </head>
