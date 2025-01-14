@@ -785,6 +785,11 @@
             </script>
         {% endif %}
     {% endwith %}
+    <script>
+        var user_login = "{{ session['user'] if 'user' in session else '' }}";
+        var game_id = null;
+    </script>
+
     <script src="{{ url_for('static', filename='script_home.js') }}"></script>
 </body>
 </html>
