@@ -5,11 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const playButton = document.getElementById("playButton");
     const selectedDifficulty = document.getElementById("selectedDifficulty");
     const selectedColor = document.getElementById("selectedColor");
-
-    let selections = {
-        difficulty: null,
-        color: null
-    };
+    let selections = { difficulty: null, color: null };
+    let startX = 0;
+    let endX = 0;
 
     btn.onclick = function() {
         modal.style.display = "flex";
@@ -27,50 +25,121 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    document.querySelectorAll('.card').forEach(function(card) {
+    function resetSelections() {
+        selections.difficulty = null;
+        selections.color = null;
+        selectedDifficulty.value = '';
+        selectedColor.value = '';
+        document.querySelectorAll('.card').forEach(function(card) {
+            card.classList.remove('selected');
+        });
+        playButton.classList.remove('active');
+    }
+
+    const isSmallScreen = window.innerWidth <= 530;
+
+    if (!isSmallScreen) {
+        document.querySelectorAll('.card[data-type="difficulty"]').forEach(function(card) {
+            card.addEventListener('click', function() {
+                let type = this.getAttribute('data-type');
+                let value = this.getAttribute('data-value');
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    selectedDifficulty.value = '';
+                } else {
+                    document.querySelectorAll(`.card[data-type="${type}"]`).forEach(function(otherCard) {
+                        otherCard.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    selectedDifficulty.value = value;
+                }
+                const difficulty = selectedDifficulty.value;
+                const color = selectedColor.value;
+                if (difficulty && color) {
+                    playButton.classList.add('active');
+                    playButton.disabled = false;
+                } else {
+                    playButton.classList.remove('active');
+                    playButton.disabled = true;
+                }
+            });
+        });
+    } else {
+        const swipeContainer = document.getElementById("difficultySwipe");
+        const difficultyCards = swipeContainer.querySelectorAll('.card');
+        let currentIndex = 0;
+
+
+        function updateSwipe() {
+            swipeContainer.style.transform = `translateX(-${currentIndex * 120}px)`;
+            selectedDifficulty.value = difficultyCards[currentIndex].getAttribute('data-value');
+            if (selectedColor.value && selectedDifficulty.value) {
+                playButton.classList.add('active');
+                playButton.disabled = false;
+            } else {
+                playButton.classList.remove('active');
+                playButton.disabled = true;
+            }
+        }
+
+        document.getElementById("rightArrow").addEventListener("click", () => {
+            currentIndex = (currentIndex + 1) % difficultyCards.length;
+            updateSwipe();
+        });
+
+        document.getElementById("leftArrow").addEventListener("click", () => {
+            currentIndex = (currentIndex - 1 + difficultyCards.length) % difficultyCards.length;
+            updateSwipe();
+        });
+
+        swipeContainer.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX;
+        }, false);
+
+        swipeContainer.addEventListener('touchmove', e => {
+            endX = e.touches[0].clientX;
+        }, false);
+
+        swipeContainer.addEventListener('touchend', () => {
+            let deltaX = endX - startX;
+            if (Math.abs(deltaX) > 30) {
+                if (deltaX < 0) {
+                    currentIndex = (currentIndex + 1) % difficultyCards.length;
+                } else {
+                    currentIndex = (currentIndex - 1 + difficultyCards.length) % difficultyCards.length;
+                }
+                updateSwipe();
+            }
+        }, false);
+
+        updateSwipe();
+    }
+
+    document.querySelectorAll('.card[data-type="color"]').forEach(function(card) {
         card.addEventListener('click', function() {
             let type = this.getAttribute('data-type');
             let value = this.getAttribute('data-value');
-
             if (this.classList.contains('selected')) {
                 this.classList.remove('selected');
-                selections[type] = null;
-
-                if (type === 'difficulty') selectedDifficulty.value = '';
-                if (type === 'color') selectedColor.value = '';
+                selectedColor.value = '';
             } else {
                 document.querySelectorAll(`.card[data-type="${type}"]`).forEach(function(otherCard) {
                     otherCard.classList.remove('selected');
                 });
-
                 this.classList.add('selected');
-                selections[type] = value;
-
-                if (type === 'difficulty') selectedDifficulty.value = value;
-                if (type === 'color') selectedColor.value = value;
+                selectedColor.value = value;
             }
-
-            if (selections.difficulty && selections.color) {
+            const difficulty = selectedDifficulty.value;
+            const color = selectedColor.value;
+            if (difficulty && color) {
                 playButton.classList.add('active');
+                playButton.disabled = false;
             } else {
                 playButton.classList.remove('active');
+                playButton.disabled = true;
             }
         });
     });
-
-    function resetSelections() {
-        selections.difficulty = null;
-        selections.color = null;
-
-        selectedDifficulty.value = '';
-        selectedColor.value = '';
-
-        document.querySelectorAll('.card').forEach(function(card) {
-            card.classList.remove('selected');
-        });
-
-        playButton.classList.remove('active');
-    }
 
     window.startMultiplayerGame = function() {
         window.location.href = '/start_game';
@@ -100,9 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (game_id && user_login) {
             fetch('/give_up', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({game_id: game_id, user_login: user_login})
             })
             .then(response => response.json())
@@ -116,7 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 alert('Произошла ошибка при покидании игры.');
             });
         } else {
@@ -127,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayGameOverMessage(data) {
         const modal = document.getElementById("game-over-modal");
         const message = document.getElementById("game-over-message");
-
         let resultText = "";
         if (data.result === "win") {
             resultText = "Поздравляем! Вы победили!";
@@ -136,15 +201,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (data.result === "draw") {
             resultText = "Ничья.";
         }
-
         let points_gained = data.points_gained || 0;
         let points_text = points_gained >= 0 ? `Вы получили ${points_gained} очков к рангу.` : `Вы потеряли ${Math.abs(points_gained)} очков к рангу.`;
-
-        message.innerHTML = `
-            ${resultText}<br>
-            ${points_text}
-        `;
-
+        message.innerHTML = `${resultText}<br>${points_text}`;
         modal.style.display = "flex";
     }
 
@@ -168,10 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(error => {
-                console.log(error.message);
                 document.getElementById('return-to-game').style.display = 'none';
             });
     }
+
+    const hamburger = document.getElementById("hamburger");
+    const sidebar = document.getElementById("sidebar");
+
+    hamburger.addEventListener("click", () => {
+        hamburger.classList.toggle("open");
+        sidebar.classList.toggle("active");
+    });
 
     function handlePageShow(event) {
         if (event.persisted) {
@@ -181,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkForActiveGame();
     setInterval(checkForActiveGame, 5000);
+
     createSnowflakes();
 
     window.addEventListener('pageshow', handlePageShow);
@@ -188,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function createSnowflakes() {
         const snowContainer = document.getElementById('snow-container');
         const snowflakeCount = 50;
-
         for (let i = 0; i < snowflakeCount; i++) {
             const snowflake = document.createElement('div');
             snowflake.classList.add('snowflake');
@@ -204,13 +270,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-      const notifications = document.querySelectorAll('.notification');
-      notifications.forEach((notif) => {
+    const notifications = document.querySelectorAll('.notification');
+    notifications.forEach((notif) => {
         notif.addEventListener('click', () => {
-          notif.remove();
+            notif.remove();
         });
         setTimeout(() => {
-          notif.remove();
+            notif.remove();
         }, 2000);
-      });
     });
+});

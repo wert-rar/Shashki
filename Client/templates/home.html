@@ -2,7 +2,8 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-store">
     <title>Главная страничка</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -33,6 +34,9 @@
             padding: 0;
             box-sizing: border-box;
         }
+        html, body {
+            overflow-x: hidden;
+        }
         body {
             background-color: var(--background-color);
             color: var(--text-color);
@@ -43,7 +47,6 @@
             align-items: center;
             padding: 20px;
             position: relative;
-            overflow: hidden;
         }
         body:before {
             content: '';
@@ -54,6 +57,7 @@
             height: 100vh;
             background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 10%, transparent 70%);
             z-index: -2;
+            pointer-events: none;
         }
         .container {
             background-color: var(--card-background);
@@ -66,6 +70,15 @@
             position: relative;
             z-index: 1;
             overflow: hidden;
+        }
+        #snow-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            pointer-events: none;
         }
         .container > h1 {
             font-size: 2rem;
@@ -125,14 +138,94 @@
             border: 2px solid var(--border-color);
             border-radius: 25px;
             transition: background-color 0.3s ease-out, transform 0.3s ease-out, border-color 0.3s ease-out;
-            position: relative;
-            z-index: 2;
             background-color: transparent;
         }
         .navigation-menu a:hover {
-            background-color: rgba(156, 39, 176, 0.2);
+            background-color: rgba(156,39,176,0.2);
             border-color: var(--button-hover);
             transform: scale(1.05);
+        }
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            z-index: 6;
+            transition: transform 0.3s ease;
+        }
+        .hamburger span {
+            display: block;
+            width: 100%;
+            height: 3px;
+            background: var(--text-color);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        .hamburger.open span:nth-child(1) {
+            transform: translateY(11px) rotate(45deg);
+        }
+        .hamburger.open span:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger.open span:nth-child(3) {
+            transform: translateY(-9px) rotate(-45deg);
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background-color: rgba(26,26,46,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: -2px 0 5px rgba(0,0,0,0.5);
+            padding: 20px;
+            transition: right 0.3s ease;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar.active {
+            right: 0;
+        }
+        .sidebar .auth-links {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 50px;
+        }
+        .sidebar .auth-links a {
+            flex: 1;
+            text-align: center;
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            transition: background-color 0.3s, transform 0.3s;
+            background-color: transparent;
+        }
+        .sidebar .auth-links a:hover {
+            background-color: rgba(156,39,176,0.2);
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(8px);
+            background-color: rgba(0,0,0,0.3);
+            z-index: 4;
+            transition: opacity 0.3s;
+        }
+        .overlay.active {
+            display: block;
+            opacity: 1;
         }
         .message {
             position: absolute;
@@ -153,25 +246,14 @@
             margin-bottom: 10px;
             border-radius: 10px;
             font-size: 14px;
-            color: var(--text-color);
-            position: relative;
-            z-index: 2;
             transition: background 0.3s;
         }
         .message li:hover {
             background: rgba(255, 255, 255, 0.2);
-            transform: translateZ(0);
-            will-change: background;
         }
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         #return-to-game {
             position: absolute;
@@ -191,19 +273,13 @@
             font-size: 1.5rem;
             color: var(--success-color);
             margin-bottom: 10px;
-            position: relative;
-            z-index: 2;
         }
         #return-to-game p {
             font-size: 1rem;
-            color: var(--text-color);
             margin-bottom: 20px;
-            position: relative;
-            z-index: 2;
         }
         #return-to-game .button {
             background-color: var(--warning-color);
-            z-index: 2;
         }
         #return-to-game .button.leave-button {
             background-color: var(--error-color);
@@ -242,33 +318,24 @@
             max-width: 90%;
             width: 400px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-            position: relative;
-            z-index: 4;
             transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
         }
         #leave-game-modal .modal-content h2 {
             margin-bottom: 20px;
             color: var(--error-color);
-            position: relative;
-            z-index: 4;
         }
         #game-over-modal .modal-content h2 {
             margin-bottom: 20px;
             color: var(--warning-color);
-            position: relative;
-            z-index: 4;
         }
         #leave-game-modal .modal-content p,
         #game-over-modal .modal-content p {
             margin-bottom: 30px;
             font-size: 1rem;
-            position: relative;
-            z-index: 4;
         }
         .modal-content .button {
             width: 120px;
             margin: 10px;
-            z-index: 4;
         }
         #leave-game-modal .button.confirm-button {
             background-color: var(--error-color);
@@ -291,10 +358,7 @@
             animation: fall linear infinite;
         }
         @keyframes fall {
-            to {
-                transform: translateY(100vh);
-                opacity: 0;
-            }
+            to { transform: translateY(100vh); opacity: 0; }
         }
         .modal {
             display: none;
@@ -310,6 +374,7 @@
             background-color: rgba(0,0,0,0.5);
         }
         .modal-content.difficulty-modal {
+            position: relative;
             background: var(--card-background);
             padding: 40px;
             border-radius: 20px;
@@ -317,29 +382,22 @@
             color: var(--text-color);
             max-width: 90%;
             width: 700px;
-            box-shadow:
-                0 10px 30px rgba(0, 0, 0, 0.8),
-                0 0 20px rgba(80, 70, 150, 0.6),
-                0 0 40px rgba(100, 90, 200, 0.4);
-            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8),
+                        0 0 20px rgba(80, 70, 150, 0.6),
+                        0 0 40px rgba(100, 90, 200, 0.4);
             animation: fadeInScale 0.5s ease-out;
-            z-index: 10;
-            transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
-            will-change: box-shadow, transform;
-            transform: translateY(0);
         }
         .modal-content.difficulty-modal:hover {
-            box-shadow:
-                0 15px 40px rgba(0, 0, 0, 0.9),
-                0 0 30px rgba(80, 70, 150, 0.8),
-                0 0 50px rgba(100, 90, 200, 0.5);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9),
+                        0 0 30px rgba(80, 70, 150, 0.8),
+                        0 0 50px rgba(100, 90, 200, 0.5);
         }
         .close {
             color: #ff5555;
             position: absolute;
             top: 10px;
             right: 15px;
-            font-size: 24px;
+            font-size: 32px;
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.3s ease, color 0.3s ease;
@@ -353,16 +411,15 @@
         }
         .selection-section h3 {
             margin-bottom: 15px;
-            color: var(--text-color);
             font-size: 1.2rem;
         }
-        .cards-container {
+        .cards-container, .swipe-wrapper {
             display: flex;
             justify-content: center;
             gap: 15px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
-        .card {
+        .cards-container .card, .swipe-wrapper .card {
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid transparent;
             border-radius: 15px;
@@ -375,17 +432,16 @@
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        .card:hover {
+        .cards-container .card:hover, .swipe-wrapper .card:hover {
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-3px);
         }
-        .card.selected {
+        .cards-container .card.selected, .swipe-wrapper .card.selected {
             border-color: var(--warning-color);
             background: rgba(255, 215, 0, 0.2);
             box-shadow: 0 0 25px gold;
-            transition: background 0.3s, border-color 0.3s, transform 0.3s, box-shadow 0.3s;
         }
-        .card::before {
+        .cards-container .card::before, .swipe-wrapper .card::before {
             content: '';
             position: absolute;
             top: -50%;
@@ -397,7 +453,7 @@
             transition: all 0.5s ease;
             z-index: 0;
         }
-        .card:hover::before {
+        .cards-container .card:hover::before, .swipe-wrapper .card:hover::before {
             transform: rotate(0deg);
         }
         .card-content {
@@ -413,7 +469,6 @@
         .card-content h4 {
             margin: 0;
             font-size: 1rem;
-            color: var(--text-color);
         }
         .play-button {
             display: inline-block;
@@ -441,14 +496,8 @@
             background-color: var(--warning-color-hover);
         }
         @keyframes fadeInScale {
-            0% {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
         }
         #notification-container {
             position: fixed;
@@ -476,8 +525,8 @@
             background-color: var(--error-color);
         }
         @keyframes fadeIn {
-            from {opacity: 0; transform: translateX(20px);}
-            to {opacity: 1; transform: translateX(0);}
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
         }
         .progress-bar {
             position: absolute;
@@ -489,8 +538,104 @@
             animation: progress 2s linear forwards;
         }
         @keyframes progress {
-            0% {width: 100%;}
-            100% {width: 0;}
+            0% { width: 100%; }
+            100% { width: 0; }
+        }
+        @media (max-width: 1280px) {
+            .navigation-menu {
+                display: none;
+            }
+            .hamburger {
+                display: flex;
+                position: absolute;
+                top: 20px;
+                right: 20px;
+            }
+        }
+        @media (min-width: 531px) {
+            .swipe-wrapper, .arrow {
+                display: none;
+            }
+            .selection-section.difficulty-selection {
+                display: block;
+            }
+            .cards-container {
+                display: flex;
+                justify-content: center;
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+        }
+        @media (max-width: 530px) {
+            #colorContainer .card:not(.selected) {
+                background: transparent;
+            }
+            #colorContainer {
+                display: flex;
+                justify-content: center;
+                margin-top: 20px;
+            }
+            #difficultySwipe {
+                display: flex;
+                justify-content: flex-start;
+                gap: 0;
+                transform: translateX(0);
+                transition: transform 0.3s ease;
+                width: 120px;
+            }
+            .cards-container {
+                display: none;
+            }
+            .cards-container .card.selected, .swipe-wrapper .card.selected {
+                transform: translateY(-3px);
+            }
+            .cards-container .card:not(.selected), .swipe-wrapper .card:not(.selected) {
+                transform: translateY(0);
+            }
+            .swipe-wrapper {
+                display: flex;
+                overflow: hidden;
+                width: 120px;
+                justify-content: center;
+                position: relative;
+            }
+            .swipe-container .card {
+                flex-shrink: 0;
+                display: inline-block;
+                width: 120px;
+                justify-content: center;
+                margin: 0 auto;
+                pointer-events: auto;
+            }
+            .selection-section.difficulty-selection {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+            }
+            .arrow {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 2rem;
+                color: var(--text-color);
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 2;
+            }
+            .arrow.left {
+                left: -20px;
+            }
+            .arrow.right {
+                right: -20px;
+            }
         }
     </style>
 </head>
@@ -500,8 +645,32 @@
             <span class="close" id="closeModal">&times;</span>
             <h2>Выбор режима одиночной игры</h2>
             <form id="selectionForm" method="POST" action="/start_singleplayer">
-                <div class="selection-section">
+                <div class="selection-section difficulty-selection">
                     <h3>Выберите сложность бота:</h3>
+                    <div class="arrow left" id="leftArrow"><i class="fas fa-chevron-left"></i></div>
+                    <div class="swipe-wrapper">
+                        <div class="swipe-container" id="difficultySwipe">
+                            <div class="card" data-type="difficulty" data-value="easy">
+                                <div class="card-content">
+                                    <i class="fas fa-smile fa-3x" style="color: #4CAF50;"></i>
+                                    <h4>Легкая</h4>
+                                </div>
+                            </div>
+                            <div class="card" data-type="difficulty" data-value="medium">
+                                <div class="card-content">
+                                    <i class="fas fa-surprise fa-3x" style="color: #FFA500;"></i>
+                                    <h4>Средняя</h4>
+                                </div>
+                            </div>
+                            <div class="card" data-type="difficulty" data-value="hard">
+                                <div class="card-content">
+                                    <i class="fas fa-face-angry fa-3x" style="color: #B197FC;"></i>
+                                    <h4>Тяжелая</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="arrow right" id="rightArrow"><i class="fas fa-chevron-right"></i></div>
                     <div class="cards-container" id="difficultyContainer">
                         <div class="card" data-type="difficulty" data-value="easy">
                             <div class="card-content">
@@ -555,7 +724,25 @@
                 <a href="{{ url_for('register') }}">Регистрация</a>
             {% endif %}
         </div>
+        <div class="hamburger" id="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
     </nav>
+    <div class="overlay" id="overlay"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="menu-content"></div>
+        <div class="auth-links">
+            {% if 'user' in session and user_is_registered %}
+                <a href="{{ url_for('profile', username=session['user']) }}">Профиль</a>
+                <a href="{{ url_for('logout') }}">Выход</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Вход</a>
+                <a href="{{ url_for('register') }}">Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
     <div class="container">
         <h1>Добро пожаловать в игру!</h1>
         <button class="button" id="singleplayer-button">Одиночная игра</button>
@@ -585,23 +772,19 @@
     <div id="snow-container"></div>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div id="notification-container">
-            {% for category, message in messages %}
-                <div class="notification {{ category }}">
-                    {{ message }}
-                    <div class="progress-bar"></div>
-                </div>
-            {% endfor %}
-        </div>
-        <script>
-            var messages = {{ messages|tojson }};
-        </script>
+            <div id="notification-container">
+                {% for category, message in messages %}
+                    <div class="notification {{ category }}">
+                        {{ message }}
+                        <div class="progress-bar"></div>
+                    </div>
+                {% endfor %}
+            </div>
+            <script>
+                var messages = {{ messages|tojson }};
+            </script>
         {% endif %}
     {% endwith %}
-    <script>
-        var user_login = "{{ session['user'] if 'user' in session else '' }}";
-        var game_id = "{{ session['game_id'] if 'game_id' in session else '' }}";
-    </script>
     <script src="{{ url_for('static', filename='script_home.js') }}"></script>
 </body>
 </html>
