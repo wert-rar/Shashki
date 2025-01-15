@@ -87,11 +87,11 @@
 			height: 100px;
 			border-radius: 50%;
 			background-color: #333;
-			background-image: url('{{ user_avatar_url|default("/static/default_avatar.png") }}');
 			background-size: cover;
 			background-position: center;
 			margin-right: 20px;
 			border: 3px solid var(--accent-color);
+			cursor: pointer;
 		}
 		.header-info {
 			flex: 1;
@@ -112,14 +112,12 @@
 			font-size: 1.1em;
 			color: var(--text-secondary);
 		}
-		.stats,
 		.user-info {
 			display: flex;
 			justify-content: space-between;
 			flex-wrap: wrap;
 			margin-bottom: 30px;
 		}
-		.stat-card,
 		.info-card {
 			background-color: var(--background-color);
 			padding: 20px;
@@ -130,17 +128,14 @@
 			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 			transition: transform 0.3s ease;
 		}
-		.stat-card:hover,
 		.info-card:hover {
 			transform: translateY(-5px);
 		}
-		.stat-card h3,
 		.info-card h3 {
 			margin-bottom: 10px;
 			font-size: 1.2em;
 			color: var(--accent-color);
 		}
-		.stat-card p,
 		.info-card p {
 			font-size: 1.5em;
 			font-weight: bold;
@@ -293,6 +288,45 @@
 				padding: 0;
 				margin: 0;
 			}
+		}
+		#notification-container {
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			width: 300px;
+			max-width: 90%;
+			z-index: 9999;
+		}
+		.notification {
+			position: relative;
+			background: #333;
+			color: #fff;
+			padding: 10px 15px;
+			margin-bottom: 10px;
+			border-radius: 5px;
+			animation: fadeIn 0.5s;
+			cursor: pointer;
+			overflow: hidden;
+		}
+		.notification.success {
+			background-color: var(--success-color);
+		}
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateX(20px); }
+			to { opacity: 1; transform: translateX(0); }
+		}
+		.progress-bar {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			height: 3px;
+			background-color: #fff;
+			width: 100%;
+			animation: progress 2s linear forwards;
+		}
+		@keyframes progress {
+			0% { width: 100%; }
+			100% { width: 0; }
 		}
 		@media (max-width: 1690px) {
 			.container {
@@ -561,6 +595,32 @@
 				color: #ffffff;
 			}
 		}
+		/* Стили для блока с аватаром */
+		#avatarActions {
+			margin-bottom: 20px;
+			padding: 10px;
+			border: 1px solid var(--accent-color);
+			border-radius: 10px;
+			background: rgba(255, 255, 255, 0.05);
+			text-align: center;
+			display: none;
+		}
+		#avatarActions button,
+		#avatarActions form button {
+			background-color: var(--button-background);
+			color: #fff;
+			border: none;
+			padding: 10px 20px;
+			margin: 5px;
+			border-radius: 5px;
+			cursor: pointer;
+			transition: background-color 0.3s ease, transform 0.2s ease;
+		}
+		#avatarActions button:hover,
+		#avatarActions form button:hover {
+			background-color: var(--button-hover);
+			transform: translateY(-2px);
+		}
 	</style>
 </head>
 <body>
@@ -570,7 +630,10 @@
 			<div
 				class="avatar"
 				data-aos="fade-down-custom"
-				style="background-image: url('{{ user_avatar_url|default('/static/default_avatar.png') }}');"
+				style="background-image: url('{{ user_avatar_url|default('/static/avatars/default_avatar.jpg') }}');"
+				{% if is_own_profile %}
+					onclick="toggleAvatarActions()"
+				{% endif %}
 			></div>
 			<div class="header-info" data-aos="fade-left">
 				<h1>
@@ -582,6 +645,20 @@
 				<p>Рейтинг: {{ rang }}</p>
 			</div>
 		</div>
+		{% if is_own_profile %}
+		<div id="avatarActions">
+			<button type="button" onclick="document.getElementById('avatarFileInput').click();">
+				Загрузить аватар
+			</button>
+			{% if user_avatar_url != '/static/avatars/default_avatar.jpg' %}
+			<form id="deleteAvatarForm" action="/delete_avatar" method="post" style="display:inline;">
+				<button type="submit">
+					Удалить аватар
+				</button>
+			</form>
+			{% endif %}
+		</div>
+		{% endif %}
 		<div class="user-info">
 			<div class="info-card" data-aos="fade-up" data-aos-delay="100">
 				<h3>Побед</h3>
@@ -625,6 +702,16 @@
 		</div>
 		<div class="buttons">
 			{% if is_own_profile %}
+				<form id="avatarForm" action="/upload_avatar" method="post" enctype="multipart/form-data" style="display:inline;">
+					<input
+						type="file"
+						name="avatar"
+						id="avatarFileInput"
+						accept=".png,.jpg,.jpeg,.gif"
+						style="display:none;"
+						onchange="document.getElementById('avatarForm').submit();"
+					/>
+				</form>
 				<button class="home-button" onclick="goHome()">Вернуться</button>
 				<button class="logout-button" onclick="logout()">Выйти</button>
 			{% endif %}
@@ -644,14 +731,12 @@
 		const allRecords = {{ user_history|tojson }}.reverse();
 		let currentIndex = 0;
 		const pageSize = 9;
-
 		document.addEventListener("DOMContentLoaded", () => {
 			AOS.init({
 				duration: 800,
 				easing: "ease-in-out",
 				once: true,
 			});
-
 			loadRecords();
 			document.getElementById("loadMoreButton").addEventListener("click", loadRecords);
 			document.getElementById("hideButton").addEventListener("click", hideRecords);
@@ -661,15 +746,13 @@
 				}
 			});
 		});
-
 		function returnToGame() {
 			const gameId = profileData.gameId;
 			const userLogin = profileData.currentUserLogin;
 			window.location.href = `/board/${gameId}/${userLogin}`;
 		}
-
 		function createSnowflakes() {
-			const snowContainer = document.getElementById("snow-container");
+			const snowContainer = document.getElementById("snowflakes-container");
 			const snowflakeCount = 50;
 			for (let i = 0; i < snowflakeCount; i++) {
 				const snowflake = document.createElement("div");
@@ -683,11 +766,9 @@
 				snowContainer.appendChild(snowflake);
 			}
 		}
-
 		document.addEventListener("DOMContentLoaded", () => {
 			createSnowflakes();
 		});
-
 		function formatDate(dateString) {
 			const options = {
 				year: "numeric",
@@ -700,7 +781,6 @@
 			const date = new Date(dateString);
 			return date.toLocaleString("ru-RU", options);
 		}
-
 		function loadRecords() {
 			const tbody = document.getElementById("history-tbody");
 			const endIndex = Math.min(currentIndex + pageSize, allRecords.length);
@@ -708,11 +788,9 @@
 				const record = allRecords[i];
 				const tr = document.createElement("tr");
 				tr.classList.add("fade-in");
-
 				const dateTd = document.createElement("td");
 				dateTd.textContent = formatDate(record.date_start);
 				tr.appendChild(dateTd);
-
 				const ratingTd = document.createElement("td");
 				const ratingChange =
 					record.rating_change >= 0
@@ -720,7 +798,6 @@
 						: `(${record.rating_change})`;
 				ratingTd.textContent = `${record.rating_after} ${ratingChange}`;
 				tr.appendChild(ratingTd);
-
 				const resultTd = document.createElement("td");
 				let resultClass = "";
 				let resultText = "";
@@ -750,14 +827,12 @@
 				span.textContent = resultText;
 				resultTd.appendChild(span);
 				tr.appendChild(resultTd);
-
 				tbody.appendChild(tr);
 			}
 			currentIndex = endIndex;
 			updateButtons();
 			AOS.refresh();
 		}
-
 		function hideRecords() {
 			const tbody = document.getElementById("history-tbody");
 			const rows = tbody.querySelectorAll("tr");
@@ -771,7 +846,6 @@
 				updateButtons();
 			}, 300);
 		}
-
 		function updateButtons() {
 			const loadMoreBtn = document.getElementById("loadMoreButton");
 			const hideBtn = document.getElementById("hideButton");
@@ -786,7 +860,6 @@
 				loadMoreBtn.style.display = "inline-block";
 			}
 		}
-
 		function generateSnowflakes() {
 			const container = document.getElementById("snowflakes-container");
 			for (let i = 0; i < 50; i++) {
@@ -800,29 +873,32 @@
 				container.appendChild(snowflake);
 			}
 		}
-
 		document.addEventListener("DOMContentLoaded", () => {
 			generateSnowflakes();
 		});
-
 		function goHome() {
 			window.location.href = "/";
 		}
-
 		function logout() {
 			window.location.href = "/logout";
 		}
-
 		function openInfoModal() {
 			const modal = document.getElementById("info-modal");
 			if (window.innerWidth <= 700) {
 				modal.classList.add("show");
 			}
 		}
-
 		function closeInfoModal() {
 			const modal = document.getElementById("info-modal");
 			modal.classList.remove("show");
+		}
+		function toggleAvatarActions() {
+			const actions = document.getElementById("avatarActions");
+			if (actions.style.display === "none" || actions.style.display === "") {
+				actions.style.display = "block";
+			} else {
+				actions.style.display = "none";
+			}
 		}
 	</script>
 	{% with messages = get_flashed_messages(with_categories=true) %}

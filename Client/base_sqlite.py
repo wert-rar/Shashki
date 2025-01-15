@@ -5,9 +5,8 @@ import hashlib
 
 def create_tables():
     try:
-        with sqlite3.connect("../DataBase.db") as con:
+        with sqlite3.connect("DataBase.db") as con:
             cur = con.cursor()
-
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS player(
                     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -16,10 +15,10 @@ def create_tables():
                     rang BIGINT DEFAULT 0,
                     wins INTEGER DEFAULT 0,
                     losses INTEGER DEFAULT 0,
-                    draws INTEGER DEFAULT 0
+                    draws INTEGER DEFAULT 0,
+                    avatar_filename TEXT
                 )
             """)
-
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS completed_game(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +31,6 @@ def create_tables():
                     result TEXT
                 )
             """)
-
             logging.info("Функция create_tables завершена успешно.")
     except sqlite3.Error as e:
         logging.error(f"Ошибка при создании таблиц: {e}")
@@ -152,12 +150,14 @@ def get_user_history(user_login):
     """, (user_login,))
     rows = cur.fetchall()
     con.close()
-
     result = []
     for row in rows:
         result.append(dict(row))
     return result
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    create_tables()
+def update_user_avatar(user_login, filename):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("UPDATE player SET avatar_filename = ? WHERE login = ?", (filename, user_login))
+    con.commit()
+    con.close()
