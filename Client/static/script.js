@@ -433,7 +433,7 @@ function server_update_request() {
   .then(response => {
     if (!response.ok) {
       if (response.status === 404) {
-         return Promise.resolve();
+         return { error: "Game over" };
       }
       return response.json().then(errData => Promise.reject(errData));
     }
@@ -453,6 +453,10 @@ function server_update_request() {
     }
   })
   .catch(error => {
+    if (typeof error === "string" && error === "Game over") {
+      displayGameOverMessage({ error: "Game over" });
+      return Promise.resolve();
+    }
     console.error("Ошибка при обновлении доски:", error);
     return Promise.reject(error);
   })
