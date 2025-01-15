@@ -1,6 +1,5 @@
 import os
 from werkzeug.utils import secure_filename
-import re
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
 from base_sqlite import (
     check_user_exists,
@@ -1084,10 +1083,6 @@ def player_loaded():
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
-def sanitize_filename(filename):
-    filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
-    return filename.strip('_')
-
 @app.route('/upload_avatar', methods=['POST'])
 def upload_avatar():
     if 'user' not in session:
@@ -1105,16 +1100,17 @@ def upload_avatar():
         return redirect(url_for('profile', username=user_login))
     if file and allowed_file(file.filename):
         _, ext = os.path.splitext(file.filename)
-        new_filename = sanitize_filename(f"{user_login}{ext.lower()}")
+        new_filename = f"{user_login}{ext.lower()}"
         from base_sqlite import update_user_avatar
         old_avatar = user["avatar_filename"]
         if old_avatar and old_avatar != new_filename:
             old_path = os.path.join(app.config['UPLOAD_FOLDER'], old_avatar)
             if os.path.exists(old_path):
                 os.remove(old_path)
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
+        safe_filename = secure_filename(new_filename)
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
         file.save(save_path)
-        update_user_avatar(user_login, new_filename)
+        update_user_avatar(user_login, safe_filename)
         flash('Аватар обновлён', 'success')
     else:
         flash('Недопустимый файл', 'error')
