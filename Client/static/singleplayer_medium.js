@@ -283,18 +283,36 @@ function can_move(piece, pcs){
     return moves;
 }
 
-function get_possible_moves(pcs, color, must_capture = null){
+function get_possible_moves(pcs, color, must_capture = null) {
     let all_moves = {};
-    for(let p of pcs){
-        if(p.color !== color) continue;
-        if(must_capture && (p.x !== must_capture.x || p.y !== must_capture.y)) continue;
-        let cm = can_capture(p, pcs);
-        if(must_capture){
-            if(cm.length > 0) all_moves[`${p.x},${p.y}`] = cm;
-        } else {
-            let nm = can_move(p, pcs);
-            all_moves[`${p.x},${p.y}`] = cm.concat(nm);
+
+    // Сначала проверяем, есть ли у хоть одной фигуры возможность побить.
+    let any_capture = false;
+    for (let p of pcs) {
+        if (p.color !== color) continue;
+        let cap = can_capture(p, pcs);
+        if (cap.length > 0) {
+            any_capture = true;
+            break;
         }
+    }
+
+    for (let p of pcs) {
+        if (p.color !== color) continue;
+        // Если указан конкретный элемент для обязательного продолжения взятия,
+        // то обрабатываем только его.
+        if (must_capture && (p.x !== must_capture.x || p.y !== must_capture.y)) continue;
+
+        let moves = [];
+        let captureMoves = can_capture(p, pcs);
+        // Если есть хотя бы одно взятие на доске – разрешаем только взятия.
+        if (any_capture) {
+            moves = captureMoves;
+        } else {
+            let normalMoves = can_move(p, pcs);
+            moves = captureMoves.concat(normalMoves);
+        }
+        all_moves[`${p.x},${p.y}`] = moves;
     }
     return all_moves;
 }
@@ -564,7 +582,7 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
         let [px, py] = key.split(',').map(Number);
         let piece = get_piece_at(pcs, px, py);
         for (let m of vm[key]) {
-            moves.push({from: {x: px, y: py}, to: m, piece: piece});
+            moves.push({ from: { x: px, y: py }, to: m, piece: piece });
         }
     }
     return moves;

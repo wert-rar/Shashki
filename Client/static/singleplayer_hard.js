@@ -24,7 +24,6 @@ let pieces = [
     {"color":0,"x":4,"y":5,"mode":"p"},
     {"color":0,"x":6,"y":5,"mode":"p"}
 ];
-
 let current_player = 'w';
 let must_capture_piece = null;
 let selected_piece = null;
@@ -181,7 +180,8 @@ function restoreMovesHistory(){
         let sp2 = document.createElement('span');
         sp2.classList.add('move-description');
         sp2.textContent = `${convertPosToNotation(move.from)} -> ${convertPosToNotation(move.to)}`;
-        div.appendChild(sp1); div.appendChild(sp2);
+        div.appendChild(sp1);
+        div.appendChild(sp2);
         li.appendChild(div);
         movesContainer.appendChild(li);
         li.addEventListener('click', onMoveClick);
@@ -269,30 +269,47 @@ function can_move(piece, pcs){
     return moves;
 }
 
-function get_possible_moves(pcs, color, must_capture = null){
+function get_possible_moves(pcs, color, must_capture = null) {
     let all_moves = {};
-    for(let p of pcs){
-        if(p.color !== color) continue;
-        if(must_capture && (p.x !== must_capture.x || p.y !== must_capture.y)) continue;
-        let cm = can_capture(p, pcs);
-        if(must_capture){
-            if(cm.length > 0) all_moves[`${p.x},${p.y}`] = cm;
-        } else {
-            let nm = can_move(p, pcs);
-            all_moves[`${p.x},${p.y}`] = cm.concat(nm);
+    if (must_capture) {
+        let cap = can_capture(must_capture, pcs);
+        if (cap.length > 0) {
+            all_moves[`${must_capture.x},${must_capture.y}`] = cap;
         }
+        return all_moves;
+    }
+    let any_capture = false;
+    for (let p of pcs) {
+        if (p.color !== color) continue;
+        let cap = can_capture(p, pcs);
+        if (cap.length > 0) {
+            any_capture = true;
+            break;
+        }
+    }
+    for (let p of pcs) {
+        if (p.color !== color) continue;
+        let moves = [];
+        let captureMoves = can_capture(p, pcs);
+        if (any_capture) {
+            moves = captureMoves;
+        } else {
+            let normalMoves = can_move(p, pcs);
+            moves = captureMoves.concat(normalMoves);
+        }
+        all_moves[`${p.x},${p.y}`] = moves;
     }
     return all_moves;
 }
 
-function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc){
+function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc) {
     let color = (player === 'w') ? 0 : 1;
     let valid_moves = get_possible_moves(pcs, color, mustCapturePieceLoc);
     let piece_moves = valid_moves[`${selected_piece.x},${selected_piece.y}`] || [];
     if(!piece_moves.some(m => m.x === new_pos.x && m.y === new_pos.y)){
         return {move_result: 'invalid'};
     }
-    let new_pieces = pcs.map(p => ({...p}));
+    let new_pcs = pcs.map(p => ({...p}));
     let captured = false;
     let captured_pieces = [];
     let x = selected_piece.x, y = selected_piece.y;
@@ -302,9 +319,9 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
     if(Math.abs(new_pos.x - x) > 1){
         let current_x = x + dx, current_y = y + dy;
         while(current_x !== new_pos.x && current_y !== new_pos.y){
-            let pch = get_piece_at(new_pieces, current_x, current_y);
+            let pch = get_piece_at(new_pcs, current_x, current_y);
             if(pch && pch.color !== color){
-                new_pieces = new_pieces.filter(pp => (pp.x !== pch.x || pp.y !== pch.y));
+                new_pcs = new_pcs.filter(pp => (pp.x !== pch.x || pp.y !== pch.y));
                 captured = true;
                 captured_pieces.push({x: pch.x, y: pch.y});
                 break;
@@ -312,7 +329,7 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
             current_x += dx; current_y += dy;
         }
     }
-    for(let p of new_pieces){
+    for(let p of new_pcs){
         if(p.x === x && p.y === y){
             p.x = new_pos.x; p.y = new_pos.y;
             moved_piece = p;
@@ -325,30 +342,24 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
         }
     }
     let newMustCapture = null;
+    let continueCapture = false;
     if(captured){
-        let cap_moves = can_capture(moved_piece, new_pieces);
+        let cap_moves = can_capture(moved_piece, new_pcs);
         if(cap_moves.length > 0){
             newMustCapture = {...moved_piece};
-            return{
-                move_result: 'continue_capture',
-                new_pieces,
-                captured: true,
-                captured_pieces,
-                multiple_capture: true,
-                newMustCapture
-            };
+            continueCapture = true;
         } else {
             newMustCapture = null;
         }
     } else {
         newMustCapture = null;
     }
-    return{
-        move_result: 'valid',
-        new_pieces,
+    return {
+        move_result: (continueCapture ? 'continue_capture' : 'valid'),
+        new_pcs,
         captured,
         captured_pieces,
-        multiple_capture: false,
+        continueCapture,
         newMustCapture
     };
 }
@@ -543,6 +554,53 @@ function evaluatePosition(pcs) {
             }
         }
     }
+    for (let p of pcs) {
+        let friendlyCount = 0;
+        let directions = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        for (let [dx, dy] of directions) {
+            let nx = p.x + dx, ny = p.y + dy;
+            let neighbor = get_piece_at(pcs, nx, ny);
+            if (neighbor && neighbor.color === p.color) {
+                friendlyCount++;
+            }
+        }
+        if (friendlyCount > 0) {
+            if (p.color === 1) score += friendlyCount * 1.5;
+            else score -= friendlyCount * 1.5;
+        } else {
+            if (p.color === 1) score -= 1;
+            else score += 1;
+        }
+    }
+    const additionalPenalty = 3;
+    for (let enemy of pcs.filter(p => p.color === 0)) {
+        let enemyCaptures = can_capture(enemy, pcs);
+        for (let capMove of enemyCaptures) {
+            let pcsCopy = copyPieces(pcs);
+            let enemyCopy = get_piece_at(pcsCopy, enemy.x, enemy.y);
+            let dx = capMove.x > enemyCopy.x ? 1 : -1;
+            let dy = capMove.y > enemyCopy.y ? 1 : -1;
+            let midX = enemyCopy.x + dx;
+            let midY = enemyCopy.y + dy;
+            let captured = get_piece_at(pcsCopy, midX, midY);
+            if (captured) {
+                pcsCopy = pcsCopy.filter(p => !(p.x === captured.x && p.y === captured.y));
+                enemyCopy.x = capMove.x;
+                enemyCopy.y = capMove.y;
+                let furtherCaptures = can_capture(enemyCopy, pcsCopy);
+                if (furtherCaptures.length > 0) {
+                    score += enemy.color === 0 ? -additionalPenalty : additionalPenalty;
+                }
+            }
+        }
+    }
+    let mobilityBonus = 0;
+    for (let p of pcs) {
+        let moves = can_move(p, pcs);
+        if (p.color === 1) mobilityBonus += moves.length * 0.5;
+        else mobilityBonus -= moves.length * 0.5;
+    }
+    score += mobilityBonus;
     return score;
 }
 
@@ -566,17 +624,15 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
         let [px, py] = key.split(',').map(Number);
         let piece = get_piece_at(pcs, px, py);
         for (let m of vm[key]) {
-            moves.push({from: {x: px, y: py}, to: m, piece: piece});
+            moves.push({ from: { x: px, y: py }, to: m, piece: piece });
         }
     }
     moves.sort((a, b) => {
-        let aCapture = Math.abs(a.to.x - a.from.x) === 2;
-        let bCapture = Math.abs(b.to.x - b.from.x) === 2;
+        let aCapture = Math.abs(a.to.x - a.from.x) > 1;
+        let bCapture = Math.abs(b.to.x - b.from.x) > 1;
         if (aCapture && !bCapture) return -1;
         if (!aCapture && bCapture) return 1;
-        let aCenterDist = Math.abs(a.to.x - 3.5) + Math.abs(a.to.y - 3.5);
-        let bCenterDist = Math.abs(b.to.x - 3.5) + Math.abs(b.to.y - 3.5);
-        return aCenterDist - bCenterDist;
+        return 0;
     });
     return moves;
 }
@@ -584,9 +640,12 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
 function applyMove(pcs, move, currentColor, mustCapturePieceLoc) {
     let selected_piece = get_piece_at(pcs, move.from.x, move.from.y);
     let res = validate_move(selected_piece, move.to, currentColor === 0 ? 'w' : 'b', pcs, mustCapturePieceLoc);
-    let newPcs = res.new_pieces;
-    let newMustCapture = res.newMustCapture;
-    return {newPcs, newMustCapture, move_result: res.move_result};
+    return {
+        new_pcs: res.new_pcs,
+        newMustCapture: res.newMustCapture,
+        move_result: res.move_result,
+        continueCapture: res.continueCapture
+    };
 }
 
 function isTerminalNode(pcs, mustCapturePieceLoc, maximizingPlayer) {
@@ -617,10 +676,10 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
             let res = applyMove(pcsCopy, move, color, mustCapturePieceLoc);
             let evalScore;
             if (res.move_result === 'continue_capture') {
-                let child = minimax(res.newPcs, depth - 1, alpha, beta, true, res.newMustCapture);
+                let child = minimax(res.new_pcs, depth - 1, alpha, beta, true, res.newMustCapture);
                 evalScore = child.score;
             } else {
-                let child = minimax(res.newPcs, depth - 1, alpha, beta, false, null);
+                let child = minimax(res.new_pcs, depth - 1, alpha, beta, false, null);
                 evalScore = child.score;
             }
             if (evalScore > maxEval) {
@@ -641,10 +700,10 @@ function minimax(pcs, depth, alpha, beta, maximizingPlayer, mustCapturePieceLoc)
             let res = applyMove(pcsCopy, move, color, mustCapturePieceLoc);
             let evalScore;
             if (res.move_result === 'continue_capture') {
-                let child = minimax(res.newPcs, depth - 1, alpha, beta, false, res.newMustCapture);
+                let child = minimax(res.new_pcs, depth - 1, alpha, beta, false, res.newMustCapture);
                 evalScore = child.score;
             } else {
-                let child = minimax(res.newPcs, depth - 1, alpha, beta, true, null);
+                let child = minimax(res.new_pcs, depth - 1, alpha, beta, true, null);
                 evalScore = child.score;
             }
             if (evalScore < minEval) {
@@ -678,7 +737,7 @@ function makeBotMove() {
         endGame();
         return;
     }
-    pieces = res.new_pieces;
+    pieces = res.new_pcs;
     if(res.move_result === 'continue_capture'){
         must_capture_piece = res.newMustCapture;
     } else {
@@ -785,7 +844,7 @@ function onClick(evt){
                 possibleMoves = [];
                 return;
             }
-            pieces = res.new_pieces;
+            pieces = res.new_pcs;
             if(res.move_result === 'continue_capture'){
                 must_capture_piece = res.newMustCapture;
                 selected_piece = get_piece_at(pieces, coords.x, coords.y);
