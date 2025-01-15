@@ -371,6 +371,20 @@ def get_board(game_id, user_login):
         abort(403)
     opponent_login = game.c_user if user_login == game.f_user else game.f_user
     is_ghost = user_login.startswith('ghost')
+
+    user = get_user_by_login(user_login)
+    avatar_filename = user['avatar_filename']
+    if avatar_filename:
+        user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
+    else:
+        user_avatar_url = '/static/avatars/default_avatar.jpg'
+
+    opponent = get_user_by_login(opponent_login)
+    if opponent and opponent['avatar_filename']:
+        opponent_avatar_url = url_for('static', filename='avatars/' + opponent['avatar_filename'])
+    else:
+        opponent_avatar_url = '/static/avatars/default_avatar.jpg'
+
     return render_template(
         'board.html',
         user_login=user_login,
@@ -379,7 +393,9 @@ def get_board(game_id, user_login):
         opponent_login=opponent_login,
         f_user=game.f_user,
         c_user=game.c_user,
-        is_ghost=is_ghost
+        is_ghost=is_ghost,
+        user_avatar_url=user_avatar_url,
+        opponent_avatar_url=opponent_avatar_url
     )
 
 @app.route("/register", methods=["GET", "POST"])

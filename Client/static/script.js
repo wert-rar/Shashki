@@ -753,9 +753,13 @@ function updateMovesList(moveHistory) {
     if (playerName === 'WertRar') {
       crown = ' <span class="crown" title="Лучший игрок">👑</span>'
     }
-    let player = isPlayerMove
-      ? '<span class="player-name ' + playerClass + ' ' + playerNameClass + '" data-username="' + user_login + '">' + playerName + crown + '</span>'
-      : '<span class="player-name ' + playerClass + ' ' + playerNameClass + '" data-username="' + opponent_login + '">' + playerName + crown + '</span>'
+    let avatarUrl = isPlayerMove ? user_avatar_url : opponent_avatar_url
+    let player = `
+      <img class="move-avatar" src="${avatarUrl}" alt="avatar">
+      <span class="player-name ${playerClass} ${playerNameClass}" data-username="${playerName}">
+        ${playerName}${crown}
+      </span>
+    `
     let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y)
     let toPos = convertCoordinatesToNotation(move.to.x, move.to.y)
     let moveText = fromPos + (move.captured ? ' x ' : ' - ') + toPos
