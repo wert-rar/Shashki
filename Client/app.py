@@ -373,14 +373,17 @@ def get_board(game_id, user_login):
     is_ghost = user_login.startswith('ghost')
 
     user = get_user_by_login(user_login)
-    avatar_filename = user['avatar_filename']
-    if avatar_filename:
-        user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
-    else:
+    if is_ghost:
         user_avatar_url = '/static/avatars/default_avatar.jpg'
+    else:
+        avatar_filename = user['avatar_filename']
+        if avatar_filename:
+            user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
+        else:
+            user_avatar_url = '/static/avatars/default_avatar.jpg'
 
     opponent = get_user_by_login(opponent_login)
-    if opponent and opponent['avatar_filename']:
+    if opponent and (not opponent_login.startswith('ghost')) and opponent['avatar_filename']:
         opponent_avatar_url = url_for('static', filename='avatars/' + opponent['avatar_filename'])
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'

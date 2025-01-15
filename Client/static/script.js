@@ -418,13 +418,13 @@ function server_move_request(selected_piece, new_pos) {
 let isUpdating = false
 
 function server_update_request() {
-  if (isUpdating) return Promise.resolve()
+  if (isUpdating) return Promise.resolve();
   if (!game_id) {
-    console.error("game_id не определён.")
-    return Promise.reject("game_id не определён.")
+    console.error("game_id не определён.");
+    return Promise.reject("game_id не определён.");
   }
-  isUpdating = true
-  let body = { game_id: game_id }
+  isUpdating = true;
+  let body = { game_id: game_id };
   return fetch('/update_board', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -432,29 +432,33 @@ function server_update_request() {
   })
   .then(response => {
     if (!response.ok) {
-      return response.json().then(errData => Promise.reject(errData))
+      if (response.status === 404) {
+         return Promise.resolve();
+      }
+      return response.json().then(errData => Promise.reject(errData));
     }
-    return response.json()
+    return response.json();
   })
   .then(data => {
     if (data.error) {
-      showError(data.error)
-      if (data.error === "Invalid game ID") {
-        alert("Произошла ошибка: " + data.error)
+      if (data.error === "Game over") {
+         displayGameOverMessage(data);
+         return Promise.resolve();
       }
-      return Promise.reject(data.error)
+      showError(data.error);
+      return Promise.reject(data.error);
     } else {
-      update_data(data)
-      return Promise.resolve()
+      update_data(data);
+      return Promise.resolve();
     }
   })
   .catch(error => {
-    showError('Произошла непредвиденная ошибка.')
-    return Promise.reject(error)
+    console.error("Ошибка при обновлении доски:", error);
+    return Promise.reject(error);
   })
   .finally(() => {
-    isUpdating = false
-  })
+    isUpdating = false;
+  });
 }
 
 function server_get_possible_moves(selected_piece, callback) {
