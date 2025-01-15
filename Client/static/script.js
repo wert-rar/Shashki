@@ -53,74 +53,78 @@ function translate(pieces_data) {
 
 function update_data(data) {
   if (data.error) {
-    showError(data.error)
-    if (data.error === "Invalid game ID") {
-      alert("Произошла ошибка: " + data.error)
+    if (data.error === "Game over") {
+      displayGameOverMessage(data);
+      return;
     }
-    return
+    showError(data.error);
+    if (data.error === "Invalid game ID") {
+      alert("Произошла ошибка: " + data.error);
+    }
+    return;
   }
-  CURRENT_STATUS = data.status_
+  CURRENT_STATUS = data.status_;
   if (data.white_time !== undefined && data.black_time !== undefined) {
-    updateTimersDisplay(data.white_time, data.black_time)
+    updateTimersDisplay(data.white_time, data.black_time);
   }
   if (data.white_countdown !== undefined && data.black_countdown !== undefined) {
-    updateCountdownDisplay(data.white_countdown, data.black_countdown)
+    updateCountdownDisplay(data.white_countdown, data.black_countdown);
   }
-  let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null
+  let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
   if (currentView === null) {
     if (data.pieces) {
-      pieces = data.pieces
-      if (user_color == "b") pieces = translate(pieces)
+      pieces = data.pieces;
+      if (user_color == "b") pieces = translate(pieces);
       if (pieces && pieces.length > 0 && boardStates.length === 0) {
-        boardStates = [JSON.parse(JSON.stringify(pieces))]
+        boardStates = [JSON.parse(JSON.stringify(pieces))];
       }
     } else {
-      console.error("data.pieces is undefined")
-      showError("Получены некорректные данные от сервера.")
-      return
+      console.error("data.pieces is undefined");
+      showError("Получены некорректные данные от сервера.");
+      return;
     }
   }
-  document.getElementById("status").innerHTML = status[CURRENT_STATUS]
+  document.getElementById("status").innerHTML = status[CURRENT_STATUS];
   if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
-    let gameFoundSound = document.getElementById('sound-game-found')
+    let gameFoundSound = document.getElementById('sound-game-found');
     if (gameFoundSound) {
-      gameFoundSound.play().catch(error => {})
-      gameFoundSoundPlayed = true
+      gameFoundSound.play().catch(error => {});
+      gameFoundSoundPlayed = true;
     }
   }
   if (data.draw_response && data.draw_response !== null) {
     if (data.draw_response === 'accept') {
-      displayGameOverMessage(data)
+      displayGameOverMessage(data);
     } else if (data.draw_response === 'decline') {
-      showNotification('Ваше предложение ничьей было отклонено.', 'error')
+      showNotification('Ваше предложение ничьей было отклонено.', 'error');
     }
   }
   if (data.draw_offer && data.draw_offer !== null) {
     if (data.draw_offer !== user_color) {
-      let modal = document.getElementById("draw-offer-modal")
-      modal.style.display = "block"
+      let modal = document.getElementById("draw-offer-modal");
+      modal.style.display = "block";
     }
   } else {
-    document.getElementById("draw-offer-modal").style.display = "none"
+    document.getElementById("draw-offer-modal").style.display = "none";
   }
   if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n" || CURRENT_STATUS === "ns1") {
-    displayGameOverMessage(data)
+    displayGameOverMessage(data);
   }
   if (previousSelectedPiece) {
-    SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y)
+    SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
     if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
-      IS_SELECTED = true
+      IS_SELECTED = true;
       server_get_possible_moves(SELECTED_PIECE, function(moves) {
-        possibleMoves = moves
-      })
+        possibleMoves = moves;
+      });
     } else {
-      IS_SELECTED = false
-      SELECTED_PIECE = null
-      possibleMoves = []
+      IS_SELECTED = false;
+      SELECTED_PIECE = null;
+      possibleMoves = [];
     }
   }
   if (data.move_history) {
-    updateMovesList(data.move_history)
+    updateMovesList(data.move_history);
   }
 }
 
