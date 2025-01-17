@@ -153,6 +153,7 @@
             cursor: pointer;
             z-index: 6;
             transition: transform 0.3s ease;
+            color: var(--text-color);
         }
         .hamburger span {
             display: block;
@@ -786,7 +787,6 @@
                 <a href="{{ url_for('register') }}">Регистрация</a>
             {% endif %}
         </div>
-        <!-- Мобильная навигация (для экранов <1280) – колокольчик и гамбургер -->
         <div class="mobile-nav">
             <button class="bell-button" id="bellMobile"><i class="fas fa-bell"></i></button>
             <div class="hamburger" id="hamburger">
