@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const hamburger = document.getElementById("hamburger");
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
+    const bellDesktop = document.getElementById("bellDesktop");
+    const bellMobile = document.getElementById("bellMobile");
+    const notificationModal = document.getElementById("notificationModal");
+    const closeNotificationModal = document.getElementById("closeNotificationModal");
 
     let selections = { difficulty: null, color: null };
     let startX = 0;
@@ -27,12 +31,37 @@ document.addEventListener('DOMContentLoaded', () => {
         resetSelections();
     };
 
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
-            resetSelections();
-        }
-    };
+    if (window.innerWidth > 1280) {
+        window.onclick = function(event) {
+            if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop')) {
+                notificationModal.classList.remove('active');
+                bellDesktop.classList.remove('active');
+            }
+            if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
+                closeSidebar();
+            }
+        };
+    }
+
+    if (window.innerWidth <= 1280) {
+        window.addEventListener('click', (event) => {
+            if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop')) {
+                if (notificationModal.classList.contains('active')) {
+                    notificationModal.classList.remove('active');
+                    if (bellDesktop) {
+                       bellDesktop.classList.remove('active');
+                    }
+                    if (bellMobile) {
+                        bellMobile.classList.remove('active');
+                    }
+                    return;
+                  }
+                }
+                if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
+                    closeSidebar();
+                }
+        });
+    }
 
     function resetSelections() {
         selections.difficulty = null;
@@ -175,9 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.leaveGame = function() {
         if (game_id && user_login) {
             fetch('/give_up', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({game_id: game_id, user_login: user_login})
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ game_id: game_id, user_login: user_login })
             })
             .then(response => response.json())
             .then(data => {
@@ -244,6 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(0)';
         overlay.classList.add("active");
         hamburger.classList.add("open");
+        if (window.innerWidth <= 1280 && bellMobile) {
+            bellMobile.style.display = 'none';
+        }
     }
 
     function closeSidebar() {
@@ -251,6 +283,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(300px)';
         overlay.classList.remove("active");
         hamburger.classList.remove("open");
+        if (window.innerWidth <= 1280 && bellMobile) {
+            bellMobile.style.display = 'block';
+        }
         sidebar.addEventListener('transitionend', function handler() {
             sidebar.classList.remove("active");
             sidebar.removeEventListener('transitionend', handler);
@@ -261,7 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
         closeSidebar();
     });
 
-    hamburger.addEventListener("click", () => {
+    hamburger.addEventListener("click", (event) => {
+        event.stopPropagation();
         if (sidebar.classList.contains("active")) {
             closeSidebar();
         } else {
@@ -269,19 +305,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if (window.innerWidth <= 530) {
+    if (window.innerWidth <= 1280) {
         sidebar.style.transform = 'translateX(300px)';
         let touchStartX = null;
         let currentTranslateX = 0;
         const sidebarWidth = sidebar.offsetWidth;
-
         sidebar.style.transition = 'none';
-
         sidebar.addEventListener("touchstart", (e) => {
             touchStartX = e.touches[0].clientX;
             sidebar.style.transition = 'none';
-        }, false);
-
+        }, { passive: true });
         sidebar.addEventListener("touchmove", (e) => {
             if (touchStartX === null) return;
             const touchCurrentX = e.touches[0].clientX;
@@ -290,17 +323,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (deltaX > sidebarWidth) deltaX = sidebarWidth;
             currentTranslateX = deltaX;
             sidebar.style.transform = `translateX(${deltaX}px)`;
-        }, false);
-
+        }, { passive: true });
         sidebar.addEventListener("touchend", () => {
             sidebar.style.transition = 'transform 0.5s ease-out';
-
             if (currentTranslateX > sidebarWidth / 3) {
                 closeSidebar();
             } else {
                 sidebar.style.transform = 'translateX(0)';
             }
-
             touchStartX = null;
             currentTranslateX = 0;
         }, false);
@@ -314,9 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkForActiveGame();
     setInterval(checkForActiveGame, 5000);
-
     createSnowflakes();
-
     window.addEventListener('pageshow', handlePageShow);
 
     function createSnowflakes() {
@@ -334,6 +362,28 @@ document.addEventListener('DOMContentLoaded', () => {
             snowContainer.appendChild(snowflake);
         }
     }
+
+    bellDesktop.addEventListener('click', (event) => {
+        event.stopPropagation();
+        bellDesktop.classList.toggle('active');
+        notificationModal.classList.toggle('active');
+    });
+
+    if (bellMobile) {
+        bellMobile.addEventListener('click', (event) => {
+            event.stopPropagation();
+            bellMobile.classList.toggle('active');
+            notificationModal.classList.toggle('active');
+        });
+    }
+
+    closeNotificationModal.addEventListener('click', (event) => {
+        event.stopPropagation();
+        notificationModal.classList.remove('active');
+        bellDesktop.classList.remove('active');
+            if (bellMobile) {
+              bellMobile.classList.remove('active');
+            }
 });
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -346,4 +396,5 @@ document.addEventListener('DOMContentLoaded', function() {
             notif.remove();
         }, 2000);
     });
+  });
 });
