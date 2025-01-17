@@ -143,7 +143,6 @@
         .navigation-menu a:hover {
             background-color: rgba(156,39,176,0.2);
             border-color: var(--button-hover);
-            transform: scale(1.05);
         }
         .hamburger {
             display: none;
@@ -541,15 +540,76 @@
             0% { width: 100%; }
             100% { width: 0; }
         }
-        @media (max-width: 1280px) {
+        .bell-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.6rem;
+            color: var(--text-color);
+            transition: color 0.3s ease;
+            margin-right: 10px;
+        }
+        .bell-button:hover {
+            color: var(--button-background);
+        }
+        .bell-button.active {
+            color: var(--button-background);
+        }
+        #notificationModal {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            width: 300px;
+            max-height: 50vh;
+            background-color: var(--card-background);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 10;
+            padding: 20px;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+        }
+        #notificationModal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        #notificationModal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #notificationModal .modal-header h2 {
+            font-size: 1.2rem;
+            color: var(--text-color);
+        }
+        #notificationModal .modal-body {
+            flex: 1;
+            margin-top: 20px;
+            color: var(--text-color);
+            overflow-y: auto;
+        }
+        @media (min-width: 1280px) {
+            .mobile-nav {
+                display: none;
+            }
+        }
+        @media (max-width: 1279px) {
             .navigation-menu {
                 display: none;
             }
-            .hamburger {
+            .mobile-nav {
                 display: flex;
+                align-items: center;
+                justify-content: flex-end;
                 position: absolute;
                 top: 20px;
                 right: 20px;
+                z-index: 6;
+                gap: 10px;
+            }
+            .hamburger {
+                display: flex;
             }
         }
         @media (min-width: 531px) {
@@ -716,7 +776,9 @@
         </div>
     </div>
     <nav>
+        <!-- Навигация для экранов >=1280 -->
         <div class="navigation-menu">
+            <button class="bell-button" id="bellDesktop"><i class="fas fa-bell"></i></button>
             {% if 'user' in session and user_is_registered %}
                 <a href="{{ url_for('profile', username=session['user']) }}">Профиль</a>
             {% else %}
@@ -724,10 +786,14 @@
                 <a href="{{ url_for('register') }}">Регистрация</a>
             {% endif %}
         </div>
-        <div class="hamburger" id="hamburger">
-            <span></span>
-            <span></span>
-            <span></span>
+        <!-- Мобильная навигация (для экранов <1280) – колокольчик и гамбургер -->
+        <div class="mobile-nav">
+            <button class="bell-button" id="bellMobile"><i class="fas fa-bell"></i></button>
+            <div class="hamburger" id="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
     </nav>
     <div class="overlay" id="overlay"></div>
@@ -741,6 +807,15 @@
                 <a href="{{ url_for('login') }}">Вход</a>
                 <a href="{{ url_for('register') }}">Регистрация</a>
             {% endif %}
+        </div>
+    </div>
+    <div id="notificationModal">
+        <div class="modal-header">
+            <h2>Уведомления</h2>
+            <button class="bell-button" id="closeNotificationModal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="notificationList">
+            <p>Новых уведомлений нет</p>
         </div>
     </div>
     <div class="container">
@@ -789,7 +864,6 @@
         var user_login = "{{ session['user'] if 'user' in session else '' }}";
         var game_id = null;
     </script>
-
     <script src="{{ url_for('static', filename='script_home.js') }}"></script>
 </body>
 </html>
