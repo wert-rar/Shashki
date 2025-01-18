@@ -45,21 +45,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (window.innerWidth <= 1280) {
         window.addEventListener('click', (event) => {
-            if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop')) {
+            if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop') && !event.target.closest('#bellMobile')) {
                 if (notificationModal.classList.contains('active')) {
                     notificationModal.classList.remove('active');
                     if (bellDesktop) {
-                       bellDesktop.classList.remove('active');
+                        bellDesktop.classList.remove('active');
                     }
                     if (bellMobile) {
                         bellMobile.classList.remove('active');
                     }
                     return;
-                  }
                 }
-                if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
-                    closeSidebar();
-                }
+            }
+            if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
+                closeSidebar();
+            }
         });
     }
 
@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.classList.remove('selected');
         });
         playButton.classList.remove('active');
+        playButton.disabled = true;
     }
 
     const isSmallScreen = window.innerWidth <= 530;
@@ -363,38 +364,68 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    bellDesktop.addEventListener('click', (event) => {
-        event.stopPropagation();
-        bellDesktop.classList.toggle('active');
-        notificationModal.classList.toggle('active');
-    });
+    if (bellDesktop) {
+        const toggleNotificationsDesktop = (event) => {
+            event.stopPropagation();
+            if (notificationModal.classList.contains('active')) {
+                notificationModal.classList.remove('active');
+                bellDesktop.classList.remove('active');
+            } else {
+                notificationModal.classList.add('active');
+                bellDesktop.classList.add('active');
+            }
+        };
+
+        bellDesktop.addEventListener('click', toggleNotificationsDesktop);
+        bellDesktop.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleNotificationsDesktop(e);
+        });
+    }
 
     if (bellMobile) {
-        bellMobile.addEventListener('click', (event) => {
+        const toggleNotificationsMobile = (event) => {
             event.stopPropagation();
-            bellMobile.classList.toggle('active');
-            notificationModal.classList.toggle('active');
+            if (notificationModal.classList.contains('active')) {
+                notificationModal.classList.remove('active');
+                bellMobile.classList.remove('active');
+            } else {
+                notificationModal.classList.add('active');
+                bellMobile.classList.add('active');
+            }
+        };
+
+        bellMobile.addEventListener('click', toggleNotificationsMobile);
+        bellMobile.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleNotificationsMobile(e);
         });
     }
 
     closeNotificationModal.addEventListener('click', (event) => {
         event.stopPropagation();
         notificationModal.classList.remove('active');
-        bellDesktop.classList.remove('active');
-            if (bellMobile) {
-              bellMobile.classList.remove('active');
-            }
-});
+        if (bellDesktop) {
+            bellDesktop.classList.remove('active');
+        }
+        if (bellMobile) {
+            bellMobile.classList.remove('active');
+        }
+    });
 
-document.addEventListener('DOMContentLoaded', function() {
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notif) => {
         notif.addEventListener('click', () => {
             notif.remove();
         });
         setTimeout(() => {
-            notif.remove();
+            notif.style.transition = 'opacity 0.5s';
+            notif.style.opacity = '0';
+            setTimeout(() => {
+                if (notif.parentNode) {
+                    notif.parentNode.removeChild(notif);
+                }
+            }, 500);
         }, 2000);
     });
-  });
 });
