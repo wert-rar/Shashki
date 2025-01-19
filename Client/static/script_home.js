@@ -535,55 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (bellDesktop) {
-        const toggleNotificationsDesktop = (event) => {
-            event.stopPropagation();
-            if (notificationModal.classList.contains('active')) {
-                notificationModal.classList.remove('active');
-                bellDesktop.classList.remove('active');
-            } else {
-                notificationModal.classList.add('active');
-                bellDesktop.classList.add('active');
-            }
-        };
-
-        bellDesktop.addEventListener('click', toggleNotificationsDesktop);
-        bellDesktop.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            toggleNotificationsDesktop(e);
-        });
-    }
-
-    if (bellMobile) {
-        const toggleNotificationsMobile = (event) => {
-            event.stopPropagation();
-            if (notificationModal.classList.contains('active')) {
-                notificationModal.classList.remove('active');
-                bellMobile.classList.remove('active');
-            } else {
-                notificationModal.classList.add('active');
-                bellMobile.classList.add('active');
-            }
-        };
-
-        bellMobile.addEventListener('click', toggleNotificationsMobile);
-        bellMobile.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            toggleNotificationsMobile(e);
-        });
-    }
-
-    closeNotificationModal.addEventListener('click', (event) => {
-        event.stopPropagation();
-        notificationModal.classList.remove('active');
-        if (bellDesktop) {
-            bellDesktop.classList.remove('active');
-        }
-        if (bellMobile) {
-            bellMobile.classList.remove('active');
-        }
-    });
-
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notif) => {
         notif.addEventListener('click', () => {
