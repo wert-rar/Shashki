@@ -71,6 +71,12 @@
             z-index: 1;
             overflow: hidden;
         }
+        .container .button {
+            display: block;
+            margin: 15px auto;
+            max-width: 90%;
+            box-sizing: border-box;
+        }
         #snow-container {
             position: fixed;
             top: 0;
@@ -696,6 +702,14 @@
             }
             .arrow.right {
                 right: -20px;
+            }
+            @media (max-width: 360px) {
+                #notificationModal {
+                    width: 240px;
+                    max-height: 40vh;
+                    padding: 15px;
+                    font-size: 0.9rem;
+                }
             }
         }
     </style>
