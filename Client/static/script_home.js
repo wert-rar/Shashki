@@ -143,15 +143,18 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/get_friend_requests')
             .then(response => response.json())
             .then(data => {
-                if (data.requests && data.requests.length > 0) {
-                    friendNotificationBadge.innerText = data.requests.length;
-                    friendNotificationBadge.style.display = 'block';
-                } else {
-                    friendNotificationBadge.style.display = 'none';
+                if (friendNotificationBadge) {
+                    if (data.requests && data.requests.length > 0) {
+                        friendNotificationBadge.innerText = data.requests.length;
+                        friendNotificationBadge.style.display = 'block';
+                    } else {
+                        friendNotificationBadge.style.display = 'none';
+                    }
                 }
             })
             .catch(error => console.error('Ошибка при получении запросов в друзья:', error));
     }
+
 
     checkFriendRequests();
     setInterval(checkFriendRequests, 5000);

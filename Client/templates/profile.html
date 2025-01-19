@@ -16,7 +16,7 @@
 			--border-color: #2a2a44;
 			--button-background: #991cb1;
 			--button-hover: #8e24aa;
-			--crown-color: #ffd700;
+			--golden-color: #ffd700;
 			--success-color: #28a745;
 			--error-color: #dc3545;
 			--warning-color: #f1c40f;
@@ -41,6 +41,39 @@
 				transform: translateY(100vh);
 				opacity: 0;
 			}
+		}
+		@keyframes rise {
+			0% {
+				transform: translateY(0);
+				opacity: 1;
+			}
+			100% {
+				transform: translateY(-40px);
+				opacity: 0;
+			}
+		}
+		.goldenEffect {
+			position: relative;
+			display: inline-block;
+			text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+		}
+		.goldenEffect .particles {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			pointer-events: none;
+			overflow: visible;
+		}
+		.goldenEffect .particle {
+			position: absolute;
+			bottom: 0;
+			width: 3px;
+			height: 3px;
+			background: var(--golden-color);
+			border-radius: 50%;
+			animation: rise 3s linear infinite;
 		}
 		* {
 			margin: 0;
@@ -105,19 +138,10 @@
 			align-items: center;
 			color: var(--text-color);
 		}
-		.header-info h1 .crown {
-			margin-left: 10px;
-			color: var(--crown-color);
-			font-size: 1.5em;
-		}
-		.header-info p {
-			font-size: 1.1em;
-			color: var(--text-secondary);
-		}
 		.friend-action-container {
 			position: absolute;
-			top: 20px;
-			right: 20px;
+			top: 18px;
+			right: 5px;
 		}
 		.friend-action-container button {
 			background: none;
@@ -146,6 +170,53 @@
 			font-size: 1em;
 		}
 		.friend-action-dropdown span:hover {
+			color: var(--accent-color);
+		}
+		.mobile-menu-container {
+			position: absolute;
+			top: 23px;
+			right: 2px;
+			{% if is_own_profile %}
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			{% else %}
+			display: none;
+			{% endif %}
+			z-index: 10;
+		}
+		@media (min-width: 501px) {
+			.mobile-menu-container {
+				display: none !important;
+			}
+		}
+		.mobile-menu-button {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 3px;
+		}
+		.mobile-menu-button .bar {
+			display: block;
+			width: 22px;
+			height: 3px;
+			background-color: var(--text-color);
+			margin: 3px 0;
+		}
+		.mobile-menu-dropdown {
+			display: none;
+			background-color: var(--card-background);
+			border: 1px solid var(--accent-color);
+			border-radius: 8px;
+			margin-top: 5px;
+			padding: 6px 10px;
+		}
+		.mobile-menu-dropdown span {
+			cursor: pointer;
+			color: var(--text-color);
+			font-size: 1em;
+		}
+		.mobile-menu-dropdown span:hover {
 			color: var(--accent-color);
 		}
 		.user-info {
@@ -267,11 +338,6 @@
 		.hide-button {
 			display: none;
 			background-color: #555;
-		}
-		.crown {
-			color: var(--crown-color);
-			margin-left: 8px;
-			font-size: 1.2em;
 		}
 		.history-table-wrapper::-webkit-scrollbar {
 			width: 12px;
@@ -424,6 +490,24 @@
 				max-width: 100%;
 			}
 		}
+		@media (max-width: 500px) {
+			{% if is_own_profile %}
+			.friend-action-container {
+				display: none;
+			}
+			.mobile-menu-container {
+				display: flex;
+			}
+			{% endif %}
+			[data-aos],
+			.fade-in,
+			[data-aos="fade-down-custom"] {
+				opacity: 1 !important;
+				transform: none !important;
+				animation: none !important;
+				transition: none !important;
+			}
+		}
 		@media (max-width: 369px) and (min-width: 355px){
 			.history-table-wrapper th,
 			.history-table-wrapper td {
@@ -436,6 +520,11 @@
 				padding: 8px 15px;
 				font-size: 0.9em;
 				margin: 0 5px;
+			}
+			.friend-action-container {
+				position: absolute;
+				top: 8px;
+				right: 5px;
 			}
 			.user-info .info-card {
 				padding: 15px;
@@ -481,8 +570,31 @@
 			.header-info h1 {
 				font-size: calc(1.5em - 0.2rem);
 			}
-			.header-info p {
-				font-size: calc(0.9em - 0.2rem);
+			.friend-action-container {
+				position: absolute;
+				top: 7px;
+				right: 5px;
+			}
+			.mobile-menu-container {
+				top: 10px;
+			}
+		}
+		@media (max-width: 315px) {
+			.avatar {
+				width: calc(80px - 1rem);
+				height: calc(80px - 1rem);
+				margin-right: 15px;
+			}
+			.friend-action-container {
+				position: absolute;
+				top: 1px;
+				right: 5px;
+			}
+			.header-info h1 {
+				font-size: calc(2em - 0.9em);
+			}
+			.mobile-menu-container {
+				top: 5px;
 			}
 		}
 		@media (max-width: 300px) {
@@ -497,11 +609,15 @@
 				font-size: calc(1.2em - 0.2rem);
 			}
 			.avatar {
-				width: calc(80px - 0.2rem);
-				height: calc(80px - 0.2rem);
+				width: calc(80px - 1.1rem);
+				height: calc(80px - 1.1rem);
+				margin-right: 5px;
 			}
 			.header-info h1 {
-				font-size: calc(1.5em - 0.2rem);
+				font-size: calc(2em - 0.9em);
+			}
+			.mobile-menu-container {
+				top: 8.5px;
 			}
 			.header-info p {
 				font-size: calc(0.9em - 0.2rem);
@@ -513,8 +629,11 @@
 			}
 			.buttons button {
 				padding: 8px 15px;
-				font-size: 0.5em;
+				font-size: 0.6em;
 				margin: 0 5px;
+			}
+			.mobile-menu-container {
+				top: 7px;
 			}
 		}
 		@media (min-width: 485px) and (max-width: 560px) {
@@ -711,6 +830,51 @@
 		#removeFriendModal .remove-modal-content button:hover {
 			background-color: var(--button-hover);
 		}
+		/* Return to game block styling */
+		#return-to-game {
+			position: absolute;
+			bottom: 20px;
+			background: var(--card-background);
+			border: 2px solid var(--button-background);
+			border-radius: 15px;
+			padding: 20px;
+			width: 80%;
+			max-width: 500px;
+			text-align: center;
+			box-shadow: 0 5px 15px rgba(0, 255, 150, 0.3);
+			display: none;
+			z-index: 2;
+		}
+		#return-to-game h2 {
+			font-size: 1.5rem;
+			color: var(--success-color);
+			margin-bottom: 10px;
+		}
+		#return-to-game p {
+			font-size: 1rem;
+			margin-bottom: 20px;
+		}
+		#return-to-game .button {
+			background-color: var(--warning-color);
+			color: #fff;
+			padding: 12px 25px;
+			margin: 0 10px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 1em;
+			transition: background-color 0.3s ease, transform 0.2s ease;
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+			border: none;
+		}
+		#return-to-game .button.leave-button {
+			background-color: var(--error-color);
+		}
+		#return-to-game .button.leave-button:hover {
+			background-color: #b71c1c;
+		}
+		#return-to-game .button + .button {
+			margin-left: 15px;
+		}
 	</style>
 </head>
 <body>
@@ -720,9 +884,24 @@
 			<div class="avatar" data-aos="fade-down-custom" style="background-image: url('{{ user_avatar_url|default('/static/avatars/default_avatar.jpg') }}');" {% if is_own_profile %}onclick="toggleAvatarActions()" {% endif %}></div>
 			<div class="header-info" data-aos="fade-left">
 				<h1>
-					{{ profile_user_login }}
 					{% if profile_user_login == 'WertRar' %}
-						<span class="crown" title="Лучший игрок">👑</span>
+						<span class="nickname goldenEffect">
+							{{ profile_user_login }}
+							<span class="particles">
+								<span class="particle" style="left:7%; animation-delay:0.1s;"></span>
+								<span class="particle" style="left:23%; animation-delay:0.3s;"></span>
+								<span class="particle" style="left:48%; animation-delay:0.5s;"></span>
+								<span class="particle" style="left:16%; animation-delay:0.8s;"></span>
+								<span class="particle" style="left:71%; animation-delay:0.4s;"></span>
+								<span class="particle" style="left:39%; animation-delay:1.0s;"></span>
+								<span class="particle" style="left:85%; animation-delay:0.6s;"></span>
+								<span class="particle" style="left:55%; animation-delay:1.2s;"></span>
+								<span class="particle" style="left:30%; animation-delay:0.7s;"></span>
+								<span class="particle" style="left:93%; animation-delay:1.4s;"></span>
+							</span>
+						</span>
+					{% else %}
+						<span class="nickname">{{ profile_user_login }}</span>
 					{% endif %}
 				</h1>
 				<p>Рейтинг: {{ rang }}</p>
@@ -739,6 +918,16 @@
 				</div>
 			</div>
 			{% endif %}
+			<div class="mobile-menu-container">
+				<button class="mobile-menu-button" onclick="toggleMobileMenu()">
+					<span class="bar"></span>
+					<span class="bar"></span>
+					<span class="bar"></span>
+				</button>
+				<div id="mobileMenuDropdown" class="mobile-menu-dropdown">
+					<span onclick="openFriendsModal(); toggleMobileMenu();">Друзья</span>
+				</div>
+			</div>
 		</div>
 		{% if is_own_profile %}
 		<div id="avatarActions">
@@ -788,14 +977,20 @@
 			</div>
 		</div>
 		<div class="buttons">
+			<form id="avatarForm" action="/upload_avatar" method="post" enctype="multipart/form-data" style="display:inline;">
+				<input type="file" name="avatar" id="avatarFileInput" accept=".png,.jpg,.jpeg,.gif" style="display:none;" onchange="document.getElementById('avatarForm').submit();" />
+			</form>
+			<button class="home-button" onclick="goHome()">Вернуться</button>
 			{% if is_own_profile %}
-				<form id="avatarForm" action="/upload_avatar" method="post" enctype="multipart/form-data" style="display:inline;">
-					<input type="file" name="avatar" id="avatarFileInput" accept=".png,.jpg,.jpeg,.gif" style="display:none;" onchange="document.getElementById('avatarForm').submit();" />
-				</form>
-				<button class="home-button" onclick="goHome()">Вернуться</button>
 				<button class="logout-button" onclick="logout()">Выйти</button>
 			{% endif %}
 		</div>
+	</div>
+	<div id="return-to-game">
+		<h2>У вас есть активная игра</h2>
+		<p>Вы можете вернуться к вашей текущей игре.</p>
+		<button class="button" onclick="returnToGame()">Вернуться в игру</button>
+		<button class="button leave-button" onclick="showLeaveGameModal()">Покинуть игру</button>
 	</div>
 	<div id="info-modal" class="info-modal">
 		<div class="info-modal-content" id="modal-content">
@@ -1046,7 +1241,10 @@
 							dotsButton.style.cursor = 'pointer';
 							dotsButton.onclick = function() {
 								openRemoveFriendModal(friend);
-								document.getElementById("friendActionDropdown").style.display = "none";
+								const dropdown = document.getElementById("friendActionDropdown");
+								if (dropdown) {
+									dropdown.style.display = "none";
+								}
 							};
 							friendDiv.appendChild(dotsButton);
 							container.appendChild(friendDiv);
@@ -1128,6 +1326,23 @@
 				showNotification("Ошибка при отправке запроса", "error");
 			});
 		}
+		function toggleMobileMenu() {
+			const dropdown = document.getElementById("mobileMenuDropdown");
+			if (dropdown.style.display === "block") {
+				dropdown.style.display = "none";
+			} else {
+				dropdown.style.display = "block";
+			}
+		}
+		document.addEventListener("click", function(e) {
+			const mobileMenuContainer = document.querySelector(".mobile-menu-container");
+			const dropdown = document.getElementById("mobileMenuDropdown");
+			if (dropdown.style.display === "block") {
+				if (!mobileMenuContainer.contains(e.target)) {
+					dropdown.style.display = "none";
+				}
+			}
+		});
 	</script>
 	<script>
 		document.addEventListener("DOMContentLoaded", function () {
