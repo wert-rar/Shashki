@@ -1179,7 +1179,6 @@ def send_friend_request():
     if sender in friend_requests[friend_username]:
         return jsonify({"message": "Вы уже отправили запрос в друзья"}), 200
     friend_requests[friend_username].append(sender)
-    flash(f"Запрос в друзья отправлен пользователю {friend_username}", "success")
     return jsonify({"message": "Запрос успешно отправлен"}), 200
 
 @app.route("/respond_friend_request", methods=["POST"])
