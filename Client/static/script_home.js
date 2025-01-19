@@ -12,11 +12,186 @@ document.addEventListener('DOMContentLoaded', () => {
     const bellMobile = document.getElementById("bellMobile");
     const notificationModal = document.getElementById("notificationModal");
     const closeNotificationModal = document.getElementById("closeNotificationModal");
-
+    const notificationList = document.getElementById("notificationList");
+    const friendNotificationBadge = document.getElementById("friendNotificationBadge");
     let selections = { difficulty: null, color: null };
     let startX = 0;
     let endX = 0;
     let currentIndex = 0;
+    let game_id = null;
+    function fetchNotifications() {
+        fetch('/get_notifications')
+            .then(response => response.json())
+            .then(data => {
+                if (data.notifications && data.notifications.length > 0) {
+                    notificationList.innerHTML = "";
+                    data.notifications.forEach(sender => {
+                        const notifItem = document.createElement("div");
+                        notifItem.classList.add("notification-item");
+                        notifItem.style.padding = "10px";
+                        notifItem.style.borderBottom = "1px solid #444";
+                        const notifText = document.createElement("p");
+                        notifText.textContent = `Запрос в друзья от ${sender}`;
+                        notifItem.appendChild(notifText);
+
+                        const btnContainer = document.createElement("div");
+                        btnContainer.style.marginTop = "5px";
+                        btnContainer.style.display = "flex";
+                        btnContainer.style.gap = "10px";
+
+                        const acceptBtn = document.createElement("button");
+                        acceptBtn.textContent = "Принять";
+                        acceptBtn.style.flex = "1";
+                        acceptBtn.style.padding = "5px";
+                        acceptBtn.style.background = "#28a745";
+                        acceptBtn.style.border = "none";
+                        acceptBtn.style.borderRadius = "5px";
+                        acceptBtn.style.cursor = "pointer";
+                        acceptBtn.style.color = "#fff";
+                        acceptBtn.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            respondFriendRequest(sender, "accept", notifItem);
+                        });
+
+                        const declineBtn = document.createElement("button");
+                        declineBtn.textContent = "Отклонить";
+                        declineBtn.style.flex = "1";
+                        declineBtn.style.padding = "5px";
+                        declineBtn.style.background = "#dc3545";
+                        declineBtn.style.border = "none";
+                        declineBtn.style.borderRadius = "5px";
+                        declineBtn.style.cursor = "pointer";
+                        declineBtn.style.color = "#fff";
+                        declineBtn.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            respondFriendRequest(sender, "decline", notifItem);
+                        });
+
+                        btnContainer.appendChild(acceptBtn);
+                        btnContainer.appendChild(declineBtn);
+                        notifItem.appendChild(btnContainer);
+
+                        notificationList.appendChild(notifItem);
+                    });
+                } else {
+                    notificationList.innerHTML = "<p>Новых уведомлений нет</p>";
+                }
+            })
+            .catch(err => {
+                console.error("Ошибка при получении уведомлений:", err);
+            });
+    }
+
+    function respondFriendRequest(sender, responseType, notifElement) {
+        fetch('/respond_friend_request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sender_username: sender, response: responseType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (responseType === "accept") {
+                createNotification(`Пользователь ${sender} теперь ваш друг`, "success");
+            } else {
+                createNotification(`Вы отклонили запрос от ${sender}`, "error");
+            }
+            notifElement.remove();
+            checkFriendRequests();
+        })
+        .catch(error => {
+            createNotification("Ошибка при отправке ответа", "error");
+            console.error(error);
+        });
+    }
+
+    function createNotification(message, type) {
+        let container = document.getElementById("notification-container");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "notification-container";
+            document.body.appendChild(container);
+        }
+
+        const notification = document.createElement("div");
+        notification.classList.add("notification", type);
+        notification.innerHTML = message;
+
+        const progressBar = document.createElement("div");
+        progressBar.classList.add("progress-bar");
+        notification.appendChild(progressBar);
+
+        container.appendChild(notification);
+
+        notification.addEventListener("click", () => {
+            notification.style.transition = 'opacity 0.5s';
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                notification.remove();
+            }, 500);
+        });
+
+        setTimeout(() => {
+            notification.style.transition = 'opacity 0.5s';
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                notification.remove();
+            }, 500);
+        }, 2000);
+    }
+
+    function checkFriendRequests() {
+        fetch('/get_friend_requests')
+            .then(response => response.json())
+            .then(data => {
+                if (data.requests && data.requests.length > 0) {
+                    friendNotificationBadge.innerText = data.requests.length;
+                    friendNotificationBadge.style.display = 'block';
+                } else {
+                    friendNotificationBadge.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Ошибка при получении запросов в друзья:', error));
+    }
+
+    checkFriendRequests();
+    setInterval(checkFriendRequests, 5000);
+
+    function toggleNotifications(event) {
+        event.stopPropagation();
+        if (notificationModal.classList.contains('active')) {
+            notificationModal.classList.remove('active');
+            bellDesktop.classList.remove('active');
+            if (bellMobile) bellMobile.classList.remove('active');
+        } else {
+            notificationModal.classList.add('active');
+            bellDesktop.classList.add('active');
+            if (bellMobile) bellMobile.classList.add('active');
+            fetchNotifications();
+        }
+    }
+
+    if (bellDesktop) {
+        bellDesktop.addEventListener('click', toggleNotifications);
+        bellDesktop.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleNotifications(e);
+        });
+    }
+
+    if (bellMobile) {
+        bellMobile.addEventListener('click', toggleNotifications);
+        bellMobile.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleNotifications(e);
+        });
+    }
+
+    closeNotificationModal.addEventListener('click', (event) => {
+        event.stopPropagation();
+        notificationModal.classList.remove('active');
+        if (bellDesktop) bellDesktop.classList.remove('active');
+        if (bellMobile) bellMobile.classList.remove('active');
+    });
 
     if (!sidebar.classList.contains("active")) {
         sidebar.style.transform = 'translateX(300px)';
@@ -48,12 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop') && !event.target.closest('#bellMobile')) {
                 if (notificationModal.classList.contains('active')) {
                     notificationModal.classList.remove('active');
-                    if (bellDesktop) {
-                        bellDesktop.classList.remove('active');
-                    }
-                    if (bellMobile) {
-                        bellMobile.classList.remove('active');
-                    }
+                    if (bellDesktop) bellDesktop.classList.remove('active');
+                    if (bellMobile) bellMobile.classList.remove('active');
                     return;
                 }
             }

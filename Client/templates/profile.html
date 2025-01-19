@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8" />
+	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>Профиль {{ profile_user_login }}</title>
 	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -66,6 +66,7 @@
 			width: 100%;
 			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
 			z-index: 5;
+			position: relative;
 		}
 		#snowflakes-container {
 			position: fixed;
@@ -81,6 +82,7 @@
 			display: flex;
 			align-items: center;
 			margin-bottom: 30px;
+			position: relative;
 		}
 		.avatar {
 			width: 100px;
@@ -111,6 +113,40 @@
 		.header-info p {
 			font-size: 1.1em;
 			color: var(--text-secondary);
+		}
+		.friend-action-container {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+		}
+		.friend-action-container button {
+			background: none;
+			border: none;
+			color: var(--text-color);
+			font-size: 26px;
+			cursor: pointer;
+			position: relative;
+		}
+		.friend-action-dropdown {
+			display: none;
+			position: absolute;
+			top: 35px;
+			right: 0;
+			background-color: var(--card-background);
+			border: 1px solid var(--accent-color);
+			padding: 8px 12px;
+			border-radius: 8px;
+			z-index: 10;
+			white-space: nowrap;
+		}
+		.friend-action-dropdown span {
+			cursor: pointer;
+			display: block;
+			color: var(--text-color);
+			font-size: 1em;
+		}
+		.friend-action-dropdown span:hover {
+			color: var(--accent-color);
 		}
 		.user-info {
 			display: flex;
@@ -448,11 +484,6 @@
 			.header-info p {
 				font-size: calc(0.9em - 0.2rem);
 			}
-			.buttons button {
-				padding: 8px 15px;
-				font-size: 0.75em;
-				margin: 0 5px;
-			}
 		}
 		@media (max-width: 300px) {
 			.user-info .info-card {
@@ -487,7 +518,7 @@
 			}
 		}
 		@media (min-width: 485px) and (max-width: 560px) {
-		  	.history-table-wrapper th,
+			.history-table-wrapper th,
 			.history-table-wrapper td {
 				font-size: calc(0.90em);
 				padding: calc(10px) calc(12px);
@@ -500,7 +531,7 @@
 				padding: calc(10px) calc(12px);
 			}
 		}
-        @media (max-width: 270px) {
+		@media (max-width: 270px) {
 			.avatar {
 				width: 60px;
 				height: 60px;
@@ -581,21 +612,6 @@
 		.close-button:hover {
 			color: var(--accent-color);
 		}
-		@media (max-width: 290px) {
-			.info-modal-content h3 {
-				margin: 20px 0;
-				font-size: 1.1em;
-				color: #ffffff;
-			}
-		}
-		@media (max-width: 250px) {
-			.info-modal-content h3 {
-				margin: 20px 0;
-				font-size: 1em;
-				color: #ffffff;
-			}
-		}
-		/* Стили для блока с аватаром */
 		#avatarActions {
 			margin-bottom: 20px;
 			padding: 10px;
@@ -621,20 +637,87 @@
 			background-color: var(--button-hover);
 			transform: translateY(-2px);
 		}
+		.friend-modal {
+			display: none;
+			position: fixed;
+			z-index: 9999;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			justify-content: center;
+			align-items: center;
+		}
+		.friend-modal-content {
+			background-color: var(--card-background);
+			padding: 30px 50px;
+			border-radius: 10px;
+			text-align: center;
+			position: relative;
+			max-width: 400px;
+			width: 90%;
+		}
+		.friend-modal-content .close-button {
+			position: absolute;
+			top: 5px;
+			right: 10px;
+			font-size: 20px;
+			cursor: pointer;
+			color: var(--text-color);
+		}
+		.friend-modal-content button {
+			padding: 10px 20px;
+			background-color: var(--button-background);
+			color: #fff;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			margin-top: 15px;
+		}
+		.friend-modal-content button:hover {
+			background-color: var(--button-hover);
+		}
+		#removeFriendModal {
+			display: none;
+			position: fixed;
+			z-index: 9999;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.5);
+			justify-content: center;
+			align-items: center;
+		}
+		#removeFriendModal .remove-modal-content {
+			background-color: var(--card-background);
+			padding: 30px 50px;
+			border-radius: 10px;
+			text-align: center;
+			position: relative;
+			max-width: 400px;
+			width: 90%;
+		}
+		#removeFriendModal .remove-modal-content button {
+			padding: 10px 20px;
+			background-color: var(--button-background);
+			color: #fff;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			margin: 15px 10px 0 10px;
+		}
+		#removeFriendModal .remove-modal-content button:hover {
+			background-color: var(--button-hover);
+		}
 	</style>
 </head>
 <body>
 	<div id="snowflakes-container"></div>
 	<div class="container">
 		<div class="header">
-			<div
-				class="avatar"
-				data-aos="fade-down-custom"
-				style="background-image: url('{{ user_avatar_url|default('/static/avatars/default_avatar.jpg') }}');"
-				{% if is_own_profile %}
-					onclick="toggleAvatarActions()"
-				{% endif %}
-			></div>
+			<div class="avatar" data-aos="fade-down-custom" style="background-image: url('{{ user_avatar_url|default('/static/avatars/default_avatar.jpg') }}');" {% if is_own_profile %}onclick="toggleAvatarActions()" {% endif %}></div>
 			<div class="header-info" data-aos="fade-left">
 				<h1>
 					{{ profile_user_login }}
@@ -644,17 +727,25 @@
 				</h1>
 				<p>Рейтинг: {{ rang }}</p>
 			</div>
+			{% if is_own_profile %}
+			<div class="friend-action-container">
+				<button id="showFriendsBtn" onclick="openFriendsModal()" style="font-size:1.1em; padding: 8px 12px;">Друзья</button>
+			</div>
+			{% else %}
+			<div class="friend-action-container">
+				<button id="friendActionBtn" onclick="toggleFriendAction()">⋮</button>
+				<div id="friendActionDropdown" class="friend-action-dropdown">
+					<span id="friendActionText"></span>
+				</div>
+			</div>
+			{% endif %}
 		</div>
 		{% if is_own_profile %}
 		<div id="avatarActions">
-			<button type="button" onclick="document.getElementById('avatarFileInput').click();">
-				Загрузить аватар
-			</button>
+			<button type="button" onclick="document.getElementById('avatarFileInput').click();">Загрузить аватар</button>
 			{% if user_avatar_url != '/static/avatars/default_avatar.jpg' %}
 			<form id="deleteAvatarForm" action="/delete_avatar" method="post" style="display:inline;">
-				<button type="submit">
-					Удалить аватар
-				</button>
+				<button type="submit">Удалить аватар</button>
 			</form>
 			{% endif %}
 		</div>
@@ -692,25 +783,14 @@
 				</table>
 			</div>
 			<div class="buttons">
-				<button id="loadMoreButton" class="load-more-button">
-					Загрузить ещё
-				</button>
-				<button id="hideButton" class="hide-button">
-					Скрыть
-				</button>
+				<button id="loadMoreButton" class="load-more-button">Загрузить ещё</button>
+				<button id="hideButton" class="hide-button">Скрыть</button>
 			</div>
 		</div>
 		<div class="buttons">
 			{% if is_own_profile %}
 				<form id="avatarForm" action="/upload_avatar" method="post" enctype="multipart/form-data" style="display:inline;">
-					<input
-						type="file"
-						name="avatar"
-						id="avatarFileInput"
-						accept=".png,.jpg,.jpeg,.gif"
-						style="display:none;"
-						onchange="document.getElementById('avatarForm').submit();"
-					/>
+					<input type="file" name="avatar" id="avatarFileInput" accept=".png,.jpg,.jpeg,.gif" style="display:none;" onchange="document.getElementById('avatarForm').submit();" />
 				</form>
 				<button class="home-button" onclick="goHome()">Вернуться</button>
 				<button class="logout-button" onclick="logout()">Выйти</button>
@@ -725,17 +805,41 @@
 			<h3>Поражений: {{ losses }}</h3>
 		</div>
 	</div>
+	<div id="friendModal" class="friend-modal">
+		<div class="friend-modal-content">
+			<span class="close-button" onclick="closeFriendModal()">&times;</span>
+			<p>Отправить запрос в друзья пользователю <strong>{{ profile_user_login }}</strong>?</p>
+			<button onclick="sendFriendRequest()">Добавить в друзья</button>
+		</div>
+	</div>
+	<div id="friendsModal" class="friend-modal">
+		<div class="friend-modal-content" id="friendsModalContent">
+			<span class="close-button" onclick="closeFriendsModal()">&times;</span>
+			<h3>Ваши друзья</h3>
+			<div id="friendsListContainer"></div>
+		</div>
+	</div>
+	<div id="removeFriendModal">
+		<div class="remove-modal-content">
+			<span class="close-button" onclick="closeRemoveFriendModal()">&times;</span>
+			<p>Удалить пользователя <strong id="removeFriendName"></strong> из друзей?</p>
+			<button onclick="confirmRemoveFriend()">Удалить</button>
+			<button onclick="closeRemoveFriendModal()">Отмена</button>
+		</div>
+	</div>
+	<div id="notification-container"></div>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 	<script>
 		const allRecords = {{ user_history|tojson }}.reverse();
 		let currentIndex = 0;
 		const pageSize = 9;
+		let friendToRemove = "";
 		document.addEventListener("DOMContentLoaded", () => {
 			AOS.init({
 				duration: 800,
 				easing: "ease-in-out",
-				once: true,
+				once: true
 			});
 			loadRecords();
 			document.getElementById("loadMoreButton").addEventListener("click", loadRecords);
@@ -743,6 +847,12 @@
 			document.getElementById("info-modal").addEventListener("click", (e) => {
 				if (e.target === document.getElementById("info-modal")) {
 					closeInfoModal();
+				}
+			});
+			document.addEventListener("click", (e) => {
+				const friendsModal = document.getElementById("friendsModal");
+				if (friendsModal.style.display === "flex" && !e.target.closest("#friendsModalContent")) {
+					closeFriendsModal();
 				}
 			});
 		});
@@ -776,7 +886,7 @@
 				day: "2-digit",
 				hour: "2-digit",
 				minute: "2-digit",
-				second: "2-digit",
+				second: "2-digit"
 			};
 			const date = new Date(dateString);
 			return date.toLocaleString("ru-RU", options);
@@ -792,10 +902,7 @@
 				dateTd.textContent = formatDate(record.date_start);
 				tr.appendChild(dateTd);
 				const ratingTd = document.createElement("td");
-				const ratingChange =
-					record.rating_change >= 0
-						? `(+${record.rating_change})`
-						: `(${record.rating_change})`;
+				const ratingChange = record.rating_change >= 0 ? `(+${record.rating_change})` : `(${record.rating_change})`;
 				ratingTd.textContent = `${record.rating_after} ${ratingChange}`;
 				tr.appendChild(ratingTd);
 				const resultTd = document.createElement("td");
@@ -841,24 +948,13 @@
 				rows[i].classList.add("fade-out");
 				setTimeout(() => rows[i].remove(), 300);
 			}
-			setTimeout(() => {
-				currentIndex = pageSize;
-				updateButtons();
-			}, 300);
+			setTimeout(() => { currentIndex = pageSize; updateButtons(); }, 300);
 		}
 		function updateButtons() {
 			const loadMoreBtn = document.getElementById("loadMoreButton");
 			const hideBtn = document.getElementById("hideButton");
-			if (currentIndex > pageSize) {
-				hideBtn.style.display = "inline-block";
-			} else {
-				hideBtn.style.display = "none";
-			}
-			if (currentIndex >= allRecords.length) {
-				loadMoreBtn.style.display = "none";
-			} else {
-				loadMoreBtn.style.display = "inline-block";
-			}
+			if (currentIndex > pageSize) { hideBtn.style.display = "inline-block"; } else { hideBtn.style.display = "none"; }
+			if (currentIndex >= allRecords.length) { loadMoreBtn.style.display = "none"; } else { loadMoreBtn.style.display = "inline-block"; }
 		}
 		function generateSnowflakes() {
 			const container = document.getElementById("snowflakes-container");
@@ -876,17 +972,11 @@
 		document.addEventListener("DOMContentLoaded", () => {
 			generateSnowflakes();
 		});
-		function goHome() {
-			window.location.href = "/";
-		}
-		function logout() {
-			window.location.href = "/logout";
-		}
+		function goHome() { window.location.href = "/"; }
+		function logout() { window.location.href = "/logout"; }
 		function openInfoModal() {
 			const modal = document.getElementById("info-modal");
-			if (window.innerWidth <= 700) {
-				modal.classList.add("show");
-			}
+			if (window.innerWidth <= 700) { modal.classList.add("show"); }
 		}
 		function closeInfoModal() {
 			const modal = document.getElementById("info-modal");
@@ -894,34 +984,164 @@
 		}
 		function toggleAvatarActions() {
 			const actions = document.getElementById("avatarActions");
-			if (actions.style.display === "none" || actions.style.display === "") {
-				actions.style.display = "block";
-			} else {
-				actions.style.display = "none";
+			actions.style.display = (actions.style.display === "none" || actions.style.display === "") ? "block" : "none";
+		}
+		function openFriendModal() { document.getElementById("friendModal").style.display = "flex"; }
+		function closeFriendModal() { document.getElementById("friendModal").style.display = "none"; }
+		function showNotification(message, category = "success") {
+			const container = document.getElementById("notification-container");
+			const notif = document.createElement("div");
+			notif.className = `notification ${category}`;
+			notif.innerHTML = message + '<div class="progress-bar"></div>';
+			notif.addEventListener("click", () => {
+				notif.style.transition = 'opacity 0.5s';
+				notif.style.opacity = "0";
+				setTimeout(() => { notif.remove(); }, 500);
+			});
+			container.appendChild(notif);
+			setTimeout(() => {
+				notif.style.transition = 'opacity 0.5s';
+				notif.style.opacity = "0";
+				setTimeout(() => { notif.remove(); }, 500);
+			}, 2000);
+		}
+		function sendFriendRequest() {
+			fetch('/send_friend_request', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ friend_username: "{{ profile_user_login }}" })
+			})
+			.then(response => response.json())
+			.then(data => {
+				showNotification(data.message, "success");
+				closeFriendModal();
+			})
+			.catch(error => {
+				showNotification("Ошибка при отправке запроса", "error");
+			});
+		}
+		function openFriendsModal() {
+			fetch('/get_friends')
+				.then(response => response.json())
+				.then(data => {
+					const container = document.getElementById('friendsListContainer');
+					container.innerHTML = "";
+					if (data.friends && data.friends.length > 0) {
+						data.friends.forEach(friend => {
+							const friendDiv = document.createElement('div');
+							friendDiv.style.display = 'flex';
+							friendDiv.style.justifyContent = 'space-between';
+							friendDiv.style.alignItems = 'center';
+							friendDiv.style.padding = '8px 0';
+							friendDiv.style.borderBottom = '1px solid #444';
+							const friendName = document.createElement('span');
+							friendName.textContent = friend;
+							friendDiv.appendChild(friendName);
+							const dotsButton = document.createElement('button');
+							dotsButton.textContent = '⋮';
+							dotsButton.style.background = 'none';
+							dotsButton.style.border = 'none';
+							dotsButton.style.color = 'var(--text-color)';
+							dotsButton.style.fontSize = '18px';
+							dotsButton.style.cursor = 'pointer';
+							dotsButton.onclick = function() {
+								openRemoveFriendModal(friend);
+								document.getElementById("friendActionDropdown").style.display = "none";
+							};
+							friendDiv.appendChild(dotsButton);
+							container.appendChild(friendDiv);
+						});
+					} else { container.innerHTML = "<p>Список друзей пуст</p>"; }
+					document.getElementById('friendsModal').style.display = 'flex';
+				})
+				.catch(error => { showNotification("Ошибка загрузки списка друзей", "error"); });
+		}
+		function closeFriendsModal() { document.getElementById('friendsModal').style.display = 'none'; }
+		function openRemoveFriendModal(friendUsername) {
+			friendToRemove = friendUsername;
+			document.getElementById("removeFriendName").textContent = friendUsername;
+			document.getElementById("removeFriendModal").style.display = "flex";
+		}
+		function closeRemoveFriendModal() {
+			document.getElementById("removeFriendModal").style.display = "none";
+			friendToRemove = "";
+		}
+		function confirmRemoveFriend() {
+			removeFriend(friendToRemove);
+		}
+		function removeFriend(friendUsername) {
+			fetch('/remove_friend', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ friend_username: friendUsername })
+			})
+			.then(response => response.json())
+			.then(data => {
+				showNotification(data.message, "success");
+				closeRemoveFriendModal();
+			})
+			.catch(error => { showNotification("Ошибка при удалении друга", "error"); });
+		}
+		function toggleFriendAction() {
+			const dropdown = document.getElementById('friendActionDropdown');
+			if (dropdown.style.display === "block") {
+				dropdown.style.display = "none";
+				return;
 			}
+			fetch('/get_friends')
+				.then(response => response.json())
+				.then(data => {
+					let isFriend = false;
+					if (data.friends && data.friends.includes("{{ profile_user_login }}")) {
+						isFriend = true;
+					}
+					const actionText = document.getElementById('friendActionText');
+					if (isFriend) {
+						actionText.textContent = "Удалить из друзей";
+						actionText.onclick = function() {
+							openRemoveFriendModal("{{ profile_user_login }}");
+							dropdown.style.display = "none";
+						};
+					} else {
+						actionText.textContent = "Добавить в друзья";
+						actionText.onclick = function() {
+							addFriendAction();
+							dropdown.style.display = "none";
+						};
+					}
+					dropdown.style.display = "block";
+					setTimeout(() => { dropdown.style.display = "none"; }, 3000);
+				})
+				.catch(error => {});
+		}
+		function addFriendAction() {
+			fetch('/send_friend_request', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ friend_username: "{{ profile_user_login }}" })
+			})
+			.then(response => response.json())
+			.then(data => {
+				showNotification(data.message, "success");
+			})
+			.catch(error => {
+				showNotification("Ошибка при отправке запроса", "error");
+			});
 		}
 	</script>
-	{% with messages = get_flashed_messages(with_categories=true) %}
-		{% if messages %}
-			<div id="notification-container">
-				{% for category, message in messages %}
-					<div class="notification {{ category }}">
-						{{ message }}
-						<div class="progress-bar"></div>
-					</div>
-				{% endfor %}
-			</div>
-		{% endif %}
-	{% endwith %}
 	<script>
 		document.addEventListener("DOMContentLoaded", function () {
 			const notifications = document.querySelectorAll(".notification");
 			notifications.forEach((notif) => {
 				notif.addEventListener("click", () => {
-					notif.remove();
+					notif.style.transition = 'opacity 0.5s';
+					notif.style.opacity = '0';
+					setTimeout(() => { notif.remove(); }, 500);
 				});
 				setTimeout(() => {
-					notif.remove();
+					notif.style.transition = 'opacity 0.5s';
+					notif.style.opacity = '0';
+					setTimeout(() => { notif.remove(); }, 500);
 				}, 2000);
 			});
 		});
