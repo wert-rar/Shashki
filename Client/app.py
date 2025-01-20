@@ -24,7 +24,18 @@ from game import (
     all_games_dict,
     update_game_status_in_db
 )
-from base_postgres import SessionLocal, GameMove
+
+from base_postgres import (
+    SessionLocal,
+    GameMove,
+    init_db,
+    send_friend_request_db,
+    get_incoming_friend_requests_db,
+    respond_friend_request_db,
+    get_friends_db,
+    remove_friend_db
+)
+
 import logging, subprocess, hmac, hashlib, threading, time
 import itertools
 import datetime
@@ -43,9 +54,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-friend_requests = {}
-friends_list = {}
 
 status_ = {
     "w1": "Ход белых",
@@ -1175,6 +1183,7 @@ def delete_avatar():
         flash('У вас уже дефолтный аватар', 'info')
     return redirect(url_for('profile', username=user_login))
 
+
 @app.route("/send_friend_request", methods=["POST"])
 def send_friend_request():
     if 'user' not in session:
@@ -1189,11 +1198,12 @@ def send_friend_request():
     user_row = get_user_by_login(friend_username)
     if not user_row:
         return jsonify({"error": "Пользователь не найден"}), 404
-    friend_requests.setdefault(friend_username, [])
-    if sender in friend_requests[friend_username]:
-        return jsonify({"message": "Вы уже отправили запрос в друзья"}), 200
-    friend_requests[friend_username].append(sender)
-    return jsonify({"message": "Запрос успешно отправлен"}), 200
+    created_or_pending = send_friend_request_db(sender, friend_username)
+    if created_or_pending:
+        return jsonify({"message": "Запрос успешно отправлен"}), 200
+    else:
+        return jsonify({"message": "Вы уже друзья или заявка не может быть отправлена"}), 200
+
 
 @app.route("/respond_friend_request", methods=["POST"])
 def respond_friend_request():
@@ -1205,46 +1215,42 @@ def respond_friend_request():
     receiver = session.get("user")
     if not sender_username or response not in ["accept", "decline"]:
         return jsonify({"error": "Некорректные данные"}), 400
-    pending = friend_requests.get(receiver, [])
-    if sender_username not in pending:
+    updated = respond_friend_request_db(sender_username, receiver, response)
+    if not updated:
         return jsonify({"error": "Нет запроса от данного пользователя"}), 400
     if response == "accept":
-        friends_list.setdefault(receiver, [])
-        friends_list.setdefault(sender_username, [])
-        if sender_username not in friends_list[receiver]:
-            friends_list[receiver].append(sender_username)
-        if receiver not in friends_list[sender_username]:
-            friends_list[sender_username].append(receiver)
         message = f"Пользователь {sender_username} теперь ваш друг"
     else:
-        flash(f"Вы отклонили запрос от {sender_username}", "info")
         message = f"Запрос от {sender_username} отклонён"
-    friend_requests[receiver].remove(sender_username)
     return jsonify({"message": message}), 200
+
 
 @app.route("/get_friend_requests", methods=["GET"])
 def get_friend_requests():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     receiver = session.get("user")
-    requests_list = friend_requests.get(receiver, [])
+    requests_list = get_incoming_friend_requests_db(receiver)
     return jsonify({"requests": requests_list}), 200
+
 
 @app.route("/get_notifications", methods=["GET"])
 def get_notifications():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     receiver = session.get("user")
-    requests_list = friend_requests.get(receiver, [])
+    requests_list = get_incoming_friend_requests_db(receiver)
     return jsonify({"notifications": requests_list}), 200
+
 
 @app.route("/get_friends", methods=["GET"])
 def get_friends():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     current_user = session.get("user")
-    user_friends = friends_list.get(current_user, [])
+    user_friends = get_friends_db(current_user)
     return jsonify({"friends": user_friends}), 200
+
 
 @app.route("/remove_friend", methods=["POST"])
 def remove_friend():
@@ -1255,16 +1261,9 @@ def remove_friend():
     current_user = session.get("user")
     if not friend_username:
         return jsonify({"error": "Не указан друг"}), 400
-    user_friends = friends_list.get(current_user, [])
-    if friend_username in user_friends:
-        user_friends.remove(friend_username)
-        friends_list[current_user] = user_friends
-    else:
-        return jsonify({"error": "Пользователь не является вашим другом"}), 400
-    friend_friends = friends_list.get(friend_username, [])
-    if current_user in friend_friends:
-        friend_friends.remove(current_user)
-        friends_list[friend_username] = friend_friends
+    success = remove_friend_db(current_user, friend_username)
+    if not success:
+        return jsonify({"error": "Пользователь не является вашим другом или не найден"}), 400
     return jsonify({"message": f"Пользователь {friend_username} удалён из друзей"}), 200
 
 if __name__ == "__main__":
