@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Вход</title>
-  <link rel="preload" href="/static/favicon.ico" as="image">
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
@@ -90,20 +89,49 @@
       flex-direction: column;
       align-items: center;
     }
-    .registration-group input {
+    .input-container {
+      position: relative;
       width: 90%;
-      padding: 15px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.1);
+      margin: 20px 0;
+    }
+    .input-container input {
+      width: 100%;
+      border: 2px solid var(--border-color);
+      border-radius: 5px;
+      background: none;
       color: var(--text-color);
       font-size: 1rem;
-      transition: background 0.3s ease;
-    }
-    .registration-group input:focus {
-      background: rgba(255, 255, 255, 0.2);
+      padding: 15px;
       outline: none;
+      transition: border-color 0.3s ease;
+    }
+    .input-container input:focus {
+      border-color: var(--accent-color);
+    }
+    .input-container label {
+      position: absolute;
+      top: 50%;
+      left: 15px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-secondary);
+      transition: 0.3s ease;
+      background-color: var(--card-background);
+      padding: 0 5px;
+    }
+    .input-container input:focus + label,
+    .input-container input:not(:placeholder-shown) + label {
+      top: 0;
+      left: 15px;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1rem;
     }
     .registration-group button {
       width: 90%;
@@ -212,15 +240,15 @@
     }
     @media (max-width: 450px) {
       .container {
-        background-color: var(--card-background);
         padding: 40px;
         border-radius: 15px;
         max-width: 600px;
+      }
+    }
+    @media (max-width: 550px) {
+      .container {
         width: 100%;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-        position: relative;
-        text-align: center;
-        z-index: 1;
+        max-width: 90%;
       }
     }
   </style>
@@ -234,22 +262,30 @@
     <h2 class="registration-title">Вход</h2>
     <form method="POST" id="loginForm">
       <div class="registration-group">
-        <input
-          type="text"
-          name="login"
-          placeholder="Имя пользователя"
-          required
-          pattern="^[A-Za-z0-9]+$"
-          title="Только английские буквы и цифры без пробелов"
-          oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '')"
-        >
-        <input
-          type="password"
-          name="password"
-          placeholder="Пароль"
-          required
-          oninput="this.value = this.value.replace(/\s|[а-яА-ЯёЁ]/g, '')"
-        >
+        <div class="input-container">
+          <input
+            type="text"
+            name="login"
+            required
+            pattern="^[A-Za-z0-9]+$"
+            oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g, '')"
+            placeholder=" "
+            autocomplete="username"
+          >
+          <label>Имя пользователя</label>
+        </div>
+        <div class="input-container">
+          <input
+            type="password"
+            name="password"
+            required
+            oninput="this.value = this.value.replace(/\s|[а-яА-ЯёЁ]/g, '')"
+            placeholder=" "
+            autocomplete="current-password"
+          >
+          <label>Пароль</label>
+          <i class="fas fa-eye toggle-password" onclick="togglePassword(this)"></i>
+        </div>
         <button type="submit">Войти</button>
       </div>
     </form>
@@ -282,6 +318,18 @@
         once: true
       });
     });
+    function togglePassword(element) {
+      const input = element.parentElement.querySelector('input');
+      if (input.type === 'password') {
+        input.type = 'text';
+        element.classList.remove('fa-eye');
+        element.classList.add('fa-eye-slash');
+      } else {
+        input.type = 'password';
+        element.classList.remove('fa-eye-slash');
+        element.classList.add('fa-eye');
+      }
+    }
   </script>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
