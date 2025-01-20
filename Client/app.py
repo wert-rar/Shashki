@@ -24,6 +24,7 @@ from game import (
     all_games_dict,
     update_game_status_in_db
 )
+from base_postgres import SessionLocal, GameMove
 import logging, subprocess, hmac, hashlib, threading, time
 import itertools
 import datetime
@@ -160,6 +161,21 @@ def is_all_kings(pieces):
         if not piece.get('is_king', False):
             return False
     return True
+
+def get_game_moves_from_db(game_id):
+    db_session = SessionLocal()
+    moves = db_session.query(GameMove).filter_by(game_id=game_id).order_by(GameMove.move_id).all()
+    move_list = []
+    for m in moves:
+        move_list.append({
+            "player": m.player,
+            "from": {"x": m.from_x, "y": m.from_y},
+            "to": {"x": m.to_x, "y": m.to_y},
+            "captured": m.captured_piece,
+            "promotion": m.promotion
+        })
+    db_session.close()
+    return move_list
 
 def finalize_game(game, user_login):
     if not game.c_user:
@@ -374,7 +390,6 @@ def get_board(game_id, user_login):
         abort(403)
     opponent_login = game.c_user if user_login == game.f_user else game.f_user
     is_ghost = user_login.startswith('ghost')
-
     user = get_user_by_login(user_login)
     if is_ghost:
         user_avatar_url = '/static/avatars/default_avatar.jpg'
@@ -384,13 +399,11 @@ def get_board(game_id, user_login):
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
         else:
             user_avatar_url = '/static/avatars/default_avatar.jpg'
-
     opponent = get_user_by_login(opponent_login)
     if opponent and (not opponent_login.startswith('ghost')) and opponent['avatar_filename']:
         opponent_avatar_url = url_for('static', filename='avatars/' + opponent['avatar_filename'])
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
-
     return render_template(
         'board.html',
         user_login=user_login,
@@ -571,8 +584,6 @@ def start_game():
                 session['game_id'] = waiting_game.game_id
                 session['color'] = color
                 return redirect(url_for('get_board', game_id=waiting_game.game_id, user_login=user_login))
-            else:
-                pass
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
@@ -677,7 +688,6 @@ def move():
             'captured_pieces': result.get('captured_pieces', []),
             'promotion': result.get('promotion', False)
         }
-        game.move_history.append(move_record)
         if not game.game_started:
             game.game_started = True
             game.white_time_remaining = 900
@@ -693,6 +703,21 @@ def move():
             game.black_countdown_remaining = 0
         game.last_update_time = time.time()
         game.update_timers()
+        game.move_history.append(move_record)
+        db_session = SessionLocal()
+        new_move = GameMove(
+            game_id=game_id_int,
+            player=move_record['player'],
+            from_x=move_record['from']['x'],
+            from_y=move_record['from']['y'],
+            to_x=move_record['to']['x'],
+            to_y=move_record['to']['y'],
+            captured_piece=move_record['captured'],
+            promotion=move_record['promotion']
+        )
+        db_session.add(new_move)
+        db_session.commit()
+        db_session.close()
         if game.status in ['w3', 'b3', 'n', 'ns1']:
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
@@ -700,7 +725,7 @@ def move():
                 "pieces": game.pieces,
                 "white_time": max(round(game.white_time_remaining), 0),
                 "black_time": max(round(game.black_time_remaining), 0),
-                "move_history": game.move_history,
+                "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
                 "white_countdown": round(game.white_countdown_remaining),
@@ -713,7 +738,7 @@ def move():
             return jsonify({
                 "status_": game.status,
                 "pieces": game.pieces,
-                "move_history": game.move_history,
+                "move_history": get_game_moves_from_db(game_id_int),
                 "multiple_capture": True,
                 "white_countdown": int(game.white_countdown_remaining),
                 "black_countdown": int(game.black_countdown_remaining)
@@ -730,7 +755,7 @@ def move():
             response_data = {
                 "status_": "n",
                 "pieces": game.pieces,
-                "move_history": game.move_history,
+                "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
                 "white_countdown": int(game.white_countdown_remaining),
@@ -743,7 +768,7 @@ def move():
             response_data = {
                 "status_": "n",
                 "pieces": game.pieces,
-                "move_history": game.move_history,
+                "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
                 "white_countdown": int(game.white_countdown_remaining),
@@ -758,7 +783,7 @@ def move():
             response_data = {
                 "status_": game.status,
                 "pieces": game.pieces,
-                "move_history": game.move_history,
+                "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
                 "white_countdown": int(game.white_countdown_remaining),
@@ -771,7 +796,7 @@ def move():
             response_data = {
                 "status_": "n",
                 "pieces": game.pieces,
-                "move_history": game.move_history,
+                "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
                 "white_countdown": int(game.white_countdown_remaining),
@@ -781,7 +806,7 @@ def move():
         return jsonify({
             "status_": game.status,
             "pieces": game.pieces,
-            "move_history": game.move_history,
+            "move_history": get_game_moves_from_db(game_id_int),
             "white_countdown": int(game.white_countdown_remaining),
             "black_countdown": int(game.black_countdown_remaining)
         })
@@ -790,19 +815,15 @@ def move():
 def update_board():
     try:
         if not request.is_json:
-            app.logger.debug("Запрос не является JSON.")
             return jsonify({"error": "Request data must be in JSON format"}), 400
         data = request.get_json()
-        app.logger.debug(f"Полученные данные: {data}")
         game_id = data.get("game_id")
         user_login = session.get('user')
         if game_id is None:
-            app.logger.debug("Необходимо поле game_id.")
             return jsonify({"error": "Game ID is required"}), 400
         try:
             game_id_int = int(game_id)
         except (ValueError, TypeError):
-            app.logger.warning(f"Некорректный game_id: {game_id}")
             return jsonify({"error": "Invalid game ID"}), 400
         game = get_or_create_ephemeral_game(game_id_int)
         if not game:
@@ -814,7 +835,7 @@ def update_board():
             "pieces": game.pieces,
             "white_time": max(round(game.white_time_remaining), 0),
             "black_time": max(round(game.black_time_remaining), 0),
-            "move_history": game.move_history,
+            "move_history": get_game_moves_from_db(game_id_int),
             "white_countdown": int(game.white_countdown_remaining),
             "black_countdown": int(game.black_countdown_remaining)
         }
@@ -920,7 +941,6 @@ def offer_draw():
     if game.draw_offer:
         return jsonify({"error": "Партия уже на рассмотрении"}), 400
     game.draw_offer = user_color
-    app.logger.debug(f"Пользователь {user_login} предложил ничью в игре {game_id_int}")
     return jsonify({"message": "Предложение ничьей отправлено"}), 200
 
 @app.route("/respond_draw", methods=["POST"])
@@ -948,11 +968,9 @@ def respond_draw_route():
     if resp == "accept":
         game.status = "n"
         game.draw_response = {'response': 'accept', 'to': game.draw_offer}
-        app.logger.debug(f"Пользователь {user_login} принял ничью в игре {game_id_int}")
         game.draw_offer = None
     elif resp == "decline":
         game.draw_response = {'response': 'decline', 'to': game.draw_offer}
-        app.logger.debug(f"Пользователь {user_login} отклонил ничью в игре {game_id_int}")
         game.draw_offer = None
     else:
         return jsonify({"error": "Неверный ответ"}), 400
@@ -987,7 +1005,6 @@ def get_possible_moves_route():
     current_player = game.current_player
     user_color = game.user_color(user_login)
     if user_color != current_player:
-        app.logger.debug(f"User {user_login} attempted to get moves, but it's {current_player}'s turn. Возвращаем пустой список.")
         return jsonify({"moves": []}), 200
     x, y = selected_piece['x'], selected_piece['y']
     color = 0 if current_player == 'w' else 1
@@ -1158,7 +1175,6 @@ def delete_avatar():
         flash('У вас уже дефолтный аватар', 'info')
     return redirect(url_for('profile', username=user_login))
 
-
 @app.route("/send_friend_request", methods=["POST"])
 def send_friend_request():
     if 'user' not in session:
@@ -1170,11 +1186,9 @@ def send_friend_request():
         return jsonify({"error": "Не указан получатель"}), 400
     if friend_username == sender:
         return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
-
     user_row = get_user_by_login(friend_username)
     if not user_row:
         return jsonify({"error": "Пользователь не найден"}), 404
-
     friend_requests.setdefault(friend_username, [])
     if sender in friend_requests[friend_username]:
         return jsonify({"message": "Вы уже отправили запрос в друзья"}), 200
@@ -1191,13 +1205,10 @@ def respond_friend_request():
     receiver = session.get("user")
     if not sender_username or response not in ["accept", "decline"]:
         return jsonify({"error": "Некорректные данные"}), 400
-
     pending = friend_requests.get(receiver, [])
     if sender_username not in pending:
         return jsonify({"error": "Нет запроса от данного пользователя"}), 400
-
     if response == "accept":
-        # Добавляем дружбу для обеих сторон
         friends_list.setdefault(receiver, [])
         friends_list.setdefault(sender_username, [])
         if sender_username not in friends_list[receiver]:
@@ -1208,7 +1219,6 @@ def respond_friend_request():
     else:
         flash(f"Вы отклонили запрос от {sender_username}", "info")
         message = f"Запрос от {sender_username} отклонён"
-
     friend_requests[receiver].remove(sender_username)
     return jsonify({"message": message}), 200
 
@@ -1219,7 +1229,6 @@ def get_friend_requests():
     receiver = session.get("user")
     requests_list = friend_requests.get(receiver, [])
     return jsonify({"requests": requests_list}), 200
-
 
 @app.route("/get_notifications", methods=["GET"])
 def get_notifications():
@@ -1246,19 +1255,16 @@ def remove_friend():
     current_user = session.get("user")
     if not friend_username:
         return jsonify({"error": "Не указан друг"}), 400
-
     user_friends = friends_list.get(current_user, [])
     if friend_username in user_friends:
         user_friends.remove(friend_username)
         friends_list[current_user] = user_friends
     else:
         return jsonify({"error": "Пользователь не является вашим другом"}), 400
-
     friend_friends = friends_list.get(friend_username, [])
     if current_user in friend_friends:
         friend_friends.remove(current_user)
         friends_list[friend_username] = friend_friends
-
     return jsonify({"message": f"Пользователь {friend_username} удалён из друзей"}), 200
 
 if __name__ == "__main__":
