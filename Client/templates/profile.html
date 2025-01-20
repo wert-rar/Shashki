@@ -141,14 +141,14 @@
         }
         .friend-action-container {
             position: absolute;
-            top: 18px;
+            top: 12px;
             right: 5px;
         }
         .friend-action-container button {
             background: none;
             border: none;
             color: var(--text-color);
-            font-size: 26px;
+            font-size: 32px;
             cursor: pointer;
             position: relative;
         }
@@ -683,7 +683,6 @@
                 cursor: pointer;
             }
         }
-
         .info-modal {
             display: none;
             position: fixed;
@@ -698,18 +697,15 @@
             opacity: 0;
             transition: opacity 0.3s ease;
         }
-
         .info-modal.show {
             display: flex;
             opacity: 1;
         }
-
         @keyframes fadeInModal {
             to {
                 transform: scale(1);
             }
         }
-
         .info-modal-content {
             background: linear-gradient(145deg, #2a2a50, #1a1a2e);
             padding: 40px 50px;
@@ -724,13 +720,11 @@
             animation: fadeInModal 0.4s ease forwards;
             transform: scale(0.9);
         }
-
         .info-modal-content h3 {
             margin: 20px 0;
             font-size: 1.4em;
             color: #ffffff;
         }
-
         .close-button {
             position: absolute;
             top: 15px;
@@ -740,11 +734,23 @@
             font-size: 1.8rem;
             transition: color 0.3s ease;
         }
+        .friend-modal-content .close-button {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 28px !important;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: transform 0.2s ease, color 0.3s ease;
+        }
 
+        .friend-modal-content .close-button:hover {
+            color: var(--accent-color);
+            transform: scale(1.1);
+        }
         .close-button:hover {
             color: var(--accent-color);
         }
-
         #avatarActions {
             margin-bottom: 20px;
             padding: 10px;
@@ -754,7 +760,6 @@
             text-align: center;
             display: none;
         }
-
         #avatarActions button,
         #avatarActions form button {
             background-color: var(--button-background);
@@ -766,13 +771,11 @@
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
-
         #avatarActions button:hover,
         #avatarActions form button:hover {
             background-color: var(--button-hover);
             transform: translateY(-2px);
         }
-
         .friend-modal {
             display: none;
             position: fixed;
@@ -785,17 +788,19 @@
             justify-content: center;
             align-items: center;
         }
-
         .friend-modal-content {
-            background-color: var(--card-background);
-            padding: 30px 50px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 15px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8);
+            animation: fadeInModal 0.4s ease forwards;
+            transform: scale(1.1);
+            padding: 60px 70px;
+            color: #fff;
             text-align: center;
             position: relative;
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
         }
-
         .friend-modal-content .close-button {
             position: absolute;
             top: 5px;
@@ -804,25 +809,33 @@
             cursor: pointer;
             color: var(--text-color);
         }
-
         .friend-modal-content button {
-            padding: 10px 20px;
+            font-size: 1.1rem;
+            padding: 14px 28px;
             background-color: var(--button-background);
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
-
+        .friend-modal-content h3 {
+            font-size: 1.6rem;
+            margin-bottom: 1.2rem;
+        }
         .friend-modal-content button:hover {
             background-color: var(--button-hover);
         }
-
+        .friend-modal-content #friendsListContainer span {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--text-color);
+        }
         #removeFriendModal {
             display: none;
             position: fixed;
-            z-index: 9999;
+            z-index: 99999;
             left: 0;
             top: 0;
             width: 100%;
@@ -831,30 +844,34 @@
             justify-content: center;
             align-items: center;
         }
-
         #removeFriendModal .remove-modal-content {
-            background-color: var(--card-background);
-            padding: 30px 50px;
-            border-radius: 10px;
+            background: linear-gradient(145deg, #4d223a, #371629);
+            border-radius: 20px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8);
+            animation: fadeInModal 0.4s ease forwards;
+            transform: scale(1.1);
+            padding: 40px 60px;
+            color: #fff;
             text-align: center;
             position: relative;
-            max-width: 400px;
+            max-width: 450px;
             width: 90%;
+            transition: all 0.3s ease;
         }
-
         #removeFriendModal .remove-modal-content button {
-            padding: 10px 20px;
+            font-size: 1rem;
+            padding: 14px 28px;
             background-color: var(--button-background);
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            margin: 15px 10px 0 10px;
+            margin: 20px 10px 0 10px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
         #removeFriendModal .remove-modal-content button:hover {
             background-color: var(--button-hover);
         }
-
         #return-to-game {
             position: absolute;
             bottom: 20px;
@@ -869,18 +886,15 @@
             display: none;
             z-index: 5;
         }
-
         #return-to-game h2 {
             font-size: 1.5rem;
             color: var(--success-color);
             margin-bottom: 10px;
         }
-
         #return-to-game p {
             font-size: 1rem;
             margin-bottom: 20px;
         }
-
         #return-to-game .button {
             background-color: var(--warning-color);
             color: #fff;
@@ -893,19 +907,15 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
             border: none;
         }
-
         #return-to-game .button.leave-button {
             background-color: var(--error-color);
         }
-
         #return-to-game .button.leave-button:hover {
             background-color: var(--error-color-hover);
         }
-
         #return-to-game .button + .button {
             margin-left: 15px;
         }
-
         #leave-game-modal,
         #game-over-modal {
             position: fixed;
@@ -918,16 +928,13 @@
             align-items: center;
             z-index: 5;
         }
-
         #leave-game-modal {
             background: rgba(0, 0, 0, 0.6);
         }
-
         #game-over-modal {
             background: rgba(0, 0, 0, 0.6);
             z-index: 5;
         }
-
         .modal-content {
             background: var(--card-background);
             padding: 30px;
@@ -939,52 +946,57 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
             transition: box-shadow 0.3s ease-out, transform 0.3s ease-out;
         }
-
         #leave-game-modal .modal-content h2 {
             margin-bottom: 20px;
             color: var(--error-color);
         }
-
         #game-over-modal .modal-content h2 {
             margin-bottom: 20px;
             color: var(--warning-color);
         }
-
         #leave-game-modal .modal-content p,
         #game-over-modal .modal-content p {
             margin-bottom: 30px;
             font-size: 1rem;
         }
-
         .modal-content .button {
-			width: auto;
-			padding: 12px 25px;
-			margin: 10px 5px;
-			border-radius: 8px;
-			font-size: 1em;
-			background-color: var(--button-background);
-			color: #fff;
-			border: none;
-			cursor: pointer;
-			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-			transition: background-color 0.3s ease, transform 0.2s ease;
-		}
-
+            width: auto;
+            padding: 12px 25px;
+            margin: 10px 5px;
+            border-radius: 8px;
+            font-size: 1em;
+            background-color: var(--button-background);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
         .modal-content .button:hover {
-			background-color: var(--button-hover);
-			transform: translateY(-3px);
-		}
-
+            background-color: var(--button-hover);
+            transform: translateY(-3px);
+        }
         #leave-game-modal .button.confirm-button {
             background-color: var(--error-color);
         }
-
         #leave-game-modal .button.confirm-button:hover {
             background-color: var(--error-color-hover);
         }
-
         #game-over-modal .modal-content {
             box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+        }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        textarea:-webkit-autofill,
+        textarea:-webkit-autofill:hover,
+        textarea:-webkit-autofill:focus,
+        select:-webkit-autofill,
+        select:-webkit-autofill:hover,
+        select:-webkit-autofill:focus {
+          -webkit-text-fill-color: var(--text-color) !important;
+          box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
+          transition: background-color 5000s ease-in-out 0s !important;
         }
     </style>
 </head>
@@ -1170,7 +1182,7 @@
             });
             document.addEventListener("click", (e) => {
                 var friendsModal = document.getElementById("friendsModal");
-                if (friendsModal.style.display === "flex" && !e.target.closest("#friendsModalContent")) {
+                if (friendsModal.style.display === "flex" && !e.target.closest("#friendsModalContent") && !e.target.closest("#removeFriendModal")) {
                     closeFriendsModal();
                 }
             });
@@ -1470,7 +1482,9 @@
                         dotsButton.style.background = "none";
                         dotsButton.style.border = "none";
                         dotsButton.style.color = "var(--text-color)";
-                        dotsButton.style.fontSize = "18px";
+                        dotsButton.style.fontSize = "20px";
+                        dotsButton.style.position = "relative";
+                        dotsButton.style.top = "-5px";
                         dotsButton.style.cursor = "pointer";
                         dotsButton.onclick = function() {
                             openRemoveFriendModal(friend);
