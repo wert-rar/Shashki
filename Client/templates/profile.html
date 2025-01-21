@@ -743,7 +743,6 @@
             color: var(--text-color);
             transition: transform 0.2s ease, color 0.3s ease;
         }
-
         .friend-modal-content .close-button:hover {
             color: var(--accent-color);
             transform: scale(1.1);
@@ -801,14 +800,6 @@
             max-width: 500px;
             width: 90%;
         }
-        .friend-modal-content .close-button {
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--text-color);
-        }
         .friend-modal-content button {
             font-size: 1.1rem;
             padding: 14px 28px;
@@ -831,6 +822,95 @@
             font-size: 1.3rem;
             font-weight: bold;
             color: var(--text-color);
+        }
+        #friendSearchContainer {
+            position: relative;
+            margin: 0 0 15px -25px;
+            display: flex;
+            align-items: center;
+            width: 113%;
+            max-width: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #222;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
+        }
+        #friendSearchContainer .search-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+        }
+        #friendSearchContainer .clear-search {
+            background: transparent;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 10px 15px;
+            margin: 0;
+            outline: none;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #friendSearchContainer .clear-search::before {
+            content: "\00d7";
+            display: block;
+        }
+        #friendSearchContainer input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            outline: none;
+            font-size: 1em;
+            background-color: transparent;
+            color: #eee;
+        }
+        #friendSearchContainer input::placeholder {
+            color: #ccc;
+        }
+        #friendSearchContainer button {
+            padding: 10px 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: color 0.3s ease;
+        }
+        #friendSearchContainer button:hover {
+            color: var(--accent-color);
+        }
+        .search-user-item {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 5px;
+            background-color: #1e1e30;
+            margin-bottom: 5px;
+        }
+        .search-user-item span {
+            color: #eee;
+            font-size: 1em;
+        }
+        .search-user-item button {
+            background: none;
+            border: none;
+            color: #eee;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            margin-top: 4px;
+        }
+        .search-user-item button:focus,
+        .search-user-item button:active,
+        .search-user-item button:hover {
+            outline: none !important;
+            box-shadow: none !important;
+            background: none !important;
         }
         #removeFriendModal {
             display: none;
@@ -998,6 +1078,43 @@
           box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
           transition: background-color 5000s ease-in-out 0s !important;
         }
+        #friendSearchContainer button {
+          padding: 10px 15px;
+          background: none;
+          border: none;
+          color: #fff;
+          cursor: pointer;
+          font-size: 1.2em;
+          transition: color 0.3s ease;
+          margin-top: -4px;
+        }
+        #friendsListContainer .search-user-item span {
+            font-size: 1.1em;
+            margin-left: 10px;
+        }
+
+        .three-dot-dropdown {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 5px;
+            display: none;
+            background-color: var(--card-background);
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 6px 10px;
+        }
+        .three-dot-dropdown div {
+            color: var(--text-color);
+            padding: 5px 0;
+            cursor: pointer;
+        }
+        .three-dot-dropdown div:hover {
+            color: var(--accent-color);
+        }
+        .dropdown-container {
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -1133,6 +1250,15 @@
     <div id="friendsModal" class="friend-modal">
         <div class="friend-modal-content" id="friendsModalContent">
             <span class="close-button" onclick="closeFriendsModal()">&times;</span>
+            <div id="friendSearchContainer">
+                <div class="search-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#ccc" d="M9.5 3C13.09 3 16 5.91 16 9.5c0 1.61-.59 3.08-1.57 4.22l5.42 5.42-1.41 1.41-5.42-5.42C12.58 15.41 11.11 16 9.5 16 5.91 16 3 13.09 3 9.5S5.91 3 9.5 3m0 2C7.02 5 5 7.02 5 9.5S7.02 14 9.5 14 14 11.98 14 9.5 11.98 5 9.5 5Z" />
+                    </svg>
+                </div>
+                <input type="text" id="friendSearchInput" placeholder="Поиск пользователей..." />
+                <button type="button" class="clear-search" title="Очистить"></button>
+            </div>
             <h3>Ваши друзья</h3>
             <div id="friendsListContainer"></div>
         </div>
@@ -1170,26 +1296,57 @@
         var currentIndex = 0;
         var pageSize = 9;
         var friendToRemove = "";
+        var myFriends = [];
+        var requestsSent = new Set();
+
         document.addEventListener("DOMContentLoaded", () => {
             AOS.init({ duration: 800, easing: "ease-in-out", once: true });
+
+            fetch("/get_friends")
+            .then(response => response.json())
+            .then(data => {
+                if (data.friends) {
+                    myFriends = data.friends;
+                }
+            })
+            .catch(() => {});
+
             loadRecords();
             document.getElementById("loadMoreButton").addEventListener("click", loadRecords);
             document.getElementById("hideButton").addEventListener("click", hideRecords);
+
             document.getElementById("info-modal").addEventListener("click", (e) => {
                 if (e.target === document.getElementById("info-modal")) {
                     closeInfoModal();
                 }
             });
+
             document.addEventListener("click", (e) => {
                 var friendsModal = document.getElementById("friendsModal");
                 if (friendsModal.style.display === "flex" && !e.target.closest("#friendsModalContent") && !e.target.closest("#removeFriendModal")) {
                     closeFriendsModal();
                 }
+                var friendActionDropdown = document.getElementById("friendActionDropdown");
+                if (friendActionDropdown && !friendActionDropdown.contains(e.target) && e.target.id !== "friendActionBtn") {
+                    friendActionDropdown.style.display = "none";
+                }
+                var mobileMenuDropdown = document.getElementById("mobileMenuDropdown");
+                if (mobileMenuDropdown && mobileMenuDropdown.style.display === "block" && !mobileMenuDropdown.contains(e.target) && !e.target.closest(".mobile-menu-button")) {
+                    mobileMenuDropdown.style.display = "none";
+                }
+                const allDropdowns = document.querySelectorAll(".three-dot-dropdown");
+                allDropdowns.forEach(dropdown => {
+                    if (!dropdown.contains(e.target) && !e.target.matches(".search-user-item button")) {
+                        dropdown.style.display = "none";
+                    }
+                });
             });
+
             createSnowflakes();
             generateSnowflakes();
             checkForActiveGame();
             setInterval(checkForActiveGame, 5000);
+
             var notifications = document.querySelectorAll(".notification");
             notifications.forEach((notif) => {
                 notif.addEventListener("click", () => {
@@ -1203,7 +1360,17 @@
                     setTimeout(() => { notif.remove(); }, 500);
                 }, 2000);
             });
+            const clearBtn = document.querySelector("#friendSearchContainer .clear-search");
+            const searchInput = document.getElementById("friendSearchInput");
+
+            if (clearBtn && searchInput) {
+                clearBtn.addEventListener("click", () => {
+                    searchInput.value = "";
+                    loadFriendsList();
+                });
+            }
         });
+
         function returnToGame() {
             if (game_id && user_login) {
                 window.location.href = "/board/" + game_id + "/" + user_login;
@@ -1211,15 +1378,19 @@
                 alert("Активная игра не найдена.");
             }
         }
+
         function showLeaveGameModal() {
             document.getElementById("leave-game-modal").style.display = "flex";
         }
+
         function hideLeaveGameModal() {
             document.getElementById("leave-game-modal").style.display = "none";
         }
+
         function hideGameOverModal() {
             document.getElementById("game-over-modal").style.display = "none";
         }
+
         function leaveGame() {
             if (game_id && user_login) {
                 fetch("/give_up", {
@@ -1237,13 +1408,14 @@
                         displayGameOverMessage(data);
                     }
                 })
-                .catch(error => {
+                .catch(() => {
                     alert("Произошла ошибка при покидании игры.");
                 });
             } else {
                 alert("Активная игра не найдена.");
             }
         }
+
         function displayGameOverMessage(data) {
             var modal = document.getElementById("game-over-modal");
             var message = document.getElementById("game-over-message");
@@ -1262,6 +1434,7 @@
             message.innerHTML = resultText + "<br>" + points_text;
             modal.style.display = "flex";
         }
+
         function checkForActiveGame() {
             fetch("/check_game_status")
                 .then(response => {
@@ -1281,10 +1454,11 @@
                         document.getElementById("return-to-game").style.display = "none";
                     }
                 })
-                .catch(error => {
+                .catch(() => {
                     document.getElementById("return-to-game").style.display = "none";
                 });
         }
+
         function createSnowflakes() {
             var snowContainer = document.getElementById("snowflakes-container");
             var snowflakeCount = 50;
@@ -1300,6 +1474,7 @@
                 snowContainer.appendChild(snowflake);
             }
         }
+
         function generateSnowflakes() {
             var container = document.getElementById("snowflakes-container");
             for (var i = 0; i < 50; i++) {
@@ -1313,6 +1488,7 @@
                 container.appendChild(snowflake);
             }
         }
+
         function formatDate(dateString) {
             var options = {
                 year: "numeric",
@@ -1325,6 +1501,7 @@
             var date = new Date(dateString);
             return date.toLocaleString("ru-RU", options);
         }
+
         function loadRecords() {
             var tbody = document.getElementById("history-tbody");
             var endIndex = Math.min(currentIndex + pageSize, allRecords.length);
@@ -1332,13 +1509,16 @@
                 var record = allRecords[i];
                 var tr = document.createElement("tr");
                 tr.classList.add("fade-in");
+
                 var dateTd = document.createElement("td");
                 dateTd.textContent = formatDate(record.date_start);
                 tr.appendChild(dateTd);
+
                 var ratingTd = document.createElement("td");
                 var ratingChange = record.rating_change >= 0 ? "(+" + record.rating_change + ")" : "(" + record.rating_change + ")";
                 ratingTd.textContent = record.rating_after + " " + ratingChange;
                 tr.appendChild(ratingTd);
+
                 var resultTd = document.createElement("td");
                 var resultClass = "";
                 var resultText = "";
@@ -1362,6 +1542,7 @@
                 span.className = resultClass;
                 span.textContent = resultText;
                 resultTd.appendChild(span);
+
                 tr.appendChild(resultTd);
                 tbody.appendChild(tr);
             }
@@ -1369,6 +1550,7 @@
             updateButtons();
             AOS.refresh();
         }
+
         function hideRecords() {
             var tbody = document.getElementById("history-tbody");
             var rows = tbody.querySelectorAll("tr");
@@ -1384,6 +1566,7 @@
                 updateButtons();
             }, 300);
         }
+
         function updateButtons() {
             var loadMoreBtn = document.getElementById("loadMoreButton");
             var hideBtn = document.getElementById("hideButton");
@@ -1398,32 +1581,40 @@
                 loadMoreBtn.style.display = "inline-block";
             }
         }
+
         function goHome() {
             window.location.href = "/";
         }
+
         function logout() {
             window.location.href = "/logout";
         }
+
         function openInfoModal() {
             var modal = document.getElementById("info-modal");
             if (window.innerWidth <= 700) {
                 modal.classList.add("show");
             }
         }
+
         function closeInfoModal() {
             var modal = document.getElementById("info-modal");
             modal.classList.remove("show");
         }
+
         function toggleAvatarActions() {
             var actions = document.getElementById("avatarActions");
             actions.style.display = (actions.style.display === "none" || actions.style.display === "") ? "block" : "none";
         }
+
         function openFriendModal() {
             document.getElementById("friendModal").style.display = "flex";
         }
+
         function closeFriendModal() {
             document.getElementById("friendModal").style.display = "none";
         }
+
         function showNotification(message, category) {
             var container = document.getElementById("notification-container");
             var notif = document.createElement("div");
@@ -1445,6 +1636,7 @@
                 }, 500);
             }, 2000);
         }
+
         function sendFriendRequest() {
             fetch("/send_friend_request", {
                 method: "POST",
@@ -1456,10 +1648,11 @@
                 showNotification(data.message, "success");
                 closeFriendModal();
             })
-            .catch(error => {
+            .catch(() => {
                 showNotification("Ошибка при отправке запроса", "error");
             });
         }
+
         function openFriendsModal() {
             fetch("/get_friends")
             .then(response => response.json())
@@ -1467,59 +1660,66 @@
                 var container = document.getElementById("friendsListContainer");
                 container.innerHTML = "";
                 if (data.friends && data.friends.length > 0) {
+                    myFriends = data.friends;
                     data.friends.forEach(friend => {
                         var friendDiv = document.createElement("div");
-                        friendDiv.style.display = "flex";
-                        friendDiv.style.justifyContent = "space-between";
-                        friendDiv.style.alignItems = "center";
-                        friendDiv.style.padding = "8px 0";
-                        friendDiv.style.borderBottom = "1px solid #444";
-                        var friendName = document.createElement("span");
-                        friendName.textContent = friend;
-                        friendDiv.appendChild(friendName);
-                        var dotsButton = document.createElement("button");
-                        dotsButton.textContent = "⋮";
-                        dotsButton.style.background = "none";
-                        dotsButton.style.border = "none";
-                        dotsButton.style.color = "var(--text-color)";
-                        dotsButton.style.fontSize = "20px";
-                        dotsButton.style.position = "relative";
-                        dotsButton.style.top = "-5px";
-                        dotsButton.style.cursor = "pointer";
-                        dotsButton.onclick = function() {
+                        friendDiv.className = "search-user-item dropdown-container";
+                        var span = document.createElement("span");
+                        span.textContent = friend;
+                        var btn = document.createElement("button");
+                        btn.textContent = "⋮";
+
+                        var dropdown = document.createElement("div");
+                        dropdown.className = "three-dot-dropdown";
+                        var removeDiv = document.createElement("div");
+                        removeDiv.textContent = "Удалить из друзей";
+                        removeDiv.onclick = function() {
                             openRemoveFriendModal(friend);
-                            var dropdown = document.getElementById("friendActionDropdown");
-                            if (dropdown) {
-                                dropdown.style.display = "none";
-                            }
+                            dropdown.style.display = "none";
                         };
-                        friendDiv.appendChild(dotsButton);
+                        dropdown.appendChild(removeDiv);
+
+                        btn.onclick = function(e) {
+                            e.stopPropagation();
+                            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                        };
+
+                        friendDiv.appendChild(span);
+                        friendDiv.appendChild(btn);
+                        friendDiv.appendChild(dropdown);
                         container.appendChild(friendDiv);
                     });
                 } else {
-                    container.innerHTML = "<p>Список друзей пуст</p>";
+                    container.innerHTML = "<p style='color:#ccc; text-align:center;'>Список друзей пуст</p>";
                 }
                 document.getElementById("friendsModal").style.display = "flex";
             })
-            .catch(error => {
+            .catch(() => {
                 showNotification("Ошибка загрузки списка друзей", "error");
             });
         }
+
         function closeFriendsModal() {
             document.getElementById("friendsModal").style.display = "none";
+            document.getElementById("friendSearchInput").value = "";
+            loadFriendsList();
         }
+
         function openRemoveFriendModal(friendUsername) {
             friendToRemove = friendUsername;
             document.getElementById("removeFriendName").textContent = friendUsername;
             document.getElementById("removeFriendModal").style.display = "flex";
         }
+
         function closeRemoveFriendModal() {
             document.getElementById("removeFriendModal").style.display = "none";
             friendToRemove = "";
         }
+
         function confirmRemoveFriend() {
             removeFriend(friendToRemove);
         }
+
         function removeFriend(friendUsername) {
             fetch("/remove_friend", {
                 method: "POST",
@@ -1530,11 +1730,13 @@
             .then(data => {
                 showNotification(data.message, "success");
                 closeRemoveFriendModal();
+                loadFriendsList();
             })
-            .catch(error => {
+            .catch(() => {
                 showNotification("Ошибка при удалении друга", "error");
             });
         }
+
         function toggleFriendAction() {
             var dropdown = document.getElementById("friendActionDropdown");
             if (dropdown.style.display === "block") {
@@ -1567,8 +1769,9 @@
                     dropdown.style.display = "none";
                 }, 3000);
             })
-            .catch(error => {});
+            .catch(() => {});
         }
+
         function addFriendAction() {
             fetch("/send_friend_request", {
                 method: "POST",
@@ -1579,10 +1782,11 @@
             .then(data => {
                 showNotification(data.message, "success");
             })
-            .catch(error => {
+            .catch(() => {
                 showNotification("Ошибка при отправке запроса", "error");
             });
         }
+
         function toggleMobileMenu() {
             var dropdown = document.getElementById("mobileMenuDropdown");
             if (dropdown.style.display === "block") {
@@ -1591,15 +1795,140 @@
                 dropdown.style.display = "block";
             }
         }
-        document.addEventListener("click", function(e) {
-            var mobileMenuContainer = document.querySelector(".mobile-menu-container");
-            var dropdown = document.getElementById("mobileMenuDropdown");
-            if (dropdown.style.display === "block") {
-                if (!mobileMenuContainer.contains(e.target)) {
-                    dropdown.style.display = "none";
-                }
+
+        function loadFriendsList() {
+            fetch("/get_friends")
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById("friendsListContainer");
+                    container.innerHTML = "";
+                    if(data.friends && data.friends.length > 0){
+                        myFriends = data.friends;
+                        data.friends.forEach(friend => {
+                            const friendDiv = document.createElement("div");
+                            friendDiv.className = "search-user-item dropdown-container";
+                            const span = document.createElement("span");
+                            span.textContent = friend;
+                            const btn = document.createElement("button");
+                            btn.textContent = "⋮";
+
+                            const dropdown = document.createElement("div");
+                            dropdown.className = "three-dot-dropdown";
+                            const removeDiv = document.createElement("div");
+                            removeDiv.textContent = "Удалить из друзей";
+                            removeDiv.onclick = function() {
+                                openRemoveFriendModal(friend);
+                                dropdown.style.display = "none";
+                            };
+                            dropdown.appendChild(removeDiv);
+
+                            btn.onclick = function(e) {
+                                e.stopPropagation();
+                                dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                            };
+
+                            friendDiv.appendChild(span);
+                            friendDiv.appendChild(btn);
+                            friendDiv.appendChild(dropdown);
+                            container.appendChild(friendDiv);
+                        });
+                    } else {
+                        container.innerHTML = "<p style='color:#ccc; text-align:center;'>Список друзей пуст</p>";
+                    }
+                });
+        }
+
+        document.getElementById("friendSearchInput").addEventListener("input", function(){
+            const query = this.value.trim();
+            if(query.length > 0){
+                fetch("/search_users?query=" + encodeURIComponent(query))
+                    .then(response => response.json())
+                    .then(data => {
+                        displaySearchResults(data.results);
+                    })
+                    .catch(() => {});
+            } else {
+                loadFriendsList();
             }
         });
+
+        function displaySearchResults(results) {
+            const container = document.getElementById("friendsListContainer");
+            container.innerHTML = "";
+            if (results.length === 0) {
+                container.innerHTML = "<p style='color:#ccc; text-align:center;'>Пользователи не найдены</p>";
+                return;
+            }
+            results.forEach(user => {
+                const userDiv = document.createElement("div");
+                userDiv.className = "search-user-item dropdown-container";
+
+                const span = document.createElement("span");
+                span.textContent = user;
+
+                const btn = document.createElement("button");
+                btn.textContent = "⋮";
+
+                const dropdown = document.createElement("div");
+                dropdown.className = "three-dot-dropdown";
+
+                if (myFriends.includes(user)) {
+                    const alreadyFriendDiv = document.createElement("div");
+                    alreadyFriendDiv.textContent = "Этот пользователь уже у вас в друзьях";
+                    dropdown.appendChild(alreadyFriendDiv);
+                } else if (requestsSent.has(user)) {
+                    const alreadySentDiv = document.createElement("div");
+                    alreadySentDiv.textContent = "Вы уже отправляли запрос этому пользователю";
+                    dropdown.appendChild(alreadySentDiv);
+                } else {
+                    const addDiv = document.createElement("div");
+                    addDiv.textContent = "Добавить в друзья";
+                    addDiv.onclick = function() {
+                        fetch("/send_friend_request", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ friend_username: user })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            showNotification(data.message, "success");
+                            requestsSent.add(user);
+                            dropdown.style.display = "none";
+                        })
+                        .catch(() => {
+                            showNotification("Ошибка при отправке запроса", "error");
+                        });
+                    };
+                    dropdown.appendChild(addDiv);
+                }
+
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                };
+
+                userDiv.appendChild(span);
+                userDiv.appendChild(btn);
+                userDiv.appendChild(dropdown);
+                container.appendChild(userDiv);
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const friendSearchInput = document.getElementById('friendSearchInput');
+
+            function updatePlaceholder() {
+                if (window.innerWidth <= 300) {
+                    friendSearchInput.placeholder = "По...";
+                } else if (window.innerWidth <= 420) {
+                    friendSearchInput.placeholder = "Поиск...";
+                } else {
+                    friendSearchInput.placeholder = "Поиск пользователей...";
+                }
+            }
+            updatePlaceholder();
+            window.addEventListener('resize', updatePlaceholder);
+        });
+
     </script>
 </body>
 </html>

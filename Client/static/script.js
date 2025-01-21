@@ -76,7 +76,7 @@ function update_data(data) {
   if (currentView === null) {
     if (data.pieces) {
       pieces = data.pieces;
-      if (user_color == "b") pieces = translate(pieces);
+      if (user_color === "b") pieces = translate(pieces);
       if (pieces && pieces.length > 0 && boardStates.length === 0) {
         boardStates = [JSON.parse(JSON.stringify(pieces))];
       }
@@ -90,18 +90,18 @@ function update_data(data) {
   if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
     let gameFoundSound = document.getElementById('sound-game-found');
     if (gameFoundSound) {
-      gameFoundSound.play().catch(error => {});
+      gameFoundSound.play().catch(() => {});
       gameFoundSoundPlayed = true;
     }
   }
-  if (data.draw_response && data.draw_response !== null) {
+  if (data.draw_response) {
     if (data.draw_response === 'accept') {
       displayGameOverMessage(data);
     } else if (data.draw_response === 'decline') {
       showNotification('Ваше предложение ничьей было отклонено.', 'error');
     }
   }
-  if (data.draw_offer && data.draw_offer !== null) {
+  if (data.draw_offer) {
     if (data.draw_offer !== user_color) {
       let modal = document.getElementById("draw-offer-modal");
       modal.style.display = "block";
@@ -259,7 +259,7 @@ function displayGameOverMessage(data) {
 }
 
 function returnToMainMenu() {
-  var xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
   xhr.open("POST", "/leave_game", true);
   xhr.setRequestHeader("Content-type", "application/json");
   xhr.onreadystatechange = function() {
@@ -276,13 +276,13 @@ function give_up() {
 
 function confirmSurrender() {
   closeModal('surrender-modal');
-  var xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
   xhr.open("POST", "/give_up", true);
   xhr.setRequestHeader("Content-type", "application/json");
   xhr.onreadystatechange = function() {
     if (xhr.readyState === XMLHttpRequest.DONE) {
       if (xhr.status === 200) {
-        let response = JSON.parse(xhr.responseText);
+        const response = JSON.parse(xhr.responseText);
         displayGameOverMessage(response);
       } else {
         showError('Произошла ошибка при попытке сдаться.');
@@ -381,7 +381,7 @@ function server_move_request(selected_piece, new_pos) {
     new_pos: new_pos,
     game_id: game_id
   };
-  if (user_color == "b") {
+  if (user_color === "b") {
     if (selected_piece) {
       data.selected_piece = translate([selected_piece])[0];
       data.new_pos = { x: 7 - new_pos.x, y: 7 - new_pos.y };
@@ -480,7 +480,7 @@ function server_get_possible_moves(selected_piece, callback) {
     game_id: game_id,
     user_login: user_login
   };
-  if (user_color == "b") {
+  if (user_color === "b") {
     if (selected_piece) {
       data.selected_piece = translate([selected_piece])[0];
     } else {
@@ -504,7 +504,7 @@ function server_get_possible_moves(selected_piece, callback) {
         showError(data.error);
         return;
       }
-      if (user_color == "b") {
+      if (user_color === "b") {
         data.moves = data.moves.map(move => ({ x: 7 - move.x, y: 7 - move.y }));
       }
       callback(data.moves);
@@ -717,12 +717,12 @@ function drawLabels() {
   for (let i = 0; i < 8; i++) {
     const x = BOARD_OFFSET_X - LABEL_PADDING / 2;
     const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
-    CTX.fillText(i + 1, x, y);
+    CTX.fillText((i + 1).toString(), x, y);
   }
   for (let i = 0; i < 8; i++) {
     const x = BOARD_OFFSET_X + CELL_SIZE * 8 + LABEL_PADDING / 2;
     const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
-    CTX.fillText(i + 1, x, y);
+    CTX.fillText((i + 1).toString(), x, y);
   }
 }
 
@@ -749,7 +749,7 @@ function update() {
 
 function convertCoordinatesToNotation(x, y) {
   const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-  if (user_color == 'w') {
+  if (user_color === 'w') {
     let file = letters[x];
     let rank = 8 - y;
     return file + rank;
@@ -831,15 +831,13 @@ function updateMovesList(moveHistory) {
 
 function viewBoardState(moveIndex) {
   if (moveIndex < 0 || moveIndex > boardStates.length - 1) return;
-  let selectedState = boardStates[moveIndex].map(piece => ({ ...piece }));
-  pieces = selectedState;
+  pieces = boardStates[moveIndex].map(piece => ({ ...piece }));
   currentView = moveIndex;
   showHistoryViewIndicator();
 }
 
 function returnToCurrentView() {
-  let currentState = boardStates[boardStates.length - 1].map(piece => ({ ...piece }));
-  pieces = currentState;
+  pieces = boardStates[boardStates.length - 1].map(piece => ({ ...piece }));
   currentView = null;
   let indicator = document.getElementById('history-view-indicator');
   if (indicator) {
@@ -996,7 +994,7 @@ function onLoad() {
   CANVAS = document.getElementById("board");
   CTX = CANVAS.getContext("2d");
   CTX.imageSmoothingEnabled = true;
-  HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
+  let HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
   adjustScreen();
   server_update_request().then(() => {
     update();

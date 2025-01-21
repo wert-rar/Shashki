@@ -1266,5 +1266,20 @@ def remove_friend():
         return jsonify({"error": "Пользователь не является вашим другом или не найден"}), 400
     return jsonify({"message": f"Пользователь {friend_username} удалён из друзей"}), 200
 
+@app.route("/search_users")
+def search_users():
+    from base_sqlite import connect_db
+    query = request.args.get("query", "").strip()
+    if not query:
+        return jsonify({"results": []})
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("SELECT login FROM player WHERE login LIKE ? LIMIT 10", ('%' + query + '%',))
+    rows = cur.fetchall()
+    con.close()
+    results = [row["login"] for row in rows]
+    return jsonify({"results": results})
+
+
 if __name__ == "__main__":
     app.run(debug=True)
