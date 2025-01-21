@@ -60,25 +60,23 @@ function update_data(data) {
       return;
     }
     showError(data.error);
+    if (data.error === "Invalid game ID") {
+      alert("Произошла ошибка: " + data.error);
+    }
     return;
   }
   CURRENT_STATUS = data.status_;
-
   if (data.white_time !== undefined && data.black_time !== undefined) {
     updateTimersDisplay(data.white_time, data.black_time);
   }
   if (data.white_countdown !== undefined && data.black_countdown !== undefined) {
     updateCountdownDisplay(data.white_countdown, data.black_countdown);
   }
-
   let previousSelectedPiece = SELECTED_PIECE ? { ...SELECTED_PIECE } : null;
-
   if (currentView === null) {
     if (data.pieces) {
       pieces = data.pieces;
-      if (user_color == "b") {
-        pieces = translate(pieces);
-      }
+      if (user_color == "b") pieces = translate(pieces);
       if (pieces && pieces.length > 0 && boardStates.length === 0) {
         boardStates = [JSON.parse(JSON.stringify(pieces))];
       }
@@ -88,9 +86,32 @@ function update_data(data) {
       return;
     }
   }
-
   document.getElementById("status").innerHTML = status[CURRENT_STATUS];
-
+  if (!gameFoundSoundPlayed && (CURRENT_STATUS === "w1" || CURRENT_STATUS === "b1")) {
+    let gameFoundSound = document.getElementById('sound-game-found');
+    if (gameFoundSound) {
+      gameFoundSound.play().catch(error => {});
+      gameFoundSoundPlayed = true;
+    }
+  }
+  if (data.draw_response && data.draw_response !== null) {
+    if (data.draw_response === 'accept') {
+      displayGameOverMessage(data);
+    } else if (data.draw_response === 'decline') {
+      showNotification('Ваше предложение ничьей было отклонено.', 'error');
+    }
+  }
+  if (data.draw_offer && data.draw_offer !== null) {
+    if (data.draw_offer !== user_color) {
+      let modal = document.getElementById("draw-offer-modal");
+      modal.style.display = "block";
+    }
+  } else {
+    document.getElementById("draw-offer-modal").style.display = "none";
+  }
+  if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n" || CURRENT_STATUS === "ns1") {
+    displayGameOverMessage(data);
+  }
   if (previousSelectedPiece) {
     SELECTED_PIECE = getPieceAt(previousSelectedPiece.x, previousSelectedPiece.y);
     if (SELECTED_PIECE && SELECTED_PIECE.color === (user_color === 'w' ? 0 : 1)) {
@@ -104,27 +125,8 @@ function update_data(data) {
       possibleMoves = [];
     }
   }
-
   if (data.move_history) {
     updateMovesList(data.move_history);
-  }
-
-  if (data.draw_response && data.draw_response !== null) {
-    if (data.draw_response === 'accept') {
-      displayGameOverMessage(data);
-    } else if (data.draw_response === 'decline') {
-      showNotification('Ваше предложение ничьей было отклонено.', 'error');
-    }
-  }
-  if (data.draw_offer && data.draw_offer !== null) {
-    if (data.draw_offer !== user_color) {
-      document.getElementById("draw-offer-modal").style.display = "block";
-    }
-  } else {
-    document.getElementById("draw-offer-modal").style.display = "none";
-  }
-  if (CURRENT_STATUS === "w3" || CURRENT_STATUS === "b3" || CURRENT_STATUS === "n" || CURRENT_STATUS === "ns1") {
-    displayGameOverMessage(data);
   }
 }
 
