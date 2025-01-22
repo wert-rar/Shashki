@@ -1189,6 +1189,7 @@ def upload_avatar():
     return redirect(url_for('profile', username=user_login))
 
 @app.route('/delete_avatar', methods=['POST'])
+@csrf.exempt
 def delete_avatar():
     if 'user' not in session:
         abort(403)
