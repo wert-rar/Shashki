@@ -1088,24 +1088,28 @@ def webhook():
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
 
 @app.route("/singleplayer_easy/<username>")
+@csrf.exempt
 def singleplayer_easy(username):
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost, user_color=user_color)
 
 @app.route("/singleplayer_medium/<username>")
+@csrf.exempt
 def singleplayer_medium(username):
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost, user_color=user_color)
 
 @app.route("/singleplayer_hard/<username>")
+@csrf.exempt
 def singleplayer_hard(username):
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost, user_color=user_color)
 
 @app.route("/start_singleplayer", methods=["GET", "POST"])
+@csrf.exempt
 def start_singleplayer():
     if request.method == "POST":
         difficulty = request.form.get("difficulty")
@@ -1127,6 +1131,7 @@ def start_singleplayer():
         return redirect(url_for('home'))
 
 @app.route('/player_loaded', methods=['POST'])
+@csrf.exempt
 def player_loaded():
     data = request.json
     game_id = data.get('game_id')
