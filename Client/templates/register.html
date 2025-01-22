@@ -274,6 +274,7 @@
     </button>
     <h2 class="registration-title">Регистрация</h2>
     <form method="POST" id="registerForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="registration-group">
         <div class="input-container">
           <input
