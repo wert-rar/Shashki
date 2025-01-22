@@ -1161,7 +1161,6 @@ def allowed_mime(file_stream):
     return file_mime.startswith("image/")
 
 @app.route('/upload_avatar', methods=['POST'])
-@csrf.exempt
 def upload_avatar():
     if 'user' not in session:
         abort(403)
