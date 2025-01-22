@@ -1183,7 +1183,6 @@ def upload_avatar():
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
         file.save(save_path)
         update_user_avatar(user_login, safe_filename)
-        flash('Аватар обновлён', 'success')
     else:
         flash('Недопустимый файл', 'error')
     return redirect(url_for('profile', username=user_login))
@@ -1204,7 +1203,6 @@ def delete_avatar():
             os.remove(file_path)
         from base_sqlite import update_user_avatar
         update_user_avatar(user_login, None)
-        flash('Аватар удалён', 'success')
     else:
         flash('У вас уже дефолтный аватар', 'info')
     return redirect(url_for('profile', username=user_login))
