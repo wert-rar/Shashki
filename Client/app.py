@@ -1,6 +1,9 @@
 import os
+import re
+import magic
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
+from flask_wtf.csrf import CSRFProtect
 from base_sqlite import (
     check_user_exists,
     register_user,
@@ -46,11 +49,15 @@ logging.basicConfig(level=logging.DEBUG)
 create_tables()
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
+csrf = CSRFProtect(app)
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'avatars')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def is_valid_username(username):
+    return re.fullmatch(r'[A-Za-z0-9]{3,15}', username) is not None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -387,6 +394,7 @@ def home():
     return render_template('home.html', user_is_registered=user_is_registered)
 
 @app.route('/board/<int:game_id>/<user_login>')
+@csrf.exempt
 def get_board(game_id, user_login):
     if session.get('user') != user_login:
         abort(403)
@@ -430,6 +438,9 @@ def register():
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
+        if not is_valid_username(user_login):
+            flash('Имя пользователя может содержать только латинские буквы и цифры (3-15 символов)', 'error')
+            return redirect(url_for('register'))
         if user_login.lower().startswith('ghost'):
             flash('Имя пользователя не может начинаться с "ghost"', 'error')
             return redirect(url_for('register'))
@@ -456,6 +467,9 @@ def login():
         user_login = request.form['login']
         user_password = request.form['password']
         user = authenticate_user(user_login, user_password)
+        if not is_valid_username(user_login):
+            flash('Имя пользователя может содержать только латинские буквы и цифры (3-15 символов)', 'error')
+            return redirect(url_for('register'))
         if user:
             session['user'] = user_login
             flash('Вход выполнен', 'success')
@@ -541,6 +555,7 @@ def internal_server_error(e):
     return render_template('500.html'), 500
 
 @app.route('/start_game')
+@csrf.exempt
 def start_game():
     user_login = session.get('user')
     if not user_login:
@@ -609,6 +624,7 @@ def start_game():
         return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
 
 @app.route("/check_game_status", methods=["GET"])
+@csrf.exempt
 def check_game_status_route():
     game_id = session.get('game_id')
     user_login = session.get('user')
@@ -662,6 +678,7 @@ def check_game_status_route():
     return jsonify(response)
 
 @app.route("/move", methods=["POST"])
+@csrf.exempt
 def move():
     data = request.json
     selected_piece = data.get("selected_piece")
@@ -820,6 +837,7 @@ def move():
         })
 
 @app.route("/update_board", methods=["POST"])
+@csrf.exempt
 def update_board():
     try:
         if not request.is_json:
@@ -863,6 +881,7 @@ def update_board():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/give_up", methods=["POST"])
+@csrf.exempt
 def give_up_route():
     try:
         data = request.json
@@ -897,6 +916,7 @@ def give_up_route():
         return jsonify({"error": "Произошла ошибка при сдаче."}), 500
 
 @app.route('/leave_game', methods=['POST'])
+@csrf.exempt
 def leave_game():
     game_id = session.get('game_id')
     user_login = session.get('user')
@@ -930,6 +950,7 @@ def leave_game():
     return jsonify({"message": "Покинул игру успешно"}), 200
 
 @app.route("/offer_draw", methods=["POST"])
+@csrf.exempt
 def offer_draw():
     data = request.json
     game_id = data.get("game_id")
@@ -952,6 +973,7 @@ def offer_draw():
     return jsonify({"message": "Предложение ничьей отправлено"}), 200
 
 @app.route("/respond_draw", methods=["POST"])
+@csrf.exempt
 def respond_draw_route():
     data = request.json
     game_id = data.get("game_id")
@@ -994,6 +1016,7 @@ def respond_draw_route():
     return jsonify({"status_": game.status, "pieces": game.pieces}), 200
 
 @app.route("/get_possible_moves", methods=["POST"])
+@csrf.exempt
 def get_possible_moves_route():
     data = request.json
     selected_piece = data.get("selected_piece")
@@ -1027,6 +1050,7 @@ def get_possible_moves_route():
     return jsonify({"moves": moves})
 
 @app.route('/api/profile/<username>', methods=['GET'])
+@csrf.exempt
 def api_profile(username):
     if username.startswith('ghost'):
         return jsonify({"error": "Профиль не доступен"}), 403
@@ -1044,6 +1068,7 @@ def api_profile(username):
         return jsonify({"error": "Пользователь не найден"}), 404
 
 @app.route('/hook', methods=['POST'])
+@csrf.exempt
 def webhook():
     payload = request.data
     signature = request.headers.get('X-Hub-Signature-256', '')
@@ -1130,6 +1155,11 @@ def player_loaded():
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
+def allowed_mime(file_stream):
+    file_mime = magic.from_buffer(file_stream.read(2048), mime=True)
+    file_stream.seek(0)
+    return file_mime.startswith("image/")
+
 @app.route('/upload_avatar', methods=['POST'])
 def upload_avatar():
     if 'user' not in session:
@@ -1145,7 +1175,7 @@ def upload_avatar():
     if file.filename == '':
         flash('Вы не выбрали файл', 'error')
         return redirect(url_for('profile', username=user_login))
-    if file and allowed_file(file.filename):
+    if file and allowed_file(file.filename) and allowed_mime(file.stream):
         _, ext = os.path.splitext(file.filename)
         new_filename = f"{user_login}{ext.lower()}"
         from base_sqlite import update_user_avatar
