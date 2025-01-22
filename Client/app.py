@@ -1,5 +1,6 @@
 import os
 import re
+import magic
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
 from flask_wtf.csrf import CSRFProtect
@@ -1154,7 +1155,13 @@ def player_loaded():
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
+def allowed_mime(file_stream):
+    file_mime = magic.from_buffer(file_stream.read(2048), mime=True)
+    file_stream.seek(0)
+    return file_mime.startswith("image/")
+
 @app.route('/upload_avatar', methods=['POST'])
+@csrf.exempt
 def upload_avatar():
     if 'user' not in session:
         abort(403)
@@ -1169,7 +1176,7 @@ def upload_avatar():
     if file.filename == '':
         flash('Вы не выбрали файл', 'error')
         return redirect(url_for('profile', username=user_login))
-    if file and allowed_file(file.filename):
+    if file and allowed_file(file.filename) and allowed_mime(file.stream):
         _, ext = os.path.splitext(file.filename)
         new_filename = f"{user_login}{ext.lower()}"
         from base_sqlite import update_user_avatar
@@ -1188,7 +1195,6 @@ def upload_avatar():
     return redirect(url_for('profile', username=user_login))
 
 @app.route('/delete_avatar', methods=['POST'])
-@csrf.exempt
 def delete_avatar():
     if 'user' not in session:
         abort(403)
