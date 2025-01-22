@@ -1211,6 +1211,7 @@ def delete_avatar():
 
 
 @app.route("/send_friend_request", methods=["POST"])
+@csrf.exempt
 def send_friend_request():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
@@ -1232,6 +1233,7 @@ def send_friend_request():
 
 
 @app.route("/respond_friend_request", methods=["POST"])
+@csrf.exempt
 def respond_friend_request():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
@@ -1252,6 +1254,7 @@ def respond_friend_request():
 
 
 @app.route("/get_friend_requests", methods=["GET"])
+@csrf.exempt
 def get_friend_requests():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
@@ -1261,6 +1264,7 @@ def get_friend_requests():
 
 
 @app.route("/get_notifications", methods=["GET"])
+@csrf.exempt
 def get_notifications():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
@@ -1270,6 +1274,7 @@ def get_notifications():
 
 
 @app.route("/get_friends", methods=["GET"])
+@csrf.exempt
 def get_friends():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
@@ -1279,6 +1284,7 @@ def get_friends():
 
 
 @app.route("/remove_friend", methods=["POST"])
+@csrf.exempt
 def remove_friend():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
@@ -1293,6 +1299,7 @@ def remove_friend():
     return jsonify({"message": f"Пользователь {friend_username} удалён из друзей"}), 200
 
 @app.route("/search_users")
+@csrf.exempt
 def search_users():
     from base_sqlite import connect_db
     query = request.args.get("query", "").strip()
