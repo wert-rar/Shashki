@@ -1163,35 +1163,45 @@ def allowed_mime(file_stream):
 @app.route('/upload_avatar', methods=['POST'])
 @csrf.exempt
 def upload_avatar():
-    if 'user' not in session:
-        abort(403)
-    user_login = session['user']
-    user = get_user_by_login(user_login)
-    if not user or user_login.startswith('ghost'):
-        abort(403)
-    if 'avatar' not in request.files:
-        flash('Нет файла для загрузки', 'error')
-        return redirect(url_for('profile', username=user_login))
-    file = request.files['avatar']
-    if file.filename == '':
-        flash('Вы не выбрали файл', 'error')
-        return redirect(url_for('profile', username=user_login))
-    if file and allowed_file(file.filename) and allowed_mime(file.stream):
-        _, ext = os.path.splitext(file.filename)
-        new_filename = f"{user_login}{ext.lower()}"
-        from base_sqlite import update_user_avatar
-        old_avatar = user["avatar_filename"]
-        if old_avatar and old_avatar != new_filename:
-            old_path = os.path.join(app.config['UPLOAD_FOLDER'], old_avatar)
-            if os.path.exists(old_path):
-                os.remove(old_path)
-        safe_filename = secure_filename(new_filename)
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
-        file.save(save_path)
-        update_user_avatar(user_login, safe_filename)
-        flash('Аватар обновлён', 'success')
-    else:
-        flash('Недопустимый файл', 'error')
+    try:
+        app.logger.debug("Начало обработки загрузки аватара.")
+        if 'user' not in session:
+            app.logger.error("Пользователь не в сессии.")
+            abort(403)
+        user_login = session['user']
+        user = get_user_by_login(user_login)
+        if not user or user_login.startswith('ghost'):
+            app.logger.error("Пользователь не найден или является ghost.")
+            abort(403)
+        if 'avatar' not in request.files:
+            app.logger.error("Нет файла для загрузки.")
+            flash('Нет файла для загрузки', 'error')
+            return redirect(url_for('profile', username=user_login))
+        file = request.files['avatar']
+        app.logger.debug("Название файла: %s", file.filename)
+        if file.filename == '':
+            flash('Вы не выбрали файл', 'error')
+            return redirect(url_for('profile', username=user_login))
+        if file and allowed_file(file.filename) and allowed_mime(file.stream):
+            _, ext = os.path.splitext(file.filename)
+            new_filename = f"{user_login}{ext.lower()}"
+            from base_sqlite import update_user_avatar
+            old_avatar = user["avatar_filename"]
+            if old_avatar and old_avatar != new_filename:
+                old_path = os.path.join(app.config['UPLOAD_FOLDER'], old_avatar)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            safe_filename = secure_filename(new_filename)
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+            file.save(save_path)
+            update_user_avatar(user_login, safe_filename)
+            flash('Аватар обновлён', 'success')
+        else:
+            app.logger.error("Файл не удовлетворяет требованиям по расширению или MIME типу.")
+            flash('Недопустимый файл', 'error')
+    except Exception as e:
+        app.logger.exception("Ошибка при загрузке аватара:")
+        flash("Произошла внутренняя ошибка сервера. Пожалуйста, попробуйте позже.", "error")
     return redirect(url_for('profile', username=user_login))
 
 @app.route('/delete_avatar', methods=['POST'])
