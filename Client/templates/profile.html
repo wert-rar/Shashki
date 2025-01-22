@@ -1218,6 +1218,7 @@
         </div>
         <div class="buttons">
             <form id="avatarForm" action="/upload_avatar" method="post" enctype="multipart/form-data" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="file" name="avatar" id="avatarFileInput" accept=".png,.jpg,.jpeg,.gif" style="display:none;" onchange="document.getElementById('avatarForm').submit();"/>
             </form>
             <button class="home-button" onclick="goHome()">Вернуться</button>
@@ -1378,6 +1379,17 @@
                 alert("Активная игра не найдена.");
             }
         }
+
+        document.getElementById('avatarFileInput').addEventListener('change', () => {
+            const formData = new FormData(document.getElementById('avatarForm'));
+            fetch('/upload_avatar', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+        });
 
         function showLeaveGameModal() {
             document.getElementById("leave-game-modal").style.display = "flex";

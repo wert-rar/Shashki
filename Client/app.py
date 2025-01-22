@@ -1155,7 +1155,6 @@ def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
 @app.route('/upload_avatar', methods=['POST'])
-@csrf.exempt
 def upload_avatar():
     if 'user' not in session:
         abort(403)
