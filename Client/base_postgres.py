@@ -53,34 +53,46 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
-def send_friend_request_db(sender: str, receiver: str) -> bool:
+def send_friend_request_db(sender: str, receiver: str) -> str:
     session = SessionLocal()
     try:
+        if sender == receiver:
+            return "self_request"
+
         existing = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver).first()
         if existing:
-            if existing.status in ("pending", "accepted"):
-                return True
-            else:
+            if existing.status == "pending":
+                return "already_sent"
+            elif existing.status == "accepted":
+                return "already_friends"
+            elif existing.status == "declined":
                 existing.status = "pending"
                 session.commit()
-                return True
-        else:
-            reverse_existing = (
-                session.query(FriendRelation)
-                .filter_by(user_login=receiver, friend_login=sender)
-                .first()
-            )
-            if reverse_existing and reverse_existing.status == "accepted":
-                return False
+                return "sent_again"
+            else:
+                return "error"
 
-            new_request = FriendRelation(
-                user_login=sender,
-                friend_login=receiver,
-                status="pending"
-            )
-            session.add(new_request)
-            session.commit()
-            return True
+        reverse_existing = session.query(FriendRelation).filter_by(user_login=receiver, friend_login=sender).first()
+        if reverse_existing:
+            if reverse_existing.status == "pending":
+                return "receiver_already_sent"
+            elif reverse_existing.status == "accepted":
+                return "already_friends"
+            elif reverse_existing.status == "declined":
+                reverse_existing.status = "pending"
+                session.commit()
+                return "sent_again"
+            else:
+                return "error"
+
+        new_request = FriendRelation(
+            user_login=sender,
+            friend_login=receiver,
+            status="pending"
+        )
+        session.add(new_request)
+        session.commit()
+        return "sent"
     finally:
         session.close()
 
