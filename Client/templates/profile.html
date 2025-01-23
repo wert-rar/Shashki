@@ -1103,6 +1103,7 @@
             border: 1px solid var(--accent-color);
             border-radius: 8px;
             padding: 6px 10px;
+            z-index: 44;
         }
         .three-dot-dropdown div {
             color: var(--text-color);
@@ -1260,7 +1261,7 @@
                 <input type="text" id="friendSearchInput" placeholder="Поиск пользователей..." />
                 <button type="button" class="clear-search" title="Очистить"></button>
             </div>
-            <h3>Ваши друзья</h3>
+            <h3 id="friendsModalHeading">Ваши друзья</h3>
             <div id="friendsListContainer"></div>
         </div>
     </div>
@@ -1693,7 +1694,9 @@
 
                         btn.onclick = function(e) {
                             e.stopPropagation();
-                            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                            const isOpen = dropdown.style.display === "block";
+                            closeAllDropdowns();
+                            dropdown.style.display = isOpen ? "none" : "block";
                         };
 
                         friendDiv.appendChild(span);
@@ -1710,6 +1713,7 @@
                 showNotification("Ошибка загрузки списка друзей", "error");
             });
         }
+
 
         function closeFriendsModal() {
             document.getElementById("friendsModal").style.display = "none";
@@ -1755,6 +1759,9 @@
                 dropdown.style.display = "none";
                 return;
             }
+
+            closeAllDropdowns();
+
             fetch("/get_friends")
             .then(response => response.json())
             .then(data => {
@@ -1813,20 +1820,22 @@
                 .then(response => response.json())
                 .then(data => {
                     const container = document.getElementById("friendsListContainer");
+                    const heading = document.getElementById("friendsModalHeading");
+                    heading.textContent = "Ваши друзья";
                     container.innerHTML = "";
                     if(data.friends && data.friends.length > 0){
                         myFriends = data.friends;
                         data.friends.forEach(friend => {
-                            const friendDiv = document.createElement("div");
+                            var friendDiv = document.createElement("div");
                             friendDiv.className = "search-user-item dropdown-container";
-                            const span = document.createElement("span");
+                            var span = document.createElement("span");
                             span.textContent = friend;
-                            const btn = document.createElement("button");
+                            var btn = document.createElement("button");
                             btn.textContent = "⋮";
 
-                            const dropdown = document.createElement("div");
+                            var dropdown = document.createElement("div");
                             dropdown.className = "three-dot-dropdown";
-                            const removeDiv = document.createElement("div");
+                            var removeDiv = document.createElement("div");
                             removeDiv.textContent = "Удалить из друзей";
                             removeDiv.onclick = function() {
                                 openRemoveFriendModal(friend);
@@ -1847,6 +1856,9 @@
                     } else {
                         container.innerHTML = "<p style='color:#ccc; text-align:center;'>Список друзей пуст</p>";
                     }
+                })
+                .catch(() => {
+                    showNotification("Ошибка загрузки списка друзей", "error");
                 });
         }
 
@@ -1858,7 +1870,9 @@
                     .then(data => {
                         displaySearchResults(data.results);
                     })
-                    .catch(() => {});
+                    .catch(() => {
+                        showNotification("Ошибка при поиске пользователей", "error");
+                    });
             } else {
                 loadFriendsList();
             }
@@ -1866,11 +1880,15 @@
 
         function displaySearchResults(results) {
             const container = document.getElementById("friendsListContainer");
+            const heading = document.getElementById("friendsModalHeading");
+            heading.textContent = "Найденные пользователи";
             container.innerHTML = "";
             if (results.length === 0) {
                 container.innerHTML = "<p style='color:#ccc; text-align:center;'>Пользователи не найдены</p>";
                 return;
             }
+            const currentUser = "{{ session['user'] if 'user' in session else '' }}";
+
             results.forEach(user => {
                 const userDiv = document.createElement("div");
                 userDiv.className = "search-user-item dropdown-container";
@@ -1916,7 +1934,9 @@
 
                 btn.onclick = function(e) {
                     e.stopPropagation();
-                    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+                    const isOpen = dropdown.style.display === "block";
+                    closeAllDropdowns();
+                    dropdown.style.display = isOpen ? "none" : "block";
                 };
 
                 userDiv.appendChild(span);
@@ -1925,6 +1945,7 @@
                 container.appendChild(userDiv);
             });
         }
+
         document.addEventListener('DOMContentLoaded', function() {
             const friendSearchInput = document.getElementById('friendSearchInput');
 
@@ -1940,6 +1961,13 @@
             updatePlaceholder();
             window.addEventListener('resize', updatePlaceholder);
         });
+
+        function closeAllDropdowns() {
+            const dropdowns = document.querySelectorAll('.three-dot-dropdown');
+            dropdowns.forEach(dropdown => {
+                dropdown.style.display = 'none';
+            });
+        }
 
     </script>
 </body>

@@ -1324,9 +1324,23 @@ def search_users():
     query = request.args.get("query", "").strip()
     if not query:
         return jsonify({"results": []})
+
+    current_user = session.get('user')
+
     con = connect_db()
     cur = con.cursor()
-    cur.execute("SELECT login FROM player WHERE login LIKE ? LIMIT 10", ('%' + query + '%',))
+
+    if current_user:
+        cur.execute(
+            "SELECT login FROM player WHERE login LIKE ? AND login != ? LIMIT 10",
+            ('%' + query + '%', current_user)
+        )
+    else:
+        cur.execute(
+            "SELECT login FROM player WHERE login LIKE ? LIMIT 10",
+            ('%' + query + '%',)
+        )
+
     rows = cur.fetchall()
     con.close()
     results = [row["login"] for row in rows]
