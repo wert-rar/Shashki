@@ -1,3 +1,4 @@
+SetEnv LD_LIBRARY_PATH "/home/j/j0mutyp2/.local/lib:$LD_LIBRARY_PATH"
 PassengerEnabled On
-PassengerPython /home/j/j0mutyp2/thesashki.ru/venv/bin/python
+PassengerPython /home/j/j0mutyp2/thesashki.ru/venv/bin/python3.10
 PassengerFriendlyErrorPages on
