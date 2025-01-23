@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationModal = document.getElementById("notificationModal");
     const closeNotificationModal = document.getElementById("closeNotificationModal");
     const notificationList = document.getElementById("notificationList");
-    const friendNotificationBadge = document.getElementById("friendNotificationBadge");
+    const bellDesktopCount = document.getElementById("bellDesktopCount");
+    const bellMobileCount = document.getElementById("bellMobileCount");
     let selections = { difficulty: null, color: null };
     let startX = 0;
     let endX = 0;
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         notifItem.classList.add("notification-item");
                         notifItem.style.padding = "10px";
                         notifItem.style.borderBottom = "1px solid #444";
+
                         const notifText = document.createElement("p");
                         notifText.textContent = `Запрос в друзья от ${sender}`;
                         notifItem.appendChild(notifText);
@@ -73,14 +75,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         notificationList.appendChild(notifItem);
                     });
+                    updateNotificationCount(data.notifications.length);
                 } else {
                     notificationList.innerHTML = "<p>Новых уведомлений нет</p>";
+                    updateNotificationCount(0);
                 }
             })
             .catch(err => {
                 console.error("Ошибка при получении уведомлений:", err);
             });
     }
+
+
+    function updateNotificationCount(count) {
+        if (bellDesktopCount && bellMobileCount) {
+            if (count > 0) {
+                bellDesktopCount.textContent = count;
+                bellMobileCount.textContent = count;
+                bellDesktopCount.style.display = 'block';
+                bellMobileCount.style.display = 'block';
+            } else {
+                bellDesktopCount.style.display = 'none';
+                bellMobileCount.style.display = 'none';
+            }
+        }
+    }
+
 
     function respondFriendRequest(sender, responseType, notifElement) {
         fetch('/respond_friend_request', {
@@ -143,21 +163,23 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/get_friend_requests')
             .then(response => response.json())
             .then(data => {
-                if (friendNotificationBadge) {
+                if (bellDesktopCount && bellMobileCount) {
                     if (data.requests && data.requests.length > 0) {
-                        friendNotificationBadge.innerText = data.requests.length;
-                        friendNotificationBadge.style.display = 'block';
+                        bellDesktopCount.textContent = data.requests.length;
+                        bellMobileCount.textContent = data.requests.length;
+                        bellDesktopCount.style.display = 'block';
+                        bellMobileCount.style.display = 'block';
                     } else {
-                        friendNotificationBadge.style.display = 'none';
+                        bellDesktopCount.style.display = 'none';
+                        bellMobileCount.style.display = 'none';
                     }
                 }
             })
             .catch(error => console.error('Ошибка при получении запросов в друзья:', error));
     }
 
-
     checkFriendRequests();
-    setInterval(checkFriendRequests, 5000);
+    setInterval(checkFriendRequests, 500);
 
     function toggleNotifications(event) {
         event.stopPropagation();
@@ -170,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bellDesktop.classList.add('active');
             if (bellMobile) bellMobile.classList.add('active');
             fetchNotifications();
+            updateNotificationCount(0);
         }
     }
 

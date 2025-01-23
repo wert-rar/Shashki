@@ -548,6 +548,7 @@
             100% { width: 0; }
         }
         .bell-button {
+            position: relative;
             background: none;
             border: none;
             cursor: pointer;
@@ -555,6 +556,19 @@
             color: var(--text-color);
             transition: color 0.3s ease;
             margin-right: 10px;
+        }
+        .notification-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+            pointer-events: none;
         }
         .bell-button:hover {
             color: var(--button-background);
@@ -792,7 +806,10 @@
     </div>
     <nav>
         <div class="navigation-menu">
-            <button class="bell-button" id="bellDesktop"><i class="fas fa-bell"></i></button>
+            <button class="bell-button" id="bellDesktop">
+                <i class="fas fa-bell"></i>
+                <span class="notification-count" id="bellDesktopCount">0</span>
+            </button>
             {% if 'user' in session and user_is_registered %}
                 <a href="{{ url_for('profile', username=session['user']) }}">Профиль</a>
             {% else %}
@@ -801,7 +818,10 @@
             {% endif %}
         </div>
         <div class="mobile-nav">
-            <button class="bell-button" id="bellMobile"><i class="fas fa-bell"></i></button>
+            <button class="bell-button" id="bellMobile">
+                <i class="fas fa-bell"></i>
+                <span class="notification-count" id="bellMobileCount">0</span>
+            </button>
             <div class="hamburger" id="hamburger">
                 <span></span>
                 <span></span>

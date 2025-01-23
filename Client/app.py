@@ -1218,21 +1218,37 @@ def delete_avatar():
 def send_friend_request():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
+
     data = request.get_json()
     friend_username = data.get("friend_username")
     sender = session.get("user")
+
     if not friend_username:
         return jsonify({"error": "Не указан получатель"}), 400
+
     if friend_username == sender:
         return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
+
     user_row = get_user_by_login(friend_username)
     if not user_row:
         return jsonify({"error": "Пользователь не найден"}), 404
-    created_or_pending = send_friend_request_db(sender, friend_username)
-    if created_or_pending:
+
+    status = send_friend_request_db(sender, friend_username)
+
+    if status == "sent":
         return jsonify({"message": "Запрос успешно отправлен"}), 200
+    elif status == "already_sent":
+        return jsonify({"message": "Вы уже отправили запрос этому пользователю"}), 200
+    elif status == "receiver_already_sent":
+        return jsonify({"message": "Этот пользователь уже отправил вам запрос в друзья"}), 200
+    elif status == "already_friends":
+        return jsonify({"message": "Вы уже друзья"}), 200
+    elif status == "sent_again":
+        return jsonify({"message": "Запрос снова успешно отправлен"}), 200
+    elif status == "self_request":
+        return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
     else:
-        return jsonify({"message": "Вы уже друзья или заявка не может быть отправлена"}), 200
+        return jsonify({"error": "Не удалось отправить запрос"}), 500
 
 
 @app.route("/respond_friend_request", methods=["POST"])
