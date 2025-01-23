@@ -2,6 +2,8 @@ import sqlite3
 import logging
 import os
 import hashlib
+import secrets
+from datetime import datetime, timedelta
 
 def create_tables():
     try:
@@ -29,6 +31,14 @@ def create_tables():
                     rating_after INTEGER,
                     rating_change INTEGER,
                     result TEXT
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS remember_tokens(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_login TEXT,
+                    token TEXT UNIQUE,
+                    expires_at TEXT
                 )
             """)
             logging.info("Функция create_tables завершена успешно.")
@@ -161,3 +171,60 @@ def update_user_avatar(user_login, filename):
     cur.execute("UPDATE player SET avatar_filename = ? WHERE login = ?", (filename, user_login))
     con.commit()
     con.close()
+
+def add_remember_token(user_login, token, expires_at):
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO remember_tokens (user_login, token, expires_at)
+            VALUES (?, ?, ?)
+        """, (user_login, token, expires_at.isoformat()))
+        con.commit()
+        con.close()
+        logging.info(f"Токен для пользователя '{user_login}' добавлен.")
+        return True
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при добавлении токена: {e}")
+        return False
+
+def get_user_by_remember_token(token):
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("""
+        SELECT user_login, expires_at
+        FROM remember_tokens
+        WHERE token = ?
+    """, (token,))
+    row = cur.fetchone()
+    con.close()
+    if row:
+        expires_at = datetime.fromisoformat(row['expires_at'])
+        if datetime.utcnow() < expires_at:
+            return row['user_login']
+        else:
+            delete_remember_token(token)
+            return None
+    return None
+
+def delete_remember_token(token):
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        cur.execute("DELETE FROM remember_tokens WHERE token = ?", (token,))
+        con.commit()
+        con.close()
+        logging.info(f"Токен '{token}' удален.")
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при удалении токена: {e}")
+
+def delete_all_remember_tokens(user_login):
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        cur.execute("DELETE FROM remember_tokens WHERE user_login = ?", (user_login,))
+        con.commit()
+        con.close()
+        logging.info(f"Все токены для пользователя '{user_login}' удалены.")
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при удалении токенов: {e}")

@@ -1,7 +1,8 @@
 import os
 import re
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash
+from datetime import timedelta, datetime
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
 from flask_wtf.csrf import CSRFProtect
 from base_sqlite import (
     check_user_exists,
@@ -13,7 +14,11 @@ from base_sqlite import (
     create_tables,
     get_user_rang,
     insert_completed_game,
-    get_user_history
+    get_user_history,
+    add_remember_token,
+    get_user_by_remember_token,
+    delete_remember_token,
+    delete_all_remember_tokens
 )
 from game import (
     get_game_status_internally,
@@ -40,7 +45,7 @@ from base_postgres import (
 
 import logging, subprocess, hmac, hashlib, threading, time
 import itertools
-import datetime
+import secrets
 
 ghost_counter = itertools.count(1)
 ghost_lock = threading.Lock()
@@ -54,6 +59,13 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'avatars')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30)
+)
 
 def is_valid_username(username):
     return re.fullmatch(r'[A-Za-z0-9]{3,15}', username) is not None
@@ -460,23 +472,44 @@ def find_active_game(user_login):
                     return g_obj
     return None
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
-        user = authenticate_user(user_login, user_password)
+        remember = 'remember_me' in request.form
+
         if not is_valid_username(user_login):
             flash('Имя пользователя может содержать только латинские буквы и цифры (3-15 символов)', 'error')
             return redirect(url_for('register'))
+
+        user = authenticate_user(user_login, user_password)
         if user:
             session['user'] = user_login
             flash('Вход выполнен', 'success')
-            game = find_active_game(user_login)
-            if game:
-                session['game_id'] = game.game_id
-                session['color'] = game.user_color(user_login)
-            return redirect(url_for('home'))
+
+            if remember:
+                session.permanent = True
+                token = secrets.token_urlsafe(64)
+                expires_at = datetime.utcnow() + timedelta(days=30)
+                if add_remember_token(user_login, token, expires_at):
+                    resp = make_response(redirect(url_for('home')))
+                    resp.set_cookie(
+                        'remember_token',
+                        token,
+                        expires=expires_at,
+                        httponly=True,
+                        secure=True,
+                        samesite='Lax'
+                    )
+                    return resp
+                else:
+                    flash('Не удалось сохранить токен для запоминания', 'error')
+                    return redirect(url_for('login'))
+            else:
+                session.permanent = False
+                return redirect(url_for('home'))
         else:
             flash('Неверные данные для входа', 'error')
             return redirect(url_for('login'))
@@ -528,13 +561,25 @@ def profile(username):
     else:
         abort(404)
 
+
 @app.route("/logout")
 def logout():
-    session.pop('user', None)
+    user_login = session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
     flash('Вы вышли из аккаунта', 'info')
-    return redirect(url_for('home'))
+
+    token = request.cookies.get('remember_token')
+    if token:
+        delete_remember_token(token)
+
+    resp = make_response(redirect(url_for('home')))
+    resp.delete_cookie('remember_token')
+
+    if user_login:
+        delete_all_remember_tokens(user_login)
+
+    return resp
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -1346,6 +1391,44 @@ def search_users():
     results = [row["login"] for row in rows]
     return jsonify({"results": results})
 
+@app.before_request
+def load_user_from_remember_token():
+    if 'user' not in session:
+        token = request.cookies.get('remember_token')
+        if token:
+            user_login = get_user_by_remember_token(token)
+            if user_login:
+                session['user'] = user_login
+                session.permanent = True
+                new_token = secrets.token_urlsafe(64)
+                new_expires_at = datetime.utcnow() + timedelta(days=30)
+                if add_remember_token(user_login, new_token, new_expires_at):
+                    delete_remember_token(token)
+                    resp = make_response()
+                    resp.set_cookie(
+                        'remember_token',
+                        new_token,
+                        expires=new_expires_at,
+                        httponly=True,
+                        secure=True,
+                        samesite='Lax'
+                    )
+                    from flask import g
+                    g.new_remember_token = new_token
+                    g.new_expires_at = new_expires_at
+@app.after_request
+def set_new_remember_token(response):
+    from flask import g
+    if hasattr(g, 'new_remember_token') and g.new_remember_token:
+        response.set_cookie(
+            'remember_token',
+            g.new_remember_token,
+            expires=g.new_expires_at,
+            httponly=True,
+            secure=True,
+            samesite='Lax'
+        )
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True)

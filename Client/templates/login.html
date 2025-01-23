@@ -264,6 +264,28 @@
       box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
       transition: background-color 5000s ease-in-out 0s !important;
     }
+    .remember-me-container {
+      display: flex;
+      align-items: center;
+      width: 90%;
+      margin: 10px 0;
+    }
+    .remember-me-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      color: var(--text-color);
+      font-size: 1rem;
+      user-select: none;
+    }
+    .remember-me-label input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-right: 10px;
+      cursor: pointer;
+      accent-color: var(--accent-color);
+      user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -300,6 +322,14 @@
           <label>Пароль</label>
           <i class="fas fa-eye toggle-password" onclick="togglePassword(this)"></i>
         </div>
+
+        <div class="remember-me-container">
+          <label class="remember-me-label">
+            <input type="checkbox" id="rememberMe" name="remember_me">
+            Запомнить меня
+          </label>
+        </div>
+
         <button type="submit">Войти</button>
       </div>
     </form>
