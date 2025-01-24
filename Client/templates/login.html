@@ -53,6 +53,7 @@
       position: relative;
       text-align: center;
       z-index: 1;
+      transition: padding 0.3s ease, max-width 0.3s ease;
     }
     .back-button {
       position: absolute;
@@ -83,6 +84,7 @@
       font-size: 2rem;
       margin-bottom: 30px;
       color: var(--text-color);
+      transition: font-size 0.3s ease, margin-bottom 0.3s ease;
     }
     .registration-group {
       display: flex;
@@ -103,7 +105,7 @@
       font-size: 1rem;
       padding: 15px;
       outline: none;
-      transition: border-color 0.3s ease;
+      transition: border-color 0.3s ease, font-size 0.3s ease, padding 0.3s ease;
     }
     .input-container input:focus {
       border-color: var(--accent-color);
@@ -115,7 +117,7 @@
       transform: translateY(-50%);
       pointer-events: none;
       color: var(--text-secondary);
-      transition: 0.3s ease;
+      transition: 0.3s ease, font-size 0.3s ease;
       background-color: var(--card-background);
       padding: 0 5px;
     }
@@ -123,6 +125,7 @@
     .input-container input:not(:placeholder-shown) + label {
       top: 0;
       left: 15px;
+      font-size: 0.8rem;
     }
     .toggle-password {
       position: absolute;
@@ -132,6 +135,7 @@
       color: var(--text-secondary);
       cursor: pointer;
       font-size: 1rem;
+      transition: font-size 0.3s ease;
     }
     .registration-group button {
       width: 90%;
@@ -143,7 +147,7 @@
       border-radius: 10px;
       font-size: 1rem;
       cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, padding 0.3s ease, font-size 0.3s ease;
     }
     .registration-group button:hover {
       background-color: var(--button-hover);
@@ -154,11 +158,12 @@
       margin-top: 20px;
       font-size: 0.9rem;
       color: var(--text-secondary);
+      transition: font-size 0.3s ease;
     }
     .login-link a {
       text-decoration: none;
       color: var(--accent-color);
-      transition: color 0.3s ease;
+      transition: color 0.3s ease, font-size 0.3s ease;
     }
     .login-link a:hover {
       color: var(--button-hover);
@@ -269,6 +274,7 @@
       align-items: center;
       width: 90%;
       margin: 10px 0;
+      transition: width 0.3s ease, margin 0.3s ease;
     }
     .remember-me-label {
       display: flex;
@@ -277,6 +283,7 @@
       color: var(--text-color);
       font-size: 1rem;
       user-select: none;
+      transition: font-size 0.3s ease;
     }
     .remember-me-label input[type="checkbox"] {
       width: 20px;
@@ -285,6 +292,103 @@
       cursor: pointer;
       accent-color: var(--accent-color);
       user-select: none;
+    }
+
+    @media (max-width: 400px) {
+      .container {
+        padding: 20px;
+        max-width: 90%;
+      }
+
+      .remember-me-container {
+        width: 80%;
+        margin: 8px 0;
+      }
+
+      .remember-me-label {
+        font-size: 0.9rem;
+      }
+
+      .remember-me-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+      }
+
+      .registration-group button {
+        padding: 12px;
+        font-size: 0.9rem;
+      }
+
+      .registration-title {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+      }
+
+      .login-link {
+        font-size: 0.8rem;
+      }
+
+      .login-link a {
+        font-size: 0.8rem;
+      }
+
+      .back-button {
+        font-size: 20px;
+        top: 10px;
+        left: 10px;
+      }
+      .input-container label {
+        font-size: 0.9rem;
+      }
+    }
+    @media (max-width: 290px) {
+      .container {
+        padding: 20px;
+        max-width: 90%;
+      }
+
+      .remember-me-container {
+        width: 70%;
+        margin: 8px 0;
+      }
+
+      .remember-me-label {
+        font-size: 0.6rem;
+      }
+
+      .remember-me-label input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+        margin-right: 7px;
+      }
+
+      .registration-group button {
+        padding: 10px;
+        font-size: 0.8rem;
+      }
+
+      .registration-title {
+        font-size: 1.3rem;
+        margin-bottom: 18px;
+      }
+
+      .login-link {
+        font-size: 0.7rem;
+      }
+
+      .login-link a {
+        font-size: 0.7rem;
+      }
+
+      .back-button {
+        font-size: 18px;
+        top: 10px;
+        left: 10px;
+      }
+      .input-container label {
+        font-size: 0.8rem;
+      }
     }
   </style>
 </head>

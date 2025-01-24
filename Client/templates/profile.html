@@ -143,6 +143,23 @@
             position: absolute;
             top: 12px;
             right: 5px;
+            display: flex;
+            gap: 10px;
+        }
+        .action-button {
+            padding: 6px 10px;
+            font-size: 0.9em;
+            border-radius: 6px;
+        }
+        #showFriendsBtn,
+        #showTopBtn {
+            padding: 6px 10px;
+            font-size: 1.05em;
+            border-radius: 6px;
+        }
+        .action-button:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
         }
         .friend-action-container button {
             background: none;
@@ -177,14 +194,10 @@
             position: absolute;
             top: 23px;
             right: 2px;
-            {% if is_own_profile %}
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: flex-end;
-            {% else %}
-            display: none;
-            {% endif %}
-            z-index: 10;
+            z-index: 20;
         }
         @media (min-width: 501px) {
             .mobile-menu-container {
@@ -206,19 +219,67 @@
         }
         .mobile-menu-dropdown {
             display: none;
-            background-color: var(--card-background);
-            border: 1px solid var(--accent-color);
-            border-radius: 8px;
-            margin-top: 5px;
-            padding: 6px 10px;
+            border: none;
+            background-color: transparent;
+            box-shadow: none;
+            margin-top: 0;
+            padding: 0;
+            flex-direction: column;
+            align-items: flex-end;
+            padding: 0;
+            background-color: transparent;
+            position: absolute;
+            right: -30px;
+            top: 100%;
+            z-index: 20;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+        }
+        .mobile-menu-dropdown.show {
+            display: flex;
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
         .mobile-menu-dropdown span {
-            cursor: pointer;
+            background-color: transparent;
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin: 5px 0;
             color: var(--text-color);
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+            display: block;
             font-size: 1em;
+            text-align: left;
+            width: 100%;
         }
         .mobile-menu-dropdown span:hover {
-            color: var(--accent-color);
+            background-color: var(--button-hover);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+        .mobile-menu-blur-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            z-index: 15;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .mobile-menu-blur-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .no-scroll {
+            overflow: hidden;
         }
         .user-info {
             display: flex;
@@ -542,20 +603,20 @@
                 margin: 8px;
             }
             .user-info .info-card h3 {
-                font-size: 1em;
+                font-size: 0.9em;
             }
             .user-info .info-card p {
-                font-size: 1.2em;
+                font-size: 1em !important;
             }
             .avatar {
                 width: 80px;
                 height: 80px;
             }
             .header-info h1 {
-                font-size: 1.5em;
+                font-size: 1.2em;
             }
             .header-info p {
-                font-size: 0.9em;
+                font-size: 0.8em;
             }
         }
         @media (max-width: 425px) {
@@ -590,45 +651,23 @@
                 top: 10px;
             }
         }
-        @media (max-width: 315px) {
+        @media (max-width: 317px) {
             .avatar {
-                width: calc(80px - 1rem);
-                height: calc(80px - 1rem);
+                width: calc(80px - 2rem);
+                height: calc(80px - 2rem);
                 margin-right: 15px;
             }
+
             .friend-action-container {
                 position: absolute;
                 top: 1px;
                 right: 5px;
             }
             .header-info h1 {
-                font-size: calc(2em - 0.9em);
+                font-size: calc(2em - 1em);
             }
             .mobile-menu-container {
-                top: 5px;
-            }
-        }
-        @media (max-width: 300px) {
-            .user-info .info-card {
-                padding: calc(15px - 0.2rem);
-                margin: calc(8px - 0.2rem);
-            }
-            .user-info .info-card h3 {
-                font-size: calc(1em - 0.2rem);
-            }
-            .user-info .info-card p {
-                font-size: calc(1.2em - 0.2rem);
-            }
-            .avatar {
-                width: calc(80px - 1.1rem);
-                height: calc(80px - 1.1rem);
-                margin-right: 5px;
-            }
-            .header-info h1 {
-                font-size: calc(2em - 0.9em);
-            }
-            .mobile-menu-container {
-                top: 8.5px;
+                top: 1px !important;
             }
             .header-info p {
                 font-size: calc(0.9em - 0.2rem);
@@ -659,12 +698,6 @@
             .history-table-wrapper td {
                 font-size: calc(0.84em);
                 padding: calc(10px) calc(12px);
-            }
-        }
-        @media (max-width: 270px) {
-            .avatar {
-                width: 60px;
-                height: 60px;
             }
         }
         @media (max-width: 700px) {
@@ -879,6 +912,7 @@
             cursor: pointer;
             font-size: 1.2em;
             transition: color 0.3s ease;
+            margin-top: -4px;
         }
         #friendSearchContainer button:hover {
             color: var(--accent-color);
@@ -1074,25 +1108,24 @@
         select:-webkit-autofill,
         select:-webkit-autofill:hover,
         select:-webkit-autofill:focus {
-          -webkit-text-fill-color: var(--text-color) !important;
-          box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
-          transition: background-color 5000s ease-in-out 0s !important;
+            -webkit-text-fill-color: var(--text-color) !important;
+            box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
+            transition: background-color 5000s ease-in-out 0s !important;
         }
         #friendSearchContainer button {
-          padding: 10px 15px;
-          background: none;
-          border: none;
-          color: #fff;
-          cursor: pointer;
-          font-size: 1.2em;
-          transition: color 0.3s ease;
-          margin-top: -4px;
+            padding: 10px 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: color 0.3s ease;
+            margin-top: -4px;
         }
         #friendsListContainer .search-user-item span {
             font-size: 1.1em;
             margin-left: 10px;
         }
-
         .three-dot-dropdown {
             position: absolute;
             right: 0;
@@ -1115,6 +1148,84 @@
         }
         .dropdown-container {
             position: relative;
+        }
+        @media (max-width: 375px) {
+            .mobile-menu-dropdown {
+                display: none;
+            }
+
+            .mobile-menu-dropdown.show {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                padding: 0;
+                background-color: transparent;
+                position: absolute;
+                right: -30px;
+                top: 100%;
+                z-index: 20;
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+
+            .mobile-menu-dropdown span {
+                font-size: 0.8em;
+                padding: 4px 8px;
+                margin: 3px 0;
+                display: block;
+                width: 100%;
+                text-align: left;
+            }
+
+            .mobile-menu-dropdown span:hover {
+                transform: translateY(-1px);
+            }
+
+            .mobile-menu-container {
+                top: 14px;
+                right: 5px;
+            }
+
+            .mobile-menu-button {
+                padding: 5px;
+            }
+
+            .mobile-menu-button .bar {
+                width: 18px;
+                height: 2px;
+                margin: 2px 0;
+            }
+        }
+        .mobile-menu-blur-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            z-index: 15;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .mobile-menu-blur-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .mobile-menu-dropdown {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+        }
+        .mobile-menu-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .no-scroll {
+            overflow: hidden;
         }
     </style>
 </head>
@@ -1149,7 +1260,8 @@
             </div>
             {% if is_own_profile %}
             <div class="friend-action-container">
-                <button id="showFriendsBtn" onclick="openFriendsModal()" style="font-size:1.1em; padding: 8px 12px;">Друзья</button>
+                <button id="showFriendsBtn" onclick="openFriendsModal()" class="action-button">Друзья</button>
+                <button id="showTopBtn" onclick="openTopModal()" class="action-button">Топ</button>
             </div>
             {% else %}
             <div class="friend-action-container">
@@ -1167,7 +1279,9 @@
                 </button>
                 <div id="mobileMenuDropdown" class="mobile-menu-dropdown">
                     <span onclick="openFriendsModal(); toggleMobileMenu();">Друзья</span>
+                    <span onclick="openTopModal(); toggleMobileMenu();">Топ</span>
                 </div>
+                <div id="mobileMenuBlurOverlay" class="mobile-menu-blur-overlay" onclick="toggleMobileMenu()"></div>
             </div>
         </div>
         {% if is_own_profile %}
@@ -1288,6 +1402,17 @@
             <button class="button" onclick="hideGameOverModal()">Закрыть</button>
         </div>
     </div>
+    <div id="top-modal" class="info-modal">
+        <div class="info-modal-content" id="topModalContent">
+            <span class="close-button" onclick="closeTopModal()">&times;</span>
+            <h3>Топ игроков</h3>
+            <ul>
+                <li>Игрок1</li>
+                <li>Игрок2</li>
+                <li>Игрок3</li>
+            </ul>
+        </div>
+    </div>
     <div id="notification-container"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1333,8 +1458,8 @@
                     friendActionDropdown.style.display = "none";
                 }
                 var mobileMenuDropdown = document.getElementById("mobileMenuDropdown");
-                if (mobileMenuDropdown && mobileMenuDropdown.style.display === "block" && !mobileMenuDropdown.contains(e.target) && !e.target.closest(".mobile-menu-button")) {
-                    mobileMenuDropdown.style.display = "none";
+                if (mobileMenuDropdown && mobileMenuDropdown.classList.contains("show") && !mobileMenuDropdown.contains(e.target) && !e.target.closest(".mobile-menu-button")) {
+                    toggleMobileMenu();
                 }
                 const allDropdowns = document.querySelectorAll(".three-dot-dropdown");
                 allDropdowns.forEach(dropdown => {
@@ -1714,7 +1839,6 @@
             });
         }
 
-
         function closeFriendsModal() {
             document.getElementById("friendsModal").style.display = "none";
             document.getElementById("friendSearchInput").value = "";
@@ -1808,11 +1932,10 @@
 
         function toggleMobileMenu() {
             var dropdown = document.getElementById("mobileMenuDropdown");
-            if (dropdown.style.display === "block") {
-                dropdown.style.display = "none";
-            } else {
-                dropdown.style.display = "block";
-            }
+            var overlay = document.getElementById("mobileMenuBlurOverlay");
+            dropdown.classList.toggle("show");
+            overlay.classList.toggle("active");
+            document.body.classList.toggle("no-scroll");
         }
 
         function loadFriendsList() {
@@ -1969,6 +2092,13 @@
             });
         }
 
+        function openTopModal() {
+            document.getElementById("top-modal").classList.add("show");
+        }
+
+        function closeTopModal() {
+            document.getElementById("top-modal").classList.remove("show");
+        }
     </script>
 </body>
 </html>
