@@ -1323,6 +1323,40 @@
             left: 0;
             background: linear-gradient(90deg, var(--accent-color), var(--golden-color));
         }
+        .info-modal-content,
+            .friend-modal-content,
+            .modal-content {
+                max-height: 90vh;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .info-modal-content::-webkit-scrollbar,
+            .friend-modal-content::-webkit-scrollbar,
+            .modal-content::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            .info-modal-content::-webkit-scrollbar-track,
+            .friend-modal-content::-webkit-scrollbar-track,
+            .modal-content::-webkit-scrollbar-track {
+                background: var(--scrollbar-bg);
+                border-radius: 10px;
+            }
+
+            .info-modal-content::-webkit-scrollbar-thumb,
+            .friend-modal-content::-webkit-scrollbar-thumb,
+            .modal-content::-webkit-scrollbar-thumb {
+                background-color: var(--scrollbar-thumb);
+                border-radius: 10px;
+            }
+
+            .info-modal-content,
+            .friend-modal-content,
+            .modal-content {
+                scrollbar-width: thin;
+                scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+            }
     </style>
 </head>
 <body>
