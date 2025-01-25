@@ -734,11 +734,6 @@
             display: flex;
             opacity: 1;
         }
-        @keyframes fadeInModal {
-            to {
-                transform: scale(1);
-            }
-        }
         .info-modal-content {
             background: linear-gradient(145deg, #2a2a50, #1a1a2e);
             padding: 40px 50px;
@@ -824,14 +819,26 @@
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border-radius: 15px;
             box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8);
-            animation: fadeInModal 0.4s ease forwards;
-            transform: scale(1.1);
             padding: 60px 70px;
             color: #fff;
             text-align: center;
             position: relative;
             max-width: 500px;
             width: 90%;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: fadeInUp 0.4s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         .friend-modal-content button {
             font-size: 1.1rem;
@@ -850,72 +857,6 @@
         }
         .friend-modal-content button:hover {
             background-color: var(--button-hover);
-        }
-        .friend-modal-content #friendsListContainer span {
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: var(--text-color);
-        }
-        #friendSearchContainer {
-            position: relative;
-            margin: 0 0 15px -25px;
-            display: flex;
-            align-items: center;
-            width: 113%;
-            max-width: 500px;
-            border-radius: 8px;
-            overflow: hidden;
-            background-color: #222;
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
-        }
-        #friendSearchContainer .search-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 10px;
-        }
-        #friendSearchContainer .clear-search {
-            background: transparent;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            font-size: 1.2em;
-            padding: 10px 15px;
-            margin: 0;
-            outline: none;
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        #friendSearchContainer .clear-search::before {
-            content: "\00d7";
-            display: block;
-        }
-        #friendSearchContainer input {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            outline: none;
-            font-size: 1em;
-            background-color: transparent;
-            color: #eee;
-        }
-        #friendSearchContainer input::placeholder {
-            color: #ccc;
-        }
-        #friendSearchContainer button {
-            padding: 10px 15px;
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            font-size: 1.2em;
-            transition: color 0.3s ease;
-            margin-top: -4px;
-        }
-        #friendSearchContainer button:hover {
-            color: var(--accent-color);
         }
         .search-user-item {
             position: relative;
@@ -1112,6 +1053,54 @@
             box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
             transition: background-color 5000s ease-in-out 0s !important;
         }
+        #friendSearchContainer {
+            position: relative;
+            margin: 0 0 15px -25px;
+            display: flex;
+            align-items: center;
+            width: 113%;
+            max-width: 500px;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #222;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
+        }
+        #friendSearchContainer .search-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+        }
+        #friendSearchContainer .clear-search {
+            background: transparent;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 10px 15px;
+            margin: 0;
+            outline: none;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #friendSearchContainer .clear-search::before {
+            content: "\00d7";
+            display: block;
+        }
+        #friendSearchContainer input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            outline: none;
+            font-size: 1em;
+            background-color: transparent;
+            color: #eee;
+        }
+        #friendSearchContainer input::placeholder {
+            color: #ccc;
+        }
         #friendSearchContainer button {
             padding: 10px 15px;
             background: none;
@@ -1121,6 +1110,9 @@
             font-size: 1.2em;
             transition: color 0.3s ease;
             margin-top: -4px;
+        }
+        #friendSearchContainer button:hover {
+            color: var(--accent-color);
         }
         #friendsListContainer .search-user-item span {
             font-size: 1.1em;
@@ -1226,6 +1218,110 @@
         }
         .no-scroll {
             overflow: hidden;
+        }
+        .top-players-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .player-card {
+            background-color: var(--card-background);
+            border: 4px solid transparent;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            width: 180px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease forwards;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+
+        .player-card:hover {
+            box-shadow: 0 12px 25px rgba(0,0,0,0.5);
+            transform: translateY(0);
+        }
+
+        .player-card.first {
+            border-image: linear-gradient(45deg, #ffd700, #ffea00);
+            border-image-slice: 1;
+        }
+
+        .player-card.second {
+            border-image: linear-gradient(45deg, #c0c0c0, #dcdcdc);
+            border-image-slice: 1;
+        }
+
+        .player-card.third {
+            border-image: linear-gradient(45deg, #cd7f32, #b87333);
+            border-image-slice: 1;
+        }
+
+        .player-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-size: cover;
+            background-position: center;
+            margin: 0 auto 15px auto;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .player-login {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 5px;
+        }
+
+        .player-rang {
+            font-size: 1em;
+            color: var(--text-secondary);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .player-profile-link {
+            color: var(--text-color);
+            text-decoration: none;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .player-profile-link::after {
+            content: '';
+            position: absolute;
+            width: 0%;
+            height: 2px;
+            display: block;
+            margin-top: 5px;
+            right: 0;
+            background: var(--accent-color);
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .player-profile-link:hover {
+            color: var(--accent-color);
+        }
+
+        .player-profile-link:hover::after {
+            width: 100%;
+            left: 0;
+            background: linear-gradient(90deg, var(--accent-color), var(--golden-color));
         }
     </style>
 </head>
@@ -1336,7 +1432,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="file" name="avatar" id="avatarFileInput" accept=".png,.jpg,.jpeg,.gif" style="display:none;" onchange="document.getElementById('avatarForm').submit();"/>
             </form>
-            <button class="home-button" onclick="goHome()">Вернуться</button>
+            <button class="home-button" onclick="goReturn()">Вернуться</button>
             {% if is_own_profile %}
             <button class="logout-button" onclick="logout()">Выйти</button>
             {% endif %}
@@ -1406,17 +1502,38 @@
         <div class="info-modal-content" id="topModalContent">
             <span class="close-button" onclick="closeTopModal()">&times;</span>
             <h3>Топ игроков</h3>
-            <ul>
-                <li>Игрок1</li>
-                <li>Игрок2</li>
-                <li>Игрок3</li>
-            </ul>
+            <div id="topPlayersContainer" class="top-players-container">
+            </div>
         </div>
     </div>
     <div id="notification-container"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const origin = urlParams.get('origin');
+        const isOwnProfile = {{ 'true' if is_own_profile else 'false' }};
+        let returnUrl = "";
+
+        if (origin === "friends" || origin === "top") {
+            returnUrl = "/profile/" + encodeURIComponent("{{ session['user'] if 'user' in session else '' }}");
+        }
+        else if (isOwnProfile) {
+            returnUrl = "/";
+        }
+        else {
+            returnUrl = null;
+        }
+
+        function goReturn(){
+            if(returnUrl){
+                window.location.href = returnUrl;
+            }
+            else{
+                history.back();
+            }
+        }
+
         var game_id = null;
         var user_login = "{{ session['user'] if 'user' in session else '' }}";
         var allRecords = {{ user_history|tojson }}.reverse();
@@ -1720,10 +1837,6 @@
             }
         }
 
-        function goHome() {
-            window.location.href = "/";
-        }
-
         function logout() {
             window.location.href = "/logout";
         }
@@ -1802,8 +1915,12 @@
                     data.friends.forEach(friend => {
                         var friendDiv = document.createElement("div");
                         friendDiv.className = "search-user-item dropdown-container";
-                        var span = document.createElement("span");
-                        span.textContent = friend;
+
+                        var link = document.createElement("a");
+                        link.href = "/profile/" + encodeURIComponent(friend) + "?origin=friends";
+                        link.textContent = friend;
+                        link.className = "player-profile-link";
+
                         var btn = document.createElement("button");
                         btn.textContent = "⋮";
 
@@ -1824,7 +1941,7 @@
                             dropdown.style.display = isOpen ? "none" : "block";
                         };
 
-                        friendDiv.appendChild(span);
+                        friendDiv.appendChild(link);
                         friendDiv.appendChild(btn);
                         friendDiv.appendChild(dropdown);
                         container.appendChild(friendDiv);
@@ -2016,8 +2133,11 @@
                 const userDiv = document.createElement("div");
                 userDiv.className = "search-user-item dropdown-container";
 
-                const span = document.createElement("span");
-                span.textContent = user;
+
+                const link = document.createElement("a");
+                link.href = "/profile/" + encodeURIComponent(user) + "?origin=search";
+                link.textContent = user;
+                link.className = "player-profile-link";
 
                 const btn = document.createElement("button");
                 btn.textContent = "⋮";
@@ -2062,7 +2182,7 @@
                     dropdown.style.display = isOpen ? "none" : "block";
                 };
 
-                userDiv.appendChild(span);
+                userDiv.appendChild(link);
                 userDiv.appendChild(btn);
                 userDiv.appendChild(dropdown);
                 container.appendChild(userDiv);
@@ -2093,12 +2213,69 @@
         }
 
         function openTopModal() {
-            document.getElementById("top-modal").classList.add("show");
+            fetch("/get_top_players")
+            .then(response => response.json())
+            .then(data => {
+                if (data.top_players) {
+                    var container = document.getElementById("topPlayersContainer");
+                    container.innerHTML = "";
+
+                    data.top_players.forEach((player, index) => {
+                        var card = document.createElement("div");
+                        card.classList.add("player-card");
+
+                        if (index === 0) {
+                            card.classList.add("first");
+                        } else if (index === 1) {
+                            card.classList.add("second");
+                        } else if (index === 2) {
+                            card.classList.add("third");
+                        }
+
+                        var profileLink = document.createElement("a");
+                        profileLink.href = "/profile/" + encodeURIComponent(player.login) + "?origin=top";
+                        profileLink.style.textDecoration = "none";
+                        profileLink.style.color = "inherit";
+
+                        var avatar = document.createElement("div");
+                        avatar.classList.add("player-avatar");
+                        avatar.style.backgroundImage = `url('${player.avatar_url}')`;
+
+                        var login = document.createElement("div");
+                        login.classList.add("player-login");
+                        login.textContent = player.login;
+
+                        var rang = document.createElement("div");
+                        rang.classList.add("player-rang");
+                        rang.textContent = "Ранг: " + player.rang;
+
+                        profileLink.appendChild(avatar);
+                        profileLink.appendChild(login);
+                        profileLink.appendChild(rang);
+
+                        card.appendChild(profileLink);
+
+                        container.appendChild(card);
+                    });
+                } else if (data.error) {
+                    alert(data.error);
+                }
+                document.getElementById("top-modal").classList.add("show");
+            })
+            .catch(() => {
+                alert("Не удалось загрузить топ игроков.");
+            });
         }
 
         function closeTopModal() {
             document.getElementById("top-modal").classList.remove("show");
         }
+
+        document.getElementById("top-modal").addEventListener("click", function(event) {
+            if (event.target === this) {
+                closeTopModal();
+            }
+        });
     </script>
 </body>
 </html>
