@@ -1292,7 +1292,7 @@ def send_friend_request():
     elif status == "already_friends":
         return jsonify({"message": "Вы уже друзья"}), 200
     elif status == "sent_again":
-        return jsonify({"message": "Запрос снова успешно отправлен"}), 200
+        return jsonify({"message": "Запрос успешно отправлен"}), 200
     elif status == "self_request":
         return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
     else:
