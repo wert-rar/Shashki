@@ -1357,6 +1357,238 @@
                 scrollbar-width: thin;
                 scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
             }
+
+            #incomingFriendRequestsSection {
+                margin-bottom: 15px;
+            }
+
+            #incomingFriendRequestsSection h3 {
+                margin-bottom: 15px;
+                color: #fff;
+                font-size: 1.5em;
+                text-align: center;
+            }
+
+            .incoming-friend-request-item {
+                height: 62px;
+                position: relative;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 5px;
+                background-color: #1e1e30;
+                margin-bottom: 5px;
+                color: #fff;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .incoming-friend-request-item.decline {
+                background-color: #dc3545;
+            }
+
+            .incoming-friend-request-item .username {
+                color: #fff;
+                font-size: 1.1em;
+                margin-left: 20px;
+            }
+
+            .incoming-friend-request-item .accept-btn::before,
+            .incoming-friend-request-item .decline-btn::before {
+                font-family: Arial, sans-serif;
+            }
+
+            #friendsListContainer .player-profile-link {
+                margin-left: 20px;
+                color: #fff;
+                font-size: 1.1em;
+                transition: color 0.3s ease;
+            }
+
+            .incoming-friend-request-item .action-buttons {
+                display: flex;
+                gap: 10px;
+            }
+
+            .incoming-friend-request-item .action-buttons button.accept-btn {
+                background-color: #28a745;
+                color: #fff;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
+                cursor: pointer;
+                font-size: 1.2em;
+                transition: opacity 0.2s ease;
+            }
+
+            .incoming-friend-request-item .action-buttons button.decline-btn {
+                background-color: #dc3545;
+                color: #fff;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
+                cursor: pointer;
+                font-size: 1.2em;
+                transition: opacity 0.2s ease;
+            }
+
+            .incoming-friend-request-item .action-buttons {
+                padding-right: 10px;
+            }
+
+            .incoming-friend-request-item .action-buttons button.accept-btn,
+            .incoming-friend-request-item .action-buttons button.decline-btn {
+                background: none;
+                border: none;
+                color: #fff;
+                padding: 5px;
+                font-size: 1.2em;
+                cursor: pointer;
+                transition: color 0.3s ease;
+            }
+
+            .incoming-friend-request-item .action-buttons button {
+                margin-bottom: 20px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: 1.2em;
+                color: #fff;
+                transition: transform 0.2s ease;
+            }
+
+            .incoming-friend-request-item .action-buttons button:hover {
+                opacity: 0.8;
+            }
+
+            .incoming-friend-request-item .action-buttons button.accept-btn:hover {
+                color: var(--success-color);
+            }
+
+            .incoming-friend-request-item .action-buttons button.decline-btn:hover {
+                color: var(--error-color);
+            }
+
+            .incoming-friend-request-item .accept-btn::before {
+                content: "✔";
+            }
+
+            .incoming-friend-request-item .decline-btn::before {
+                content: "✖";
+            }
+            @media (max-width: 768px) {
+                .incoming-friend-request-item .action-buttons button.accept-btn {
+                    color: var(--success-color);
+                }
+                .incoming-friend-request-item .action-buttons button.decline-btn {;
+                    color: var(--error-color);
+                }
+                #showFriendsBtn:hover,
+                #showTopBtn:hover,
+                #showFriendsBtn:active,
+                #showTopBtn:active {
+                    background-color: transparent;
+                    transform: none;
+                }
+            }
+            @media (max-width: 350px) {
+                #incomingFriendRequestsSection {
+                    padding: 5px 10px;
+                }
+
+                #incomingFriendRequestsSection h3 {
+                    font-size: 0.85em;
+                }
+
+                .incoming-friend-request-item {
+                    height: 34px;
+                    padding: 2px;
+                }
+
+                .incoming-friend-request-item .username {
+                    font-size: 0.8em;
+                    margin-left: 5px;
+                }
+
+                .incoming-friend-request-item .action-buttons button.accept-btn,
+                .incoming-friend-request-item .action-buttons button.decline-btn {
+                    font-size: 1em;
+                    padding: 2px;
+                }
+
+                #friendsListContainer {
+                    padding: 5px 10px;
+                }
+
+                #friendsListContainer .search-user-item span {
+                    font-size: 0.9em;
+                    margin-left: 5px;
+                }
+
+                #friendsModalHeading {
+                    font-size: 0.85em;
+                }
+
+                #friendsListContainer .search-user-item {
+                    padding: 3px 5px;
+                }
+
+                #friendsListContainer .player-profile-link {
+                    font-size: 0.8em;
+                    margin-left: 5px;
+                }
+
+                #friendsListContainer .search-user-item button {
+                    font-size: 1em;
+                    padding: 2px 4px;
+                }
+
+                .player-card {
+                    width: 140px;
+                    padding: 15px;
+                }
+
+                .player-avatar {
+                    width: 60px;
+                    height: 60px;
+                }
+
+                .player-login {
+                    font-size: 1em;
+                }
+
+                .player-rang {
+                    font-size: 0.9em;
+                }
+                 #friendSearchContainer {
+                    margin: 0 0 10px -10px;
+                    width: 120%;
+                }
+
+                #friendSearchContainer .search-icon {
+                    padding: 0 5px;
+                    width: 30px;
+                    height: 30px;
+                }
+
+                #friendSearchContainer input {
+                    padding: 8px;
+                    font-size: 0.9em;
+                }
+
+                #friendSearchContainer button:not(.clear-search) {
+                    padding: 8px 12px;
+                    font-size: 1em;
+                }
+                .three-dot-dropdown div {
+                    font-size: 0.7em;
+                    padding: 2px 0;
+                }
+
+                .three-dot-dropdown div:hover {
+                    font-size: 0.7em;
+                }
+            }
     </style>
 </head>
 <body>
@@ -1505,6 +1737,10 @@
                 <input type="text" id="friendSearchInput" placeholder="Поиск пользователей..." />
                 <button type="button" class="clear-search" title="Очистить"></button>
             </div>
+            <div id="incomingFriendRequestsSection" style="display: none;">
+                <h3>Предложения дружбы</h3>
+                <div id="incomingFriendRequestsContainer"></div>
+            </div>
             <h3 id="friendsModalHeading">Ваши друзья</h3>
             <div id="friendsListContainer"></div>
         </div>
@@ -1549,7 +1785,7 @@
         const isOwnProfile = {{ 'true' if is_own_profile else 'false' }};
         let returnUrl = "";
 
-        if (origin === "friends" || origin === "top") {
+        if (origin === "friends" || origin === "top" || origin === "profile") {
             returnUrl = "/profile/" + encodeURIComponent("{{ session['user'] if 'user' in session else '' }}");
         }
         else if (isOwnProfile) {
@@ -1983,10 +2219,98 @@
                 } else {
                     container.innerHTML = "<p style='color:#ccc; text-align:center;'>Список друзей пуст</p>";
                 }
+
+                loadIncomingFriendRequests();
+
                 document.getElementById("friendsModal").style.display = "flex";
             })
             .catch(() => {
                 showNotification("Ошибка загрузки списка друзей", "error");
+            });
+        }
+
+        function loadIncomingFriendRequests() {
+            fetch("/get_friend_requests")
+            .then(response => response.json())
+            .then(data => {
+                var incomingSection = document.getElementById("incomingFriendRequestsSection");
+                var requestsContainer = document.getElementById("incomingFriendRequestsContainer");
+                requestsContainer.innerHTML = "";
+
+                if (data.requests && data.requests.length > 0) {
+                    incomingSection.style.display = "block";
+                    data.requests.forEach(requester => {
+                        var requestDiv = document.createElement("div");
+                        requestDiv.className = "incoming-friend-request-item";
+
+                        var usernameLink = document.createElement("a");
+                        usernameLink.className = "username player-profile-link";
+                        usernameLink.href = "/profile/" + encodeURIComponent(requester) + "?origin=profile";
+                        usernameLink.textContent = requester;
+
+                        var actionsDiv = document.createElement("div");
+                        actionsDiv.className = "action-buttons";
+
+                        var acceptBtn = document.createElement("button");
+                        acceptBtn.className = "accept-btn";
+                        acceptBtn.title = "Принять";
+
+                        var declineBtn = document.createElement("button");
+                        declineBtn.className = "decline-btn";
+                        declineBtn.title = "Отклонить";
+
+                        acceptBtn.onclick = function() {
+                            respondToFriendRequest(requester, true, requestDiv);
+                        };
+
+                        declineBtn.onclick = function() {
+                            respondToFriendRequest(requester, false, requestDiv);
+                        };
+
+                        actionsDiv.appendChild(acceptBtn);
+                        actionsDiv.appendChild(declineBtn);
+
+                        requestDiv.appendChild(usernameLink);
+                        requestDiv.appendChild(actionsDiv);
+
+                        requestsContainer.appendChild(requestDiv);
+                    });
+                } else {
+                    incomingSection.style.display = "none";
+                }
+            })
+            .catch(() => {
+                showNotification("Ошибка загрузки предложений дружбы", "error");
+            });
+        }
+
+        function respondToFriendRequest(senderUsername, accept, requestDiv) {
+            const endpoint = "/respond_friend_request";
+            const response = accept ? "accept" : "decline";
+
+            fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sender_username: senderUsername,
+                    response: response
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    showNotification(data.message, accept ? "success" : "info");
+                    requestDiv.remove();
+                    const remainingRequests = document.getElementById("incomingFriendRequestsContainer").children.length;
+                    if (remainingRequests === 0) {
+                        document.getElementById("incomingFriendRequestsSection").style.display = "none";
+                    }
+                } else if (data.error) {
+                    showNotification(data.error, "error");
+                }
+            })
+            .catch(() => {
+                showNotification("Ошибка при обработке запроса", "error");
             });
         }
 
@@ -2149,6 +2473,7 @@
                     });
             } else {
                 loadFriendsList();
+                loadIncomingFriendRequests();
             }
         });
 
