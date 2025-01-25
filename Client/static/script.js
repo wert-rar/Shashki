@@ -430,49 +430,63 @@ function server_update_request() {
     console.error("game_id не определён.");
     return Promise.reject("game_id не определён.");
   }
+
   isUpdating = true;
   let body = { game_id: game_id };
+
   return fetch('/update_board', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   })
-  .then(response => {
-    if (!response.ok) {
-      if (response.status === 404) {
-         return { error: "Game over" };
+    .then(response => {
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { error: "Game over" };
+        }
+        return response.json().then(errData => Promise.reject(errData));
       }
-      return response.json().then(errData => Promise.reject(errData));
-    }
-    return response.json();
-  })
-  .then(data => {
-    if (data.error) {
-      if (data.error === "Game over") {
-         displayGameOverMessage(data);
-         return Promise.resolve();
+      return response.json();
+    })
+    .then(data => {
+      if (data.error) {
+        if (data.error === "Game over") {
+          displayGameOverMessage(data);
+          return Promise.resolve();
+        }
+        if (!gameOverShown) {
+          showError(data.error);
+        }
+        return Promise.reject(data.error);
+      } else {
+        const newBoardHash = JSON.stringify(data.pieces);
+        const currentBoardHash = JSON.stringify(pieces);
+
+        if (newBoardHash !== currentBoardHash) {
+          console.log("Обнаружено обновление состояния доски.");
+          pieces = data.pieces;
+          boardStates.push(data.pieces);
+          update_data(data);
+        } else {
+          console.log("Состояние доски не изменилось.");
+        }
+
+        return Promise.resolve();
       }
-      if (!gameOverShown) {
-         showError(data.error);
+    })
+    .catch(error => {
+      if (typeof error === "string" && error === "Game over") {
+        displayGameOverMessage({ error: "Game over" });
+        return Promise.resolve();
       }
-      return Promise.reject(data.error);
-    } else {
-      update_data(data);
-      return Promise.resolve();
-    }
-  })
-  .catch(error => {
-    if (typeof error === "string" && error === "Game over") {
-      displayGameOverMessage({ error: "Game over" });
-      return Promise.resolve();
-    }
-    console.error("Ошибка при обновлении доски:", error);
-    return Promise.reject(error);
-  })
-  .finally(() => {
-    isUpdating = false;
-  });
+      console.error("Ошибка при обновлении доски:", error);
+      return Promise.reject(error);
+    })
+    .finally(() => {
+      isUpdating = false;
+    });
 }
+
 
 function server_get_possible_moves(selected_piece, callback) {
   let data = {
