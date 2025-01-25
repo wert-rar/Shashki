@@ -1,5 +1,7 @@
 import os
 import re
+import sqlite3
+
 from werkzeug.utils import secure_filename
 from datetime import timedelta, datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
@@ -18,7 +20,8 @@ from base_sqlite import (
     add_remember_token,
     get_user_by_remember_token,
     delete_remember_token,
-    delete_all_remember_tokens
+    delete_all_remember_tokens,
+    connect_db
 )
 from game import (
     get_game_status_internally,
@@ -1377,13 +1380,13 @@ def search_users():
 
     if current_user:
         cur.execute(
-            "SELECT login FROM player WHERE login LIKE ? AND login != ? LIMIT 10",
-            ('%' + query + '%', current_user)
+            "SELECT login FROM player WHERE login LIKE ? AND login != ? COLLATE NOCASE LIMIT 10",
+            (query + '%', current_user)
         )
     else:
         cur.execute(
-            "SELECT login FROM player WHERE login LIKE ? LIMIT 10",
-            ('%' + query + '%',)
+            "SELECT login FROM player WHERE login LIKE ? COLLATE NOCASE LIMIT 10",
+            (query + '%',)
         )
 
     rows = cur.fetchall()
@@ -1429,6 +1432,33 @@ def set_new_remember_token(response):
             samesite='Lax'
         )
     return response
+
+@app.route("/get_top_players", methods=["GET"])
+@csrf.exempt
+def get_top_players():
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        cur.execute("""
+            SELECT login, rang, avatar_filename
+            FROM player
+            ORDER BY rang DESC
+            LIMIT 3
+        """)
+        rows = cur.fetchall()
+        con.close()
+        top_players = []
+        for row in rows:
+            avatar_url = url_for('static', filename='avatars/' + row["avatar_filename"]) if row["avatar_filename"] else url_for('static', filename='avatars/default_avatar.jpg')
+            top_players.append({
+                "login": row["login"],
+                "rang": row["rang"],
+                "avatar_url": avatar_url
+            })
+        return jsonify({"top_players": top_players}), 200
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при получении топ игроков: {e}")
+        return jsonify({"error": "Не удалось получить топ игроков"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
