@@ -126,16 +126,17 @@ def update_user_rank(user_login, points):
     con.close()
 
 def update_user_stats(user_login, wins=0, losses=0, draws=0):
-    with connect_db() as con:
-        cur = con.cursor()
-        cur.execute("""
-            UPDATE player
-            SET wins = wins + ?,
-                losses = losses + ?,
-                draws = draws + ?
-            WHERE login = ?
-        """, (wins, losses, draws, user_login))
-        con.commit()
+    con = connect_db()
+    cur = con.cursor()
+    cur.execute("""
+        UPDATE player
+        SET wins = wins + ?,
+            losses = losses + ?,
+            draws = draws + ?
+        WHERE login = ?
+    """, (wins, losses, draws, user_login))
+    con.commit()
+    con.close()
 
 def insert_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result):
     con = connect_db()

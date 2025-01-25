@@ -229,7 +229,7 @@ def finalize_game(game, user_login):
             update_game_status_in_db(game.game_id, 'completed')
             if not user_is_ghost:
                 user_rank_before = get_user_rang(user_login)
-                date_end = datetime.datetime.now().isoformat()
+                date_end = datetime.now().isoformat()
                 insert_completed_game(
                     user_login=user_login,
                     game_id=game.game_id,
@@ -242,7 +242,7 @@ def finalize_game(game, user_login):
             opponent_login = game.f_user if game.f_user != user_login else game.c_user
             if opponent_login and not opponent_login.startswith('ghost'):
                 opp_rank_before = get_user_rang(opponent_login)
-                date_end = datetime.datetime.now().isoformat()
+                date_end = datetime.now().isoformat()
                 insert_completed_game(
                     user_login=opponent_login,
                     game_id=game.game_id,
@@ -285,7 +285,7 @@ def finalize_game(game, user_login):
                     update_user_stats(opponent_login, draws=1)
             user_rank_after = get_user_rang(user_login)
             user_rating_change = user_rank_after - user_rank_before
-            date_end = datetime.datetime.now().isoformat()
+            date_end = datetime.now().isoformat()
             insert_completed_game(
                 user_login=user_login,
                 game_id=game.game_id,
@@ -317,7 +317,7 @@ def finalize_game(game, user_login):
             if opponent_result_move is not None:
                 opponent_rank_after = get_user_rang(opponent_login)
                 opponent_rating_change = opponent_rank_after - opponent_rank_before
-                date_end = datetime.datetime.now().isoformat()
+                date_end = datetime.now().isoformat()
                 insert_completed_game(
                     user_login=opponent_login,
                     game_id=game.game_id,
