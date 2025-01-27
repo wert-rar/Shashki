@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById("selectionModal");
-    const btn = document.getElementById("singleplayer-button");
-    const span = document.getElementById("closeModal");
+    const selectionModal = document.getElementById("selectionModal");
+    const singleplayerBtn = document.getElementById("singleplayer-button");
+    const closeModalBtn = document.getElementById("closeModal");
     const playButton = document.getElementById("playButton");
     const selectedDifficulty = document.getElementById("selectedDifficulty");
     const selectedColor = document.getElementById("selectedColor");
@@ -15,11 +15,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationList = document.getElementById("notificationList");
     const bellDesktopCount = document.getElementById("bellDesktopCount");
     const bellMobileCount = document.getElementById("bellMobileCount");
+    const friendsDesktop = document.getElementById("friendsDesktop");
+    const friendsMobile = document.getElementById("friendsMobile");
+    const friendsDesktopCount = document.getElementById("friendsDesktopCount");
+    const friendsMobileCount = document.getElementById("friendsMobileCount");
+    const friendsModal = document.getElementById("friendsModal");
+    const closeFriendsModal = document.getElementById("closeFriendsModal");
+    const friendsList = document.getElementById("friendsList");
+    const gameInviteModal = document.getElementById("gameInviteModal");
+    const inviteMessage = document.getElementById("invite-message");
+    const inviterName = document.getElementById("inviter-name");
+    const acceptInviteButton = document.getElementById("acceptInviteButton");
+    const declineInviteButton = document.getElementById("declineInviteButton");
+    const removeFriendModal = document.getElementById("removeFriendModal");
+    const removeFriendName = document.getElementById("removeFriendName");
+    const confirmRemoveFriendButton = document.getElementById("confirmRemoveFriendButton");
+    const cancelRemoveFriendButton = document.getElementById("cancelRemoveFriendButton");
+    let friendToRemove = null;
+
     let selections = { difficulty: null, color: null };
     let startX = 0;
     let endX = 0;
     let currentIndex = 0;
     let game_id = null;
+
     function fetchNotifications() {
         fetch('/get_notifications')
             .then(response => response.json())
@@ -86,6 +105,151 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    function fetchFriends() {
+        fetch('/get_friends')
+            .then(response => response.json())
+            .then(data => {
+                friendsList.innerHTML = '';
+
+                if (data.friends && data.friends.length > 0) {
+                    data.friends.forEach(friend => {
+                        const friendItem = document.createElement('div');
+                        friendItem.classList.add('friend-item');
+
+                        const profileLink = document.createElement('a');
+                        profileLink.href = `/profile/${friend}`;
+                        profileLink.textContent = friend;
+
+                        friendItem.appendChild(profileLink);
+
+                        const friendActions = document.createElement('div');
+                        friendActions.classList.add('friend-actions');
+
+                        const menuButton = document.createElement('button');
+                        menuButton.classList.add('friend-actions-menu-button');
+                        menuButton.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+
+                        const menu = document.createElement('div');
+                        menu.classList.add('friend-actions-menu', 'hide');
+
+                        const inviteButton = document.createElement('button');
+                        inviteButton.classList.add('invite-game-button');
+                        inviteButton.setAttribute('data-friend', friend);
+                        inviteButton.textContent = 'Пригласить в игру';
+
+                        const removeButton = document.createElement('button');
+                        removeButton.classList.add('remove-friend-button');
+                        removeButton.setAttribute('data-friend', friend);
+                        removeButton.textContent = 'Удалить из друзей';
+
+                        menu.appendChild(inviteButton);
+                        menu.appendChild(removeButton);
+
+                        friendActions.appendChild(menuButton);
+                        friendActions.appendChild(menu);
+
+                        friendItem.appendChild(friendActions);
+                        friendsList.appendChild(friendItem);
+
+                        menuButton.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            document.querySelectorAll('.friend-actions-menu.show').forEach((otherMenu) => {
+                                if (otherMenu !== menu) {
+                                    otherMenu.classList.remove('show');
+                                }
+                            });
+                            menu.classList.toggle('show');
+                        });
+
+                        inviteButton.addEventListener('click', () => {
+                            const friendUsername = inviteButton.getAttribute('data-friend');
+                            inviteUserToGame(friendUsername);
+                            menu.classList.remove('show');
+                        });
+
+                        removeButton.addEventListener('click', () => {
+                            friendToRemove = removeButton.getAttribute('data-friend');
+                            removeFriendName.textContent = friendToRemove;
+                            removeFriendModal.style.display = 'flex';
+                            menu.classList.remove('show');
+                        });
+                    });
+                } else {
+                    friendsList.innerHTML = "<p>У вас пока нет друзей</p>";
+                }
+            })
+            .catch(err => {
+                console.error("Ошибка при получении друзей:", err);
+                friendsList.innerHTML = "<p>Не удалось загрузить список друзей.</p>";
+            });
+    }
+
+    document.addEventListener('click', (event) => {
+        const isMenu = event.target.closest('.friend-actions-menu');
+        const isMenuButton = event.target.closest('.friend-actions-menu-button');
+        if (!isMenu && !isMenuButton) {
+            document.querySelectorAll('.friend-actions-menu.show').forEach(openMenu => {
+                openMenu.classList.remove('show');
+            });
+        }
+    });
+
+    function inviteUserToGame(friendUsername) {
+        fetch('/invite_game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_username: friendUsername })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+                if (data.game_id) {
+                    window.location.href = `/board/${data.game_id}/${user_login}`;
+                }
+            }
+        })
+        .catch(error => {
+            createNotification("Ошибка при отправке приглашения", "error");
+            console.error(error);
+        });
+    }
+
+    function removeFriend(friendUsername) {
+        fetch('/remove_friend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_username: friendUsername })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+                fetchFriends();
+            }
+        })
+        .catch(error => {
+            createNotification("Ошибка при удалении друга", "error");
+            console.error(error);
+        });
+    }
+
+    confirmRemoveFriendButton.addEventListener('click', () => {
+        if (friendToRemove) {
+            removeFriend(friendToRemove);
+        }
+        friendToRemove = null;
+        removeFriendModal.style.display = 'none';
+    });
+
+    cancelRemoveFriendButton.addEventListener('click', () => {
+        removeFriendModal.style.display = 'none';
+        friendToRemove = null;
+    });
 
     function updateNotificationCount(count) {
         if (bellDesktopCount && bellMobileCount) {
@@ -101,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     function respondFriendRequest(sender, responseType, notifElement) {
         fetch('/respond_friend_request', {
             method: 'POST',
@@ -112,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             if (responseType === "accept") {
                 createNotification(`Пользователь ${sender} теперь ваш друг`, "success");
+                fetchFriends();
             } else {
                 createNotification(`Вы отклонили запрос от ${sender}`, "error");
             }
@@ -178,21 +342,103 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(error => console.error('Ошибка при получении запросов в друзья:', error));
     }
 
+    function checkGameInvites() {
+        fetch('/get_game_invites')
+            .then(response => response.json())
+            .then(data => {
+                if (data.invites && data.invites.length > 0) {
+                    const inviteData = data.invites[0];
+                    gameInviteModal.style.display = 'flex';
+                    inviterName.textContent = inviteData.from_user;
+                }
+            })
+            .catch(error => {
+                console.error("Ошибка при получении игровых приглашений:", error);
+            });
+    }
+
+    acceptInviteButton.addEventListener('click', () => {
+        if (!inviterName.textContent) {
+            gameInviteModal.style.display = 'none';
+            return;
+        }
+        const sender_username = inviterName.textContent;
+        respondGameInvite(sender_username, "accept");
+    });
+
+    declineInviteButton.addEventListener('click', () => {
+        if (!inviterName.textContent) {
+            gameInviteModal.style.display = 'none';
+            return;
+        }
+        const sender_username = inviterName.textContent;
+        respondGameInvite(sender_username, "decline");
+    });
+
+    function respondGameInvite(sender, responseType) {
+        fetch('/respond_game_invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sender_username: sender, response: responseType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+                if (responseType === "accept" && data.game_id) {
+                    window.location.href = `/board/${data.game_id}/${user_login}`;
+                }
+            }
+            gameInviteModal.style.display = 'none';
+        })
+        .catch(error => {
+            createNotification("Ошибка при ответе на приглашение", "error");
+            console.error(error);
+        });
+    }
+
     checkFriendRequests();
-    setInterval(checkFriendRequests, 500);
+    setInterval(checkFriendRequests, 5000);
+    setInterval(checkGameInvites, 5000);
 
     function toggleNotifications(event) {
         event.stopPropagation();
         if (notificationModal.classList.contains('active')) {
             notificationModal.classList.remove('active');
             bellDesktop.classList.remove('active');
-            if (bellMobile) bellMobile.classList.remove('active');
+            bellMobile.classList.remove('active');
         } else {
+            if (friendsModal.classList.contains('active')) {
+                friendsModal.classList.remove('active');
+                friendsDesktop.classList.remove('active');
+                friendsMobile.classList.remove('active');
+            }
             notificationModal.classList.add('active');
             bellDesktop.classList.add('active');
-            if (bellMobile) bellMobile.classList.add('active');
+            bellMobile.classList.add('active');
             fetchNotifications();
             updateNotificationCount(0);
+        }
+    }
+
+    function toggleFriends(event) {
+        event.stopPropagation();
+        if (friendsModal.classList.contains('active')) {
+            friendsModal.classList.remove('active');
+            friendsDesktop.classList.remove('active');
+            friendsMobile.classList.remove('active');
+        } else {
+            if (notificationModal.classList.contains('active')) {
+                notificationModal.classList.remove('active');
+                bellDesktop.classList.remove('active');
+                bellMobile.classList.remove('active');
+            }
+            friendsModal.classList.add('active');
+            friendsDesktop.classList.add('active');
+            friendsMobile.classList.add('active');
+            fetchFriends();
         }
     }
 
@@ -212,23 +458,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (friendsDesktop) {
+        friendsDesktop.addEventListener('click', toggleFriends);
+        friendsDesktop.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleFriends(e);
+        });
+    }
+
+    if (friendsMobile) {
+        friendsMobile.addEventListener('click', toggleFriends);
+        friendsMobile.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            toggleFriends(e);
+        });
+    }
+
     closeNotificationModal.addEventListener('click', (event) => {
         event.stopPropagation();
         notificationModal.classList.remove('active');
-        if (bellDesktop) bellDesktop.classList.remove('active');
-        if (bellMobile) bellMobile.classList.remove('active');
+        bellDesktop.classList.remove('active');
+        bellMobile.classList.remove('active');
+    });
+
+    closeFriendsModal.addEventListener('click', (event) => {
+        event.stopPropagation();
+        friendsModal.classList.remove('active');
+        friendsDesktop.classList.remove('active');
+        friendsMobile.classList.remove('active');
+    });
+
+    selectionModal.addEventListener('click', (event) => {
+        if (event.target === selectionModal) {
+            selectionModal.style.display = "none";
+            resetSelections();
+        }
     });
 
     if (!sidebar.classList.contains("active")) {
         sidebar.style.transform = 'translateX(300px)';
     }
 
-    btn.onclick = function() {
-        modal.style.display = "flex";
+    singleplayerBtn.onclick = function() {
+        selectionModal.style.display = "flex";
     };
 
-    span.onclick = function() {
-        modal.style.display = "none";
+    closeModalBtn.onclick = function() {
+        selectionModal.style.display = "none";
         resetSelections();
     };
 
@@ -237,6 +513,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop')) {
                 notificationModal.classList.remove('active');
                 bellDesktop.classList.remove('active');
+                bellMobile.classList.remove('active');
+            }
+            if (!event.target.closest('#friendsModal') && !event.target.closest('#friendsDesktop')) {
+                friendsModal.classList.remove('active');
+                friendsDesktop.classList.remove('active');
+                friendsMobile.classList.remove('active');
             }
             if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
                 closeSidebar();
@@ -249,8 +531,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop') && !event.target.closest('#bellMobile')) {
                 if (notificationModal.classList.contains('active')) {
                     notificationModal.classList.remove('active');
-                    if (bellDesktop) bellDesktop.classList.remove('active');
-                    if (bellMobile) bellMobile.classList.remove('active');
+                    bellDesktop.classList.remove('active');
+                    bellMobile.classList.remove('active');
+                    return;
+                }
+                if (friendsModal.classList.contains('active')) {
+                    friendsModal.classList.remove('active');
+                    friendsDesktop.classList.remove('active');
+                    friendsMobile.classList.remove('active');
                     return;
                 }
             }
@@ -307,6 +595,13 @@ document.addEventListener('DOMContentLoaded', () => {
         function updateSwipe() {
             swipeContainer.style.transform = `translateX(-${currentIndex * 120}px)`;
             selectedDifficulty.value = difficultyCards[currentIndex].getAttribute('data-value');
+            document.querySelectorAll('.swipe-wrapper .card').forEach((card, index) => {
+                if(index === currentIndex){
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
             if (selectedColor.value && selectedDifficulty.value) {
                 playButton.classList.add('active');
                 playButton.disabled = false;
@@ -471,8 +766,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(0)';
         overlay.classList.add("active");
         hamburger.classList.add("open");
-        if (window.innerWidth <= 1280 && bellMobile) {
-            bellMobile.style.display = 'none';
+        if (window.innerWidth <= 1280 && friendsMobile) {
+            friendsMobile.style.display = 'none';
         }
     }
 
@@ -481,8 +776,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(300px)';
         overlay.classList.remove("active");
         hamburger.classList.remove("open");
-        if (window.innerWidth <= 1280 && bellMobile) {
-            bellMobile.style.display = 'block';
+        if (window.innerWidth <= 1280 && friendsMobile) {
+            friendsMobile.style.display = 'block';
         }
         sidebar.addEventListener('transitionend', function handler() {
             sidebar.classList.remove("active");
@@ -554,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
             snowflake.textContent = '❄';
             snowflake.style.left = Math.random() * 100 + 'vw';
             snowflake.style.fontSize = (Math.random() * 10 + 10) + 'px';
-            snowflake.style.opacity = Math.random();
+            snowflake.style.opacity = Math.random().toString();
             snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
             snowflake.style.animationDelay = Math.random() * 10 + 's';
             snowContainer.appendChild(snowflake);

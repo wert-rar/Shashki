@@ -166,6 +166,9 @@ def get_or_create_ephemeral_game(game_id):
         f_user = db_game.f_user
         c_user = db_game.c_user
         new_game = Game(f_user, c_user, db_game.game_id)
+
+        new_game.status = db_game.status
+
         all_games_dict[game_id] = new_game
         db_session.close()
         return new_game

@@ -1,11 +1,17 @@
 import os
 import re
 import sqlite3
+import logging, subprocess, hmac, hashlib, threading, time
+import itertools
+import secrets
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from datetime import timedelta, datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
 from flask_wtf.csrf import CSRFProtect
+
 from base_sqlite import (
     check_user_exists,
     register_user,
@@ -23,6 +29,7 @@ from base_sqlite import (
     delete_all_remember_tokens,
     connect_db
 )
+
 from game import (
     get_game_status_internally,
     find_waiting_game_in_db,
@@ -46,10 +53,6 @@ from base_postgres import (
     remove_friend_db
 )
 
-import logging, subprocess, hmac, hashlib, threading, time
-import itertools
-import secrets
-
 ghost_counter = itertools.count(1)
 ghost_lock = threading.Lock()
 logging.basicConfig(level=logging.DEBUG)
@@ -69,6 +72,14 @@ app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[]
+)
+
+limiter.init_app(app)
+
 
 def is_valid_username(username):
     return re.fullmatch(r'[A-Za-z0-9]{3,15}', username) is not None
@@ -475,8 +486,13 @@ def find_active_game(user_login):
                     return g_obj
     return None
 
+@app.errorhandler(429)
+def ratelimit_error(e):
+    flash("Слишком много запросов. Попробуйте позже.", "error")
+    return render_template("login.html"), 429
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     if request.method == "POST":
         user_login = request.form['login']
@@ -1459,6 +1475,74 @@ def get_top_players():
     except sqlite3.Error as e:
         logging.error(f"Ошибка при получении топ игроков: {e}")
         return jsonify({"error": "Не удалось получить топ игроков"}), 500
+
+@app.route("/invite_game", methods=["POST"])
+@csrf.exempt
+def invite_game():
+    if 'user' not in session:
+        return jsonify({"error": "Не авторизован"}), 403
+
+    data = request.get_json()
+    friend_username = data.get("friend_username")
+    sender = session["user"]
+    if not friend_username:
+        return jsonify({"error": "Не указан пользователь"}), 400
+
+    from game import create_new_game_in_db
+    new_game_id = create_new_game_in_db(sender)
+    if not new_game_id:
+        return jsonify({"error": "Не удалось создать игру"}), 500
+
+    session["game_id"] = new_game_id
+    session["color"] = "w"
+
+    from base_postgres import send_game_invite_db_with_gameid
+    status = send_game_invite_db_with_gameid(sender, friend_username, new_game_id)
+    if status == "self_invite":
+        return jsonify({"error": "Нельзя пригласить самого себя"}), 400
+    elif status == "already_sent":
+        return jsonify({"message": "Уже отправлено приглашение", "game_id": new_game_id}), 200
+    elif status == "reverse_already_sent":
+        return jsonify({"message": "Пользователь уже отправил вам приглашение", "game_id": new_game_id}), 200
+    elif status == "sent":
+        return jsonify({
+            "message": f"Приглашение отправлено! (номер игры {new_game_id})",
+            "game_id": new_game_id
+        }), 200
+    else:
+        return jsonify({"error": "Неизвестная ошибка"}), 500
+
+@app.route("/get_game_invites", methods=["GET"])
+@csrf.exempt
+def get_game_invites():
+    if 'user' not in session:
+        return jsonify({"error": "Не авторизован"}), 403
+    receiver = session["user"]
+    from base_postgres import get_incoming_game_invites_db
+    invites = get_incoming_game_invites_db(receiver)
+    return jsonify({"invites": invites}), 200
+
+@app.route("/respond_game_invite", methods=["POST"])
+@csrf.exempt
+def respond_game_invite():
+    if 'user' not in session:
+        return jsonify({"error": "Не авторизован"}), 403
+    data = request.get_json()
+    sender_username = data.get("sender_username")
+    response = data.get("response")
+    receiver = session["user"]
+    if not sender_username or response not in ["accept","decline"]:
+        return jsonify({"error":"Неверные данные"}),400
+    from base_postgres import respond_game_invite_db
+    success, the_game_id = respond_game_invite_db(sender_username, receiver, response)
+    if not success:
+        return jsonify({"error":"Приглашение не найдено"}),400
+    if response == "accept" and the_game_id:
+        session["game_id"] = the_game_id
+        session["color"] = "b"
+        return jsonify({"message":"Приглашение принято","game_id":the_game_id}),200
+    else:
+        return jsonify({"message":"Операция выполнена"}),200
 
 if __name__ == "__main__":
     app.run(debug=True)
