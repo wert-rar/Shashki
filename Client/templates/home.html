@@ -527,13 +527,16 @@
         .notification.success {
             background-color: var(--success-color);
         }
+
         .notification.error {
             background-color: var(--error-color);
         }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateX(20px); }
             to { opacity: 1; transform: translateX(0); }
         }
+
         .progress-bar {
             position: absolute;
             bottom: 0;
@@ -543,11 +546,13 @@
             width: 100%;
             animation: progress 2s linear forwards;
         }
+
         @keyframes progress {
             0% { width: 100%; }
             100% { width: 0; }
         }
-        .bell-button {
+
+        .bell-button, .friends-button {
             position: relative;
             background: none;
             border: none;
@@ -557,6 +562,7 @@
             transition: color 0.3s ease;
             margin-right: 10px;
         }
+
         .notification-count {
             position: absolute;
             top: -5px;
@@ -570,12 +576,30 @@
             display: none;
             pointer-events: none;
         }
-        .bell-button:hover {
+
+        .bell-button:hover, .friends-button:hover {
             color: var(--button-background);
         }
-        .bell-button.active {
+
+        .bell-button.active, .friends-button.active {
             color: var(--button-background);
         }
+        #friendsModal {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            width: 300px;
+            height: 20vh;
+            background-color: var(--card-background);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 10;
+            padding: 20px;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+        }
+
         #notificationModal {
             position: fixed;
             top: 60px;
@@ -591,25 +615,30 @@
             opacity: 0;
             visibility: hidden;
         }
-        #notificationModal.active {
+
+        #notificationModal.active, #friendsModal.active {
             opacity: 1;
             visibility: visible;
         }
-        #notificationModal .modal-header {
+
+        #notificationModal .modal-header, #friendsModal .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        #notificationModal .modal-header h2 {
+
+        #notificationModal .modal-header h2, #friendsModal .modal-header h2 {
             font-size: 1.2rem;
             color: var(--text-color);
         }
-        #notificationModal .modal-body {
+
+        #notificationModal .modal-body, #friendsModal .modal-body {
             flex: 1;
             margin-top: 20px;
             color: var(--text-color);
-            overflow-y: auto;
+            overflow: visible !important;
         }
+
         @media (min-width: 1280px) {
             .mobile-nav {
                 display: none;
@@ -718,13 +747,66 @@
                 right: -20px;
             }
             @media (max-width: 360px) {
-                #notificationModal {
+                #notificationModal, #friendsModal {
                     width: 240px;
                     max-height: 40vh;
                     padding: 15px;
                     font-size: 0.9rem;
                 }
             }
+        }
+        .friend-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        .friend-item a {
+            color: var(--text-color);
+            text-decoration: none;
+        }
+        .friend-actions {
+            position: relative;
+        }
+        .friend-actions-menu-button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .friend-actions-menu {
+            position: absolute;
+            top: 25px;
+            right: 0;
+            background-color: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            display: none;
+            flex-direction: column;
+            width: 150px;
+            z-index: 9999;
+        }
+        .friend-actions-menu.show {
+            display: flex !important;
+        }
+        .friend-actions-menu.hide {
+            display: none;
+        }
+        .friend-actions-menu button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 10px;
+            text-align: left;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+        .friend-actions-menu button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
@@ -806,6 +888,9 @@
     </div>
     <nav>
         <div class="navigation-menu">
+            <button class="friends-button" id="friendsDesktop">
+                <i class="fas fa-user"></i>
+            </button>
             <button class="bell-button" id="bellDesktop">
                 <i class="fas fa-bell"></i>
                 <span class="notification-count" id="bellDesktopCount">0</span>
@@ -818,6 +903,10 @@
             {% endif %}
         </div>
         <div class="mobile-nav">
+            <button class="friends-button" id="friendsMobile">
+                <i class="fas fa-user"></i>
+                <span class="notification-count" id="friendsMobileCount">0</span>
+            </button>
             <button class="bell-button" id="bellMobile">
                 <i class="fas fa-bell"></i>
                 <span class="notification-count" id="bellMobileCount">0</span>
@@ -842,6 +931,16 @@
             {% endif %}
         </div>
     </div>
+
+    <div id="gameInviteModal" class="modal">
+        <div class="modal-content invite-modal">
+            <h2>Приглашение в игру</h2>
+            <p id="invite-message">Игрок <strong id="inviter-name"></strong> приглашает вас в игру.</p>
+            <button class="button accept-button" id="acceptInviteButton">Принять</button>
+            <button class="button decline-button" id="declineInviteButton">Отклонить</button>
+        </div>
+    </div>
+
     <div id="notificationModal">
         <div class="modal-header">
             <h2>Уведомления</h2>
@@ -851,17 +950,29 @@
             <p>Новых уведомлений нет</p>
         </div>
     </div>
+    <div id="friendsModal">
+        <div class="modal-header">
+            <h2>Друзья</h2>
+            <button class="friends-button" id="closeFriendsModal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="friendsList">
+            <p>У вас пока нет друзей</p>
+        </div>
+    </div>
+
     <div class="container">
         <h1>Добро пожаловать в игру!</h1>
         <button class="button" id="singleplayer-button">Одиночная игра</button>
         <button class="button" onclick="startMultiplayerGame()">Сетевая игра</button>
     </div>
+
     <div id="return-to-game">
         <h2>У вас есть активная игра</h2>
         <p>Вы можете вернуться к вашей текущей игре.</p>
         <button class="button" onclick="returnToGame()">Вернуться в игру</button>
         <button class="button leave-button" onclick="showLeaveGameModal()">Покинуть игру</button>
     </div>
+
     <div id="leave-game-modal">
         <div class="modal-content">
             <h2>Подтверждение выхода</h2>
@@ -870,6 +981,7 @@
             <button class="button" onclick="hideLeaveGameModal()">Отмена</button>
         </div>
     </div>
+
     <div id="game-over-modal">
         <div class="modal-content">
             <h2>Игра окончена</h2>
@@ -877,7 +989,9 @@
             <button class="button" onclick="hideGameOverModal()">Закрыть</button>
         </div>
     </div>
+
     <div id="snow-container"></div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div id="notification-container">
@@ -893,10 +1007,21 @@
             </script>
         {% endif %}
     {% endwith %}
+
     <script>
         var user_login = "{{ session['user'] if 'user' in session else '' }}";
         var game_id = null;
     </script>
+
+    <div id="removeFriendModal" class="modal">
+        <div class="modal-content">
+            <h2>Подтверждение удаления</h2>
+            <p>Вы уверены, что хотите удалить <strong id="removeFriendName"></strong> из друзей?</p>
+            <button class="button confirm-remove-friend" id="confirmRemoveFriendButton">Удалить</button>
+            <button class="button" id="cancelRemoveFriendButton">Отмена</button>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='script_home.js') }}"></script>
 </body>
 </html>
