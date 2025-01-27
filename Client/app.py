@@ -4,14 +4,12 @@ import sqlite3
 import logging, subprocess, hmac, hashlib, threading, time
 import itertools
 import secrets
-
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from datetime import timedelta, datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
 from flask_wtf.csrf import CSRFProtect
-
 from base_sqlite import (
     check_user_exists,
     register_user,
@@ -29,7 +27,6 @@ from base_sqlite import (
     delete_all_remember_tokens,
     connect_db
 )
-
 from game import (
     get_game_status_internally,
     find_waiting_game_in_db,
@@ -41,7 +38,6 @@ from game import (
     all_games_dict,
     update_game_status_in_db
 )
-
 from base_postgres import (
     SessionLocal,
     GameMove,
@@ -52,7 +48,6 @@ from base_postgres import (
     get_friends_db,
     remove_friend_db
 )
-
 ghost_counter = itertools.count(1)
 ghost_lock = threading.Lock()
 logging.basicConfig(level=logging.DEBUG)
@@ -65,28 +60,18 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'avatars')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=timedelta(days=30)
 )
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[]
-)
-
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
 limiter.init_app(app)
-
-
 def is_valid_username(username):
     return re.fullmatch(r'[A-Za-z0-9]{3,15}', username) is not None
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 status_ = {
     "w1": "Ход белых",
     "b1": "Ход черных",
@@ -100,13 +85,11 @@ status_ = {
     "ns1": "Игра не началась из-за отсутствия хода",
     "e1": "Ошибка при запросе к серверу"
 }
-
 def get_piece_at(pieces, x, y):
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
             return piece
     return None
-
 def can_capture(piece, pieces):
     x, y = piece['x'], piece['y']
     moves = []
@@ -136,11 +119,9 @@ def can_capture(piece, pieces):
             end_x, end_y = x + dx, y + dy
             captured_piece = get_piece_at(pieces, mid_x, mid_y)
             target_pos = get_piece_at(pieces, end_x, end_y)
-            if (0 <= end_x < 8 and 0 <= end_y < 8 and
-                    captured_piece and captured_piece['color'] != piece['color'] and not target_pos):
+            if 0 <= end_x < 8 and 0 <= end_y < 8 and captured_piece and captured_piece['color'] != piece['color'] and not target_pos:
                 moves.append({'x': end_x, 'y': end_y})
     return moves
-
 def can_move(piece, pieces):
     x, y = piece['x'], piece['y']
     moves = []
@@ -168,7 +149,6 @@ def can_move(piece, pieces):
             if 0 <= new_x < 8 and 0 <= new_y < 8 and not get_piece_at(pieces, new_x, new_y):
                 moves.append({'x': new_x, 'y': new_y})
     return moves
-
 def get_possible_moves(pieces, color, must_capture_piece=None):
     all_moves = {}
     for piece in pieces:
@@ -184,24 +164,20 @@ def get_possible_moves(pieces, color, must_capture_piece=None):
             normal_moves = can_move(piece, pieces)
             all_moves[(piece['x'], piece['y'])] = capture_moves + normal_moves
     return all_moves
-
 def can_player_move(pieces, color):
     moves = get_possible_moves(pieces, color)
     return any(moves.values())
-
 def check_draw(pieces):
     if can_player_move(pieces, 0):
         return False
     if can_player_move(pieces, 1):
         return False
     return True
-
 def is_all_kings(pieces):
     for piece in pieces:
         if not piece.get('is_king', False):
             return False
     return True
-
 def get_game_moves_from_db(game_id):
     db_session = SessionLocal()
     moves = db_session.query(GameMove).filter_by(game_id=game_id).order_by(GameMove.move_id).all()
@@ -216,7 +192,6 @@ def get_game_moves_from_db(game_id):
         })
     db_session.close()
     return move_list
-
 def finalize_game(game, user_login):
     if not game.c_user:
         remove_game_in_db(game.game_id)
@@ -241,28 +216,12 @@ def finalize_game(game, user_login):
             if not user_is_ghost:
                 user_rank_before = get_user_rang(user_login)
                 date_end = datetime.now().isoformat()
-                insert_completed_game(
-                    user_login=user_login,
-                    game_id=game.game_id,
-                    date_start=date_end,
-                    rating_before=user_rank_before,
-                    rating_after=user_rank_before,
-                    rating_change=0,
-                    result=result_move
-                )
+                insert_completed_game(user_login, game.game_id, date_end, user_rank_before, user_rank_before, 0, result_move)
             opponent_login = game.f_user if game.f_user != user_login else game.c_user
             if opponent_login and not opponent_login.startswith('ghost'):
                 opp_rank_before = get_user_rang(opponent_login)
                 date_end = datetime.now().isoformat()
-                insert_completed_game(
-                    user_login=opponent_login,
-                    game_id=game.game_id,
-                    date_start=date_end,
-                    rating_before=opp_rank_before,
-                    rating_after=opp_rank_before,
-                    rating_change=0,
-                    result=result_move
-                )
+                insert_completed_game(opponent_login, game.game_id, date_end, opp_rank_before, opp_rank_before, 0, result_move)
             game.rank_updated = True
         return result_move, points_gained
     if winner_color is None and game.status == 'n':
@@ -297,15 +256,7 @@ def finalize_game(game, user_login):
             user_rank_after = get_user_rang(user_login)
             user_rating_change = user_rank_after - user_rank_before
             date_end = datetime.now().isoformat()
-            insert_completed_game(
-                user_login=user_login,
-                game_id=game.game_id,
-                date_start=date_end,
-                rating_before=user_rank_before,
-                rating_after=user_rank_after,
-                rating_change=user_rating_change,
-                result=result_move
-            )
+            insert_completed_game(user_login, game.game_id, date_end, user_rank_before, user_rank_after, user_rating_change, result_move)
         if not opponent_is_ghost:
             opponent_rank_before = get_user_rang(opponent_login)
             if result_move == 'win':
@@ -329,19 +280,10 @@ def finalize_game(game, user_login):
                 opponent_rank_after = get_user_rang(opponent_login)
                 opponent_rating_change = opponent_rank_after - opponent_rank_before
                 date_end = datetime.now().isoformat()
-                insert_completed_game(
-                    user_login=opponent_login,
-                    game_id=game.game_id,
-                    date_start=date_end,
-                    rating_before=opponent_rank_before,
-                    rating_after=opponent_rank_after,
-                    rating_change=opponent_rating_change,
-                    result=opponent_result_move
-                )
+                insert_completed_game(opponent_login, game.game_id, date_end, opponent_rank_before, opponent_rank_after, opponent_rating_change, opponent_result_move)
         game.rank_updated = True
         update_game_status_in_db(game.game_id, 'completed')
     return result_move, points_gained
-
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
     x, y = selected_piece['x'], selected_piece['y']
     dest_x, dest_y = new_pos['x'], new_pos['y']
@@ -407,7 +349,6 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'multiple_capture': False,
         'promotion': promotion_occurred
     }
-
 @app.route("/")
 def home():
     user_login = session.get('user')
@@ -417,7 +358,6 @@ def home():
         if user:
             user_is_registered = True
     return render_template('home.html', user_is_registered=user_is_registered)
-
 @app.route('/board/<int:game_id>/<user_login>')
 @csrf.exempt
 def get_board(game_id, user_login):
@@ -457,7 +397,6 @@ def get_board(game_id, user_login):
         user_avatar_url=user_avatar_url,
         opponent_avatar_url=opponent_avatar_url
     )
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -477,7 +416,6 @@ def register():
             flash('Пользователь уже существует', 'error')
             return redirect(url_for('register'))
     return render_template('register.html')
-
 def find_active_game(user_login):
     with all_games_lock:
         for g_id, g_obj in all_games_dict.items():
@@ -485,12 +423,10 @@ def find_active_game(user_login):
                 if g_obj.status not in ['w3', 'b3', 'n', 'ns1']:
                     return g_obj
     return None
-
 @app.errorhandler(429)
 def ratelimit_error(e):
     flash("Слишком много запросов. Попробуйте позже.", "error")
     return render_template("login.html"), 429
-
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def login():
@@ -498,30 +434,20 @@ def login():
         user_login = request.form['login']
         user_password = request.form['password']
         remember = 'remember_me' in request.form
-
         if not is_valid_username(user_login):
             flash('Имя пользователя может содержать только латинские буквы и цифры (3-15 символов)', 'error')
             return redirect(url_for('register'))
-
         user = authenticate_user(user_login, user_password)
         if user:
             session['user'] = user_login
             flash('Вход выполнен', 'success')
-
             if remember:
                 session.permanent = True
                 token = secrets.token_urlsafe(64)
                 expires_at = datetime.utcnow() + timedelta(days=30)
                 if add_remember_token(user_login, token, expires_at):
                     resp = make_response(redirect(url_for('home')))
-                    resp.set_cookie(
-                        'remember_token',
-                        token,
-                        expires=expires_at,
-                        httponly=True,
-                        secure=True,
-                        samesite='Lax'
-                    )
+                    resp.set_cookie('remember_token', token, expires=expires_at, httponly=True, secure=True, samesite='Lax')
                     return resp
                 else:
                     flash('Не удалось сохранить токен для запоминания', 'error')
@@ -533,12 +459,13 @@ def login():
             flash('Неверные данные для входа', 'error')
             return redirect(url_for('login'))
     return render_template('login.html')
-
 @app.route('/profile/<username>')
 def profile(username):
-    user_row = get_user_by_login(username)
+    if not is_valid_username(username):
+        abort(404)
     if username.startswith('ghost'):
         abort(403)
+    user_row = get_user_by_login(username)
     if user_row:
         user = dict(user_row)
         total_games = user['wins'] + user['losses'] + user['draws']
@@ -579,44 +506,33 @@ def profile(username):
         )
     else:
         abort(404)
-
-
 @app.route("/logout")
 def logout():
     user_login = session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
     flash('Вы вышли из аккаунта', 'info')
-
     token = request.cookies.get('remember_token')
     if token:
         delete_remember_token(token)
-
     resp = make_response(redirect(url_for('home')))
     resp.delete_cookie('remember_token')
-
     if user_login:
         delete_all_remember_tokens(user_login)
-
     return resp
-
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
-
 @app.errorhandler(403)
 def forbidden(e):
     return render_template('403.html'), 403
-
 @app.route('/trigger_error')
 def trigger_error():
     abort(500)
-
 @app.errorhandler(500)
 def internal_server_error(e):
     app.logger.error(f"Ошибка 500: {e}")
     return render_template('500.html'), 500
-
 @app.route('/start_game')
 @csrf.exempt
 def start_game():
@@ -639,7 +555,6 @@ def start_game():
         except (ValueError, TypeError):
             session.pop('game_id', None)
             session.pop('color', None)
-            app.logger.warning(f"Некорректный game_id в сессии: {game_id}")
             game_id_int = None
         game = all_games_dict.get(game_id_int)
         if game and user_login in [game.f_user, game.c_user]:
@@ -685,7 +600,6 @@ def start_game():
         return redirect(url_for('get_board', game_id=session['game_id'], user_login=user_login))
     else:
         return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
-
 @app.route("/check_game_status", methods=["GET"])
 @csrf.exempt
 def check_game_status_route():
@@ -696,7 +610,6 @@ def check_game_status_route():
     try:
         game_id_int = int(game_id)
     except (ValueError, TypeError):
-        app.logger.warning(f"Некорректный game_id в check_game_status: {game_id}")
         return jsonify({"status": "invalid_game_id"}), 400
     search_start_time = session.get('search_start_time')
     if search_start_time:
@@ -739,7 +652,6 @@ def check_game_status_route():
                 'game_id': game_id_int
             }
     return jsonify(response)
-
 @app.route("/move", methods=["POST"])
 @csrf.exempt
 def move():
@@ -898,7 +810,6 @@ def move():
             "white_countdown": int(game.white_countdown_remaining),
             "black_countdown": int(game.black_countdown_remaining)
         })
-
 @app.route("/update_board", methods=["POST"])
 @csrf.exempt
 def update_board():
@@ -942,7 +853,6 @@ def update_board():
     except Exception as e:
         app.logger.error(f"Exception in update_board: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 @app.route("/give_up", methods=["POST"])
 @csrf.exempt
 def give_up_route():
@@ -977,7 +887,6 @@ def give_up_route():
     except Exception as e:
         app.logger.error(f"Ошибка при сдаче: {str(e)}")
         return jsonify({"error": "Произошла ошибка при сдаче."}), 500
-
 @app.route('/leave_game', methods=['POST'])
 @csrf.exempt
 def leave_game():
@@ -1011,7 +920,6 @@ def leave_game():
     session.pop('color', None)
     session.pop('search_start_time', None)
     return jsonify({"message": "Покинул игру успешно"}), 200
-
 @app.route("/offer_draw", methods=["POST"])
 @csrf.exempt
 def offer_draw():
@@ -1034,7 +942,6 @@ def offer_draw():
         return jsonify({"error": "Партия уже на рассмотрении"}), 400
     game.draw_offer = user_color
     return jsonify({"message": "Предложение ничьей отправлено"}), 200
-
 @app.route("/respond_draw", methods=["POST"])
 @csrf.exempt
 def respond_draw_route():
@@ -1077,7 +984,6 @@ def respond_draw_route():
         }
         return jsonify(response_data), 200
     return jsonify({"status_": game.status, "pieces": game.pieces}), 200
-
 @app.route("/get_possible_moves", methods=["POST"])
 @csrf.exempt
 def get_possible_moves_route():
@@ -1111,10 +1017,11 @@ def get_possible_moves_route():
         valid_moves = get_possible_moves(game.pieces, color)
         moves = valid_moves.get((x, y), [])
     return jsonify({"moves": moves})
-
 @app.route('/api/profile/<username>', methods=['GET'])
 @csrf.exempt
 def api_profile(username):
+    if not is_valid_username(username):
+        return jsonify({"error": "Неверный пользователь"}), 404
     if username.startswith('ghost'):
         return jsonify({"error": "Профиль не доступен"}), 403
     user = get_user_by_login(username)
@@ -1129,7 +1036,6 @@ def api_profile(username):
         })
     else:
         return jsonify({"error": "Пользователь не найден"}), 404
-
 @app.route('/hook', methods=['POST'])
 @csrf.exempt
 def webhook():
@@ -1150,28 +1056,30 @@ def webhook():
         return "OK: " + output.decode('utf-8'), 200
     except subprocess.CalledProcessError as e:
         return "Git pull failed:\n" + e.output.decode('utf-8'), 500
-
 @app.route("/singleplayer_easy/<username>")
 @csrf.exempt
 def singleplayer_easy(username):
+    if not is_valid_username(username) and not username.startswith('ghost'):
+        abort(404)
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_easy.html", username=username, is_ghost=is_ghost, user_color=user_color)
-
 @app.route("/singleplayer_medium/<username>")
 @csrf.exempt
 def singleplayer_medium(username):
+    if not is_valid_username(username) and not username.startswith('ghost'):
+        abort(404)
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_medium.html", username=username, is_ghost=is_ghost, user_color=user_color)
-
 @app.route("/singleplayer_hard/<username>")
 @csrf.exempt
 def singleplayer_hard(username):
+    if not is_valid_username(username) and not username.startswith('ghost'):
+        abort(404)
     is_ghost = session.get('is_ghost', False)
     user_color = request.args.get('color', 'w')
     return render_template("singleplayer_hard.html", username=username, is_ghost=is_ghost, user_color=user_color)
-
 @app.route("/start_singleplayer", methods=["GET", "POST"])
 @csrf.exempt
 def start_singleplayer():
@@ -1193,7 +1101,6 @@ def start_singleplayer():
         return redirect(url_for(f'singleplayer_{difficulty}', username=session['user'], color=color))
     else:
         return redirect(url_for('home'))
-
 @app.route('/player_loaded', methods=['POST'])
 @csrf.exempt
 def player_loaded():
@@ -1218,12 +1125,9 @@ def player_loaded():
     if game.f_player_loaded and game.c_player_loaded and game.last_update_time is None:
         game.last_update_time = time.time()
     return jsonify({"message": "Player loaded status updated"}), 200
-
 @app.route('/favicon.ico')
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
-
-
 @app.route('/upload_avatar', methods=['POST'])
 def upload_avatar():
     if 'user' not in session:
@@ -1255,7 +1159,6 @@ def upload_avatar():
     else:
         flash('Недопустимый файл', 'error')
     return redirect(url_for('profile', username=user_login))
-
 @app.route('/delete_avatar', methods=['POST'])
 @csrf.exempt
 def delete_avatar():
@@ -1275,30 +1178,22 @@ def delete_avatar():
     else:
         flash('У вас уже дефолтный аватар', 'info')
     return redirect(url_for('profile', username=user_login))
-
-
 @app.route("/send_friend_request", methods=["POST"])
 @csrf.exempt
 def send_friend_request():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
-
     data = request.get_json()
     friend_username = data.get("friend_username")
     sender = session.get("user")
-
     if not friend_username:
         return jsonify({"error": "Не указан получатель"}), 400
-
     if friend_username == sender:
         return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
-
     user_row = get_user_by_login(friend_username)
     if not user_row:
         return jsonify({"error": "Пользователь не найден"}), 404
-
     status = send_friend_request_db(sender, friend_username)
-
     if status == "sent":
         return jsonify({"message": "Запрос успешно отправлен"}), 200
     elif status == "already_sent":
@@ -1313,8 +1208,6 @@ def send_friend_request():
         return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
     else:
         return jsonify({"error": "Не удалось отправить запрос"}), 500
-
-
 @app.route("/respond_friend_request", methods=["POST"])
 @csrf.exempt
 def respond_friend_request():
@@ -1334,8 +1227,6 @@ def respond_friend_request():
     else:
         message = f"Запрос от {sender_username} отклонён"
     return jsonify({"message": message}), 200
-
-
 @app.route("/get_friend_requests", methods=["GET"])
 @csrf.exempt
 def get_friend_requests():
@@ -1344,8 +1235,6 @@ def get_friend_requests():
     receiver = session.get("user")
     requests_list = get_incoming_friend_requests_db(receiver)
     return jsonify({"requests": requests_list}), 200
-
-
 @app.route("/get_notifications", methods=["GET"])
 @csrf.exempt
 def get_notifications():
@@ -1354,8 +1243,6 @@ def get_notifications():
     receiver = session.get("user")
     requests_list = get_incoming_friend_requests_db(receiver)
     return jsonify({"notifications": requests_list}), 200
-
-
 @app.route("/get_friends", methods=["GET"])
 @csrf.exempt
 def get_friends():
@@ -1364,8 +1251,6 @@ def get_friends():
     current_user = session.get("user")
     user_friends = get_friends_db(current_user)
     return jsonify({"friends": user_friends}), 200
-
-
 @app.route("/remove_friend", methods=["POST"])
 @csrf.exempt
 def remove_friend():
@@ -1380,7 +1265,6 @@ def remove_friend():
     if not success:
         return jsonify({"error": "Пользователь не является вашим другом или не найден"}), 400
     return jsonify({"message": f"Пользователь {friend_username} удалён из друзей"}), 200
-
 @app.route("/search_users")
 @csrf.exempt
 def search_users():
@@ -1388,12 +1272,9 @@ def search_users():
     query = request.args.get("query", "").strip()
     if not query:
         return jsonify({"results": []})
-
     current_user = session.get('user')
-
     con = connect_db()
     cur = con.cursor()
-
     if current_user:
         cur.execute(
             "SELECT login FROM player WHERE login LIKE ? AND login != ? COLLATE NOCASE LIMIT 10",
@@ -1404,12 +1285,10 @@ def search_users():
             "SELECT login FROM player WHERE login LIKE ? COLLATE NOCASE LIMIT 10",
             (query + '%',)
         )
-
     rows = cur.fetchall()
     con.close()
     results = [row["login"] for row in rows]
     return jsonify({"results": results})
-
 @app.before_request
 def load_user_from_remember_token():
     if 'user' not in session:
@@ -1423,15 +1302,6 @@ def load_user_from_remember_token():
                 new_expires_at = datetime.utcnow() + timedelta(days=30)
                 if add_remember_token(user_login, new_token, new_expires_at):
                     delete_remember_token(token)
-                    resp = make_response()
-                    resp.set_cookie(
-                        'remember_token',
-                        new_token,
-                        expires=new_expires_at,
-                        httponly=True,
-                        secure=True,
-                        samesite='Lax'
-                    )
                     from flask import g
                     g.new_remember_token = new_token
                     g.new_expires_at = new_expires_at
@@ -1448,7 +1318,6 @@ def set_new_remember_token(response):
             samesite='Lax'
         )
     return response
-
 @app.route("/get_top_players", methods=["GET"])
 @csrf.exempt
 def get_top_players():
@@ -1475,27 +1344,22 @@ def get_top_players():
     except sqlite3.Error as e:
         logging.error(f"Ошибка при получении топ игроков: {e}")
         return jsonify({"error": "Не удалось получить топ игроков"}), 500
-
 @app.route("/invite_game", methods=["POST"])
 @csrf.exempt
 def invite_game():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
-
     data = request.get_json()
     friend_username = data.get("friend_username")
     sender = session["user"]
     if not friend_username:
         return jsonify({"error": "Не указан пользователь"}), 400
-
     from game import create_new_game_in_db
     new_game_id = create_new_game_in_db(sender)
     if not new_game_id:
         return jsonify({"error": "Не удалось создать игру"}), 500
-
     session["game_id"] = new_game_id
     session["color"] = "w"
-
     from base_postgres import send_game_invite_db_with_gameid
     status = send_game_invite_db_with_gameid(sender, friend_username, new_game_id)
     if status == "self_invite":
@@ -1505,13 +1369,9 @@ def invite_game():
     elif status == "reverse_already_sent":
         return jsonify({"message": "Пользователь уже отправил вам приглашение", "game_id": new_game_id}), 200
     elif status == "sent":
-        return jsonify({
-            "message": f"Приглашение отправлено! (номер игры {new_game_id})",
-            "game_id": new_game_id
-        }), 200
+        return jsonify({"message": f"Приглашение отправлено! (номер игры {new_game_id})", "game_id": new_game_id}), 200
     else:
         return jsonify({"error": "Неизвестная ошибка"}), 500
-
 @app.route("/get_game_invites", methods=["GET"])
 @csrf.exempt
 def get_game_invites():
@@ -1521,7 +1381,6 @@ def get_game_invites():
     from base_postgres import get_incoming_game_invites_db
     invites = get_incoming_game_invites_db(receiver)
     return jsonify({"invites": invites}), 200
-
 @app.route("/respond_game_invite", methods=["POST"])
 @csrf.exempt
 def respond_game_invite():
@@ -1543,6 +1402,11 @@ def respond_game_invite():
         return jsonify({"message":"Приглашение принято","game_id":the_game_id}),200
     else:
         return jsonify({"message":"Операция выполнена"}),200
-
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = "default-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com"
+    return response
 if __name__ == "__main__":
     app.run(debug=True)

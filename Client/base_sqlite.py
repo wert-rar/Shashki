@@ -1,9 +1,16 @@
 import sqlite3
 import logging
 import os
-import hashlib
 import secrets
 from datetime import datetime, timedelta
+
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
+
 
 def create_tables():
     try:
@@ -45,6 +52,7 @@ def create_tables():
     except sqlite3.Error as e:
         logging.error(f"Ошибка при создании таблиц: {e}")
 
+
 def connect_db():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(BASE_DIR, 'DataBase.db')
@@ -52,8 +60,14 @@ def connect_db():
     con.row_factory = sqlite3.Row
     return con
 
-def hash_password(password):
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
 
 def check_user_exists(user_login):
     con = connect_db()
@@ -63,16 +77,21 @@ def check_user_exists(user_login):
     con.close()
     return exists
 
+
 def register_user(user_login, user_password):
     if check_user_exists(user_login):
         logging.warning(f"Пользователь с логином '{user_login}' уже существует.")
         return False
+
     hashed_password = hash_password(user_password)
+
     try:
         con = connect_db()
         cur = con.cursor()
-        cur.execute("INSERT INTO player (login, password, rang) VALUES (?, ?, ?)",
-                    (user_login, hashed_password, 0))
+        cur.execute(
+            "INSERT INTO player (login, password, rang) VALUES (?, ?, ?)",
+            (user_login, hashed_password, 0)
+        )
         con.commit()
         con.close()
         logging.info(f"Пользователь '{user_login}' успешно зарегистрирован.")
@@ -81,16 +100,17 @@ def register_user(user_login, user_password):
         logging.error(f"Ошибка при регистрации пользователя: {e}")
         return False
 
+
 def authenticate_user(user_login, user_password):
     con = connect_db()
     cur = con.cursor()
     cur.execute("SELECT password FROM player WHERE login = ?", (user_login,))
     row = cur.fetchone()
     con.close()
+
     if row:
         stored_password = row["password"]
-        hashed_input_password = hash_password(user_password)
-        if hashed_input_password == stored_password:
+        if verify_password(user_password, stored_password):
             logging.info(f"Пользователь '{user_login}' успешно аутентифицирован.")
             return True
         else:
@@ -100,6 +120,7 @@ def authenticate_user(user_login, user_password):
         logging.warning(f"Пользователь '{user_login}' не найден.")
         return False
 
+
 def get_user_by_login(username):
     con = connect_db()
     cur = con.cursor()
@@ -107,6 +128,7 @@ def get_user_by_login(username):
     user = cur.fetchone()
     con.close()
     return user
+
 
 def get_user_rang(user_login):
     con = connect_db()
@@ -118,12 +140,14 @@ def get_user_rang(user_login):
         return row['rang']
     return 0
 
+
 def update_user_rank(user_login, points):
     con = connect_db()
     cur = con.cursor()
     cur.execute("UPDATE player SET rang = rang + ? WHERE login = ?", (points, user_login))
     con.commit()
     con.close()
+
 
 def update_user_stats(user_login, wins=0, losses=0, draws=0):
     con = connect_db()
@@ -138,6 +162,7 @@ def update_user_stats(user_login, wins=0, losses=0, draws=0):
     con.commit()
     con.close()
 
+
 def insert_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result):
     con = connect_db()
     cur = con.cursor()
@@ -148,6 +173,7 @@ def insert_completed_game(user_login, game_id, date_start, rating_before, rating
     """, (user_login, game_id, date_start, rating_before, rating_after, rating_change, result))
     con.commit()
     con.close()
+
 
 def get_user_history(user_login):
     con = connect_db()
@@ -165,12 +191,14 @@ def get_user_history(user_login):
         result.append(dict(row))
     return result
 
+
 def update_user_avatar(user_login, filename):
     con = connect_db()
     cur = con.cursor()
     cur.execute("UPDATE player SET avatar_filename = ? WHERE login = ?", (filename, user_login))
     con.commit()
     con.close()
+
 
 def add_remember_token(user_login, token, expires_at):
     try:
@@ -187,6 +215,7 @@ def add_remember_token(user_login, token, expires_at):
     except sqlite3.Error as e:
         logging.error(f"Ошибка при добавлении токена: {e}")
         return False
+
 
 def get_user_by_remember_token(token):
     con = connect_db()
@@ -207,6 +236,7 @@ def get_user_by_remember_token(token):
             return None
     return None
 
+
 def delete_remember_token(token):
     try:
         con = connect_db()
@@ -217,6 +247,7 @@ def delete_remember_token(token):
         logging.info(f"Токен '{token}' удален.")
     except sqlite3.Error as e:
         logging.error(f"Ошибка при удалении токена: {e}")
+
 
 def delete_all_remember_tokens(user_login):
     try:

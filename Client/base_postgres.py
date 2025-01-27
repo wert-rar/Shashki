@@ -7,8 +7,8 @@ from sqlalchemy import create_engine
 
 Base = declarative_base()
 
-#DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
-DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
+DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
+#DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
