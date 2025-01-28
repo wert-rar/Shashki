@@ -36,7 +36,7 @@ from game import (
     get_or_create_ephemeral_game,
     all_games_lock,
     all_games_dict,
-    update_game_status_in_db
+    update_game_status_in_db, get_db_pieces, update_db_pieces
 )
 from base_postgres import (
     SessionLocal,
@@ -335,7 +335,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 'new_pieces': new_pieces,
                 'captured': captured,
                 'captured_pieces': captured_pieces,
-                'multiple_capture': True
+                'multiple_capture': True,
+                'next_capture_piece': moved_piece.copy()
             }
         else:
             game.must_capture_piece = None
@@ -428,7 +429,7 @@ def ratelimit_error(e):
     flash("Слишком много запросов. Попробуйте позже.", "error")
     return render_template("login.html"), 429
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("7 per minute")
 def login():
     if request.method == "POST":
         user_login = request.form['login']
@@ -677,9 +678,19 @@ def move():
         return jsonify({"error": "Not your turn"}), 403
     with game.lock:
         game.update_timers()
-        result = validate_move(selected_piece, new_pos, current_player, game.pieces, game)
+        p = get_db_pieces(game_id_int)
+        result = validate_move(
+            selected_piece,
+            new_pos,
+            current_player,
+            p,
+            game
+        )
+
         if result['move_result'] == 'invalid':
             return jsonify({"error": "Invalid move"}), 400
+        updated_pieces = result['new_pieces']
+        update_db_pieces(game_id_int, updated_pieces)
         move_record = {
             'player': game.f_user if current_player == 'w' else game.c_user,
             'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
@@ -722,7 +733,7 @@ def move():
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": game.status,
-                "pieces": game.pieces,
+                "pieces": get_db_pieces(game_id_int),
                 "white_time": max(round(game.white_time_remaining), 0),
                 "black_time": max(round(game.black_time_remaining), 0),
                 "move_history": get_game_moves_from_db(game_id_int),
@@ -733,28 +744,29 @@ def move():
             }
             return jsonify(response_data)
         if result['move_result'] == 'continue_capture':
-            game.pieces = result['new_pieces']
             game.status = f"{current_player}4"
+            game.must_capture_piece = result['next_capture_piece']
             return jsonify({
                 "status_": game.status,
-                "pieces": game.pieces,
+                "pieces": get_db_pieces(game_id_int),
                 "move_history": get_game_moves_from_db(game_id_int),
                 "multiple_capture": True,
                 "white_countdown": int(game.white_countdown_remaining),
                 "black_countdown": int(game.black_countdown_remaining)
             })
         elif result['move_result'] == 'valid':
-            game.pieces = result['new_pieces']
             game.moves_count += 1
+            game.must_capture_piece = None
             game.switch_turn()
         else:
             return jsonify({"error": "Invalid move"}), 400
-        if is_all_kings(game.pieces):
+        p = get_db_pieces(game_id_int)
+        if is_all_kings(p):
             game.status = "n"
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": "n",
-                "pieces": game.pieces,
+                "pieces": p,
                 "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
@@ -762,12 +774,12 @@ def move():
                 "black_countdown": int(game.black_countdown_remaining)
             }
             return jsonify(response_data)
-        if check_draw(game.pieces):
+        if check_draw(p):
             game.status = "n"
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": "n",
-                "pieces": game.pieces,
+                "pieces": p,
                 "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
@@ -776,13 +788,13 @@ def move():
             }
             return jsonify(response_data)
         opponent_color = 'b' if current_player == 'w' else 'w'
-        opponent_pieces = [p for p in game.pieces if p['color'] == (0 if opponent_color == 'w' else 1)]
+        opponent_pieces = [x for x in p if x['color'] == (0 if opponent_color == 'w' else 1)]
         if not opponent_pieces:
             game.status = f"{current_player}3"
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": game.status,
-                "pieces": game.pieces,
+                "pieces": get_db_pieces(game_id_int),
                 "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
@@ -790,12 +802,12 @@ def move():
                 "black_countdown": int(game.black_countdown_remaining)
             }
             return jsonify(response_data)
-        if not can_player_move(game.pieces, 0 if opponent_color == 'w' else 1):
+        if not can_player_move(p, 0 if opponent_color == 'w' else 1):
             game.status = "n"
             result_move, points_gained = finalize_game(game, user_login)
             response_data = {
                 "status_": "n",
-                "pieces": game.pieces,
+                "pieces": get_db_pieces(game_id_int),
                 "move_history": get_game_moves_from_db(game_id_int),
                 "result": result_move,
                 "points_gained": points_gained,
@@ -805,54 +817,51 @@ def move():
             return jsonify(response_data)
         return jsonify({
             "status_": game.status,
-            "pieces": game.pieces,
+            "pieces": get_db_pieces(game_id_int),
             "move_history": get_game_moves_from_db(game_id_int),
             "white_countdown": int(game.white_countdown_remaining),
             "black_countdown": int(game.black_countdown_remaining)
         })
+
 @app.route("/update_board", methods=["POST"])
 @csrf.exempt
 def update_board():
+    if not request.is_json:
+        return jsonify({"error": "Request data must be in JSON format"}), 400
+    data = request.get_json()
+    game_id = data.get("game_id")
+    user_login = session.get('user')
+    if game_id is None:
+        return jsonify({"error": "Game ID is required"}), 400
     try:
-        if not request.is_json:
-            return jsonify({"error": "Request data must be in JSON format"}), 400
-        data = request.get_json()
-        game_id = data.get("game_id")
-        user_login = session.get('user')
-        if game_id is None:
-            return jsonify({"error": "Game ID is required"}), 400
-        try:
-            game_id_int = int(game_id)
-        except (ValueError, TypeError):
-            return jsonify({"error": "Invalid game ID"}), 400
-        game = get_or_create_ephemeral_game(game_id_int)
-        if not game:
-            return jsonify({"error": "Invalid game ID"}), 400
-        user_color = game.user_color(user_login)
-        game.update_timers()
-        response_data = {
-            "status_": game.status,
-            "pieces": game.pieces,
-            "white_time": max(round(game.white_time_remaining), 0),
-            "black_time": max(round(game.black_time_remaining), 0),
-            "move_history": get_game_moves_from_db(game_id_int),
-            "white_countdown": int(game.white_countdown_remaining),
-            "black_countdown": int(game.black_countdown_remaining)
-        }
-        if game.draw_offer:
-            response_data["draw_offer"] = game.draw_offer
-        if game.draw_response:
-            if game.draw_response['to'] == user_color:
-                response_data['draw_response'] = game.draw_response['response']
-                game.draw_response = None
-        if game.status in ['w3', 'b3', 'n', 'ns1']:
-            result_move, points_gained = finalize_game(game, user_login)
-            response_data['points_gained'] = points_gained
-            response_data['result'] = result_move
-        return jsonify(response_data)
-    except Exception as e:
-        app.logger.error(f"Exception in update_board: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        game_id_int = int(game_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid game ID"}), 400
+    game = get_or_create_ephemeral_game(game_id_int)
+    if not game:
+        return jsonify({"error": "Invalid game ID"}), 400
+    user_color = game.user_color(user_login)
+    game.update_timers()
+    response_data = {
+        "status_": game.status,
+        "pieces": get_db_pieces(game_id_int),
+        "white_time": max(round(game.white_time_remaining), 0),
+        "black_time": max(round(game.black_time_remaining), 0),
+        "move_history": get_game_moves_from_db(game_id_int),
+        "white_countdown": int(game.white_countdown_remaining),
+        "black_countdown": int(game.black_countdown_remaining)
+    }
+    if game.draw_offer:
+        response_data["draw_offer"] = game.draw_offer
+    if game.draw_response:
+        if game.draw_response['to'] == user_color:
+            response_data['draw_response'] = game.draw_response['response']
+            game.draw_response = None
+    if game.status in ['w3', 'b3', 'n', 'ns1']:
+        result_move, points_gained = finalize_game(game, user_login)
+        response_data['points_gained'] = points_gained
+        response_data['result'] = result_move
+    return jsonify(response_data)
 @app.route("/give_up", methods=["POST"])
 @csrf.exempt
 def give_up_route():
@@ -862,24 +871,32 @@ def give_up_route():
         user_login = data.get("user_login")
         if not game_id or not user_login:
             return jsonify({"error": "Недостаточно данных для сдачи"}), 400
+
         try:
             game_id_int = int(game_id)
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid game ID"}), 400
+
         game = get_or_create_ephemeral_game(game_id_int)
         if not game:
             return jsonify({"error": "Игра не найдена"}), 404
+
         if user_login not in [game.f_user, game.c_user]:
             abort(403)
+
         user_color = 'w' if user_login == game.f_user else 'b'
         if user_color == 'w':
             game.status = 'b3'
         else:
             game.status = 'w3'
+
         result_move, points_gained = finalize_game(game, user_login)
+
+        updated_pieces = get_db_pieces(game.game_id)
+
         response = {
             "status_": game.status,
-            "pieces": game.pieces,
+            "pieces": updated_pieces,
             "result": result_move,
             "points_gained": points_gained
         }
@@ -887,6 +904,7 @@ def give_up_route():
     except Exception as e:
         app.logger.error(f"Ошибка при сдаче: {str(e)}")
         return jsonify({"error": "Произошла ошибка при сдаче."}), 500
+
 @app.route('/leave_game', methods=['POST'])
 @csrf.exempt
 def leave_game():
@@ -942,6 +960,7 @@ def offer_draw():
         return jsonify({"error": "Партия уже на рассмотрении"}), 400
     game.draw_offer = user_color
     return jsonify({"message": "Предложение ничьей отправлено"}), 200
+
 @app.route("/respond_draw", methods=["POST"])
 @csrf.exempt
 def respond_draw_route():
@@ -975,15 +994,16 @@ def respond_draw_route():
     else:
         return jsonify({"error": "Неверный ответ"}), 400
     if game.status == "n":
-        result_move, points_gained = finalize_game(game, user_login)
+        updated_pieces = get_db_pieces(game.game_id)
         response_data = {
             "status_": game.status,
-            "pieces": game.pieces,
-            "result": result_move,
-            "points_gained": points_gained
+            "pieces": updated_pieces
         }
         return jsonify(response_data), 200
-    return jsonify({"status_": game.status, "pieces": game.pieces}), 200
+    else:
+        updated_pieces = get_db_pieces(game.game_id)
+        return jsonify({"status_": game.status, "pieces": updated_pieces}), 200
+
 @app.route("/get_possible_moves", methods=["POST"])
 @csrf.exempt
 def get_possible_moves_route():
@@ -993,30 +1013,43 @@ def get_possible_moves_route():
     user_login = session.get('user')
     if game_id is None:
         return jsonify({"error": "Game ID is required"}), 400
+
     try:
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
+
     game = get_or_create_ephemeral_game(game_id_int)
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
+
     if user_login not in [game.f_user, game.c_user]:
         abort(403)
+
     current_player = game.current_player
     user_color = game.user_color(user_login)
+
     if user_color != current_player:
         return jsonify({"moves": []}), 200
+
+    p = get_db_pieces(game_id_int)
+    if not selected_piece or 'x' not in selected_piece or 'y' not in selected_piece:
+        return jsonify({"error": "Invalid piece coordinates"}), 400
+
     x, y = selected_piece['x'], selected_piece['y']
     color = 0 if current_player == 'w' else 1
     moves = []
+
     if game.must_capture_piece:
         if (x, y) == (game.must_capture_piece['x'], game.must_capture_piece['y']):
-            valid_moves = get_possible_moves(game.pieces, color, must_capture_piece=game.must_capture_piece)
+            valid_moves = get_possible_moves(p, color, must_capture_piece=game.must_capture_piece)
             moves = valid_moves.get((x, y), [])
     else:
-        valid_moves = get_possible_moves(game.pieces, color)
+        valid_moves = get_possible_moves(p, color)
         moves = valid_moves.get((x, y), [])
+
     return jsonify({"moves": moves})
+
 @app.route('/api/profile/<username>', methods=['GET'])
 @csrf.exempt
 def api_profile(username):

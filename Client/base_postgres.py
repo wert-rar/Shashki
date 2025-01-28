@@ -15,17 +15,15 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Game(Base):
     __tablename__ = "games"
-
     game_id = Column(Integer, primary_key=True, index=True)
     f_user = Column(String, nullable=True)
     c_user = Column(String, nullable=True)
     status = Column(String, default="unstarted")
-
+    board_state = Column(String, nullable=True)
     moves = relationship("GameMove", back_populates="game")
 
 class GameMove(Base):
     __tablename__ = "game_moves"
-
     move_id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey('games.game_id'))
     player = Column(String, nullable=False)
@@ -36,12 +34,10 @@ class GameMove(Base):
     move_time = Column(DateTime, default=func.now())
     captured_piece = Column(Boolean, default=False)
     promotion = Column(Boolean, default=False)
-
     game = relationship("Game", back_populates="moves")
 
 class FriendRelation(Base):
     __tablename__ = "friends"
-
     id = Column(Integer, primary_key=True, index=True)
     user_login = Column(String, nullable=False)
     friend_login = Column(String, nullable=False)
@@ -49,7 +45,6 @@ class FriendRelation(Base):
 
 class GameInvitation(Base):
     __tablename__ = "game_invitations"
-
     id = Column(Integer, primary_key=True, index=True)
     from_user = Column(String, nullable=False)
     to_user = Column(String, nullable=False)
