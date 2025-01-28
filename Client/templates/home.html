@@ -1003,14 +1003,14 @@
                 {% endfor %}
             </div>
             <script>
-                var messages = {{ messages|tojson }};
+                let messages = {{ messages|tojson }};
             </script>
         {% endif %}
     {% endwith %}
 
     <script>
-        var user_login = "{{ session['user'] if 'user' in session else '' }}";
-        var game_id = null;
+        let user_login = "{{ session['user'] if 'user' in session else '' }}";
+        let game_id = null;
     </script>
 
     <div id="removeFriendModal" class="modal">

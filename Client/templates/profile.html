@@ -226,8 +226,6 @@
             padding: 0;
             flex-direction: column;
             align-items: flex-end;
-            padding: 0;
-            background-color: transparent;
             position: absolute;
             right: -30px;
             top: 100%;
@@ -1050,7 +1048,7 @@
         select:-webkit-autofill:hover,
         select:-webkit-autofill:focus {
             -webkit-text-fill-color: var(--text-color) !important;
-            box-shadow: 0 0 0px 1000px var(--card-background) inset !important;
+            box-shadow: 0 0 0 1000px var(--card-background) inset !important;
             transition: background-color 5000s ease-in-out 0s !important;
         }
         #friendSearchContainer {
@@ -1254,14 +1252,18 @@
             border-image-slice: 1;
         }
 
+        .player-card.second,
+        .player-card.third {
+            border-style: solid;
+            border-width: 4px;
+        }
+
         .player-card.second {
-            border-image: linear-gradient(45deg, #c0c0c0, #dcdcdc);
-            border-image-slice: 1;
+            border-image: linear-gradient(45deg, #c0c0c0, #dcdcdc) 1;
         }
 
         .player-card.third {
-            border-image: linear-gradient(45deg, #cd7f32, #b87333);
-            border-image-slice: 1;
+            border-image: linear-gradient(45deg, #cd7f32, #b87333) 1;
         }
 
         .player-avatar {
@@ -1804,14 +1806,14 @@
             }
         }
 
-        var game_id = null;
-        var user_login = "{{ session['user'] if 'user' in session else '' }}";
-        var allRecords = {{ user_history|tojson }}.reverse();
-        var currentIndex = 0;
-        var pageSize = 9;
-        var friendToRemove = "";
-        var myFriends = [];
-        var requestsSent = new Set();
+        let game_id = null;
+        const user_login = "{{ session['user'] if 'user' in session else '' }}";
+        let allRecords = {{ user_history|tojson }}.reverse();
+        let currentIndex = 0;
+        let pageSize = 9;
+        let friendToRemove = "";
+        let myFriends = [];
+        const requestsSent = new Set();
 
         document.addEventListener("DOMContentLoaded", () => {
             AOS.init({ duration: 800, easing: "ease-in-out", once: true });
@@ -1836,15 +1838,15 @@
             });
 
             document.addEventListener("click", (e) => {
-                var friendsModal = document.getElementById("friendsModal");
+                let friendsModal = document.getElementById("friendsModal");
                 if (friendsModal.style.display === "flex" && !e.target.closest("#friendsModalContent") && !e.target.closest("#removeFriendModal")) {
                     closeFriendsModal();
                 }
-                var friendActionDropdown = document.getElementById("friendActionDropdown");
+                let friendActionDropdown = document.getElementById("friendActionDropdown");
                 if (friendActionDropdown && !friendActionDropdown.contains(e.target) && e.target.id !== "friendActionBtn") {
                     friendActionDropdown.style.display = "none";
                 }
-                var mobileMenuDropdown = document.getElementById("mobileMenuDropdown");
+                let mobileMenuDropdown = document.getElementById("mobileMenuDropdown");
                 if (mobileMenuDropdown && mobileMenuDropdown.classList.contains("show") && !mobileMenuDropdown.contains(e.target) && !e.target.closest(".mobile-menu-button")) {
                     toggleMobileMenu();
                 }
@@ -1861,7 +1863,7 @@
             checkForActiveGame();
             setInterval(checkForActiveGame, 5000);
 
-            var notifications = document.querySelectorAll(".notification");
+            let notifications = document.querySelectorAll(".notification");
             notifications.forEach((notif) => {
                 notif.addEventListener("click", () => {
                     notif.style.transition = 'opacity 0.5s';
@@ -1942,9 +1944,9 @@
         }
 
         function displayGameOverMessage(data) {
-            var modal = document.getElementById("game-over-modal");
-            var message = document.getElementById("game-over-message");
-            var resultText = "";
+            let modal = document.getElementById("game-over-modal");
+            let message = document.getElementById("game-over-message");
+            let resultText = "";
             if (data.result === "win") {
                 resultText = "Поздравляем! Вы победили!";
             } else if (data.result === "lose") {
@@ -1952,8 +1954,8 @@
             } else if (data.result === "draw") {
                 resultText = "Ничья.";
             }
-            var points_gained = data.points_gained || 0;
-            var points_text = points_gained >= 0
+            let points_gained = data.points_gained || 0;
+            let points_text = points_gained >= 0
                 ? "Вы получили " + points_gained + " очков к рангу."
                 : "Вы потеряли " + Math.abs(points_gained) + " очков к рангу.";
             message.innerHTML = resultText + "<br>" + points_text;
@@ -1985,10 +1987,10 @@
         }
 
         function createSnowflakes() {
-            var snowContainer = document.getElementById("snowflakes-container");
-            var snowflakeCount = 50;
-            for (var i = 0; i < snowflakeCount; i++) {
-                var snowflake = document.createElement("div");
+            let snowContainer = document.getElementById("snowflakes-container");
+            let snowflakeCount = 50;
+            for (let i = 0; i < snowflakeCount; i++) {
+                let snowflake = document.createElement("div");
                 snowflake.classList.add("snowflake");
                 snowflake.textContent = "❄";
                 snowflake.style.left = Math.random() * 100 + "vw";
@@ -2001,9 +2003,9 @@
         }
 
         function generateSnowflakes() {
-            var container = document.getElementById("snowflakes-container");
-            for (var i = 0; i < 50; i++) {
-                var snowflake = document.createElement("div");
+            let container = document.getElementById("snowflakes-container");
+            for (let i = 0; i < 50; i++) {
+                let snowflake = document.createElement("div");
                 snowflake.classList.add("snowflake");
                 snowflake.textContent = "❄";
                 snowflake.style.fontSize = Math.random() * 10 + 10 + "px";
@@ -2015,7 +2017,7 @@
         }
 
         function formatDate(dateString) {
-            var options = {
+            let options = {
                 year: "numeric",
                 month: "2-digit",
                 day: "2-digit",
@@ -2023,7 +2025,7 @@
                 minute: "2-digit",
                 second: "2-digit"
             };
-            var date = new Date(dateString);
+            let date = new Date(dateString);
             return date.toLocaleString("ru-RU", options);
         }
 
@@ -2634,6 +2636,12 @@
             if (event.target === this) {
                 closeTopModal();
             }
+        });
+        document.addEventListener("DOMContentLoaded", () => {
+            const messages = {{ get_flashed_messages(with_categories=true)|tojson }};
+                messages.forEach(([category, message]) => {
+                    showNotification(message, category);
+                });
         });
     </script>
 </body>

@@ -1,8 +1,7 @@
 import sqlite3
 import logging
 import os
-import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from passlib.context import CryptContext
 
@@ -229,7 +228,7 @@ def get_user_by_remember_token(token):
     con.close()
     if row:
         expires_at = datetime.fromisoformat(row['expires_at'])
-        if datetime.utcnow() < expires_at:
+        if datetime.now() < expires_at:
             return row['user_login']
         else:
             delete_remember_token(token)
@@ -259,3 +258,54 @@ def delete_all_remember_tokens(user_login):
         logging.info(f"Все токены для пользователя '{user_login}' удалены.")
     except sqlite3.Error as e:
         logging.error(f"Ошибка при удалении токенов: {e}")
+
+def search_users(query: str, exclude_user: str = None, limit: int = 10):
+    if not query:
+        return []
+
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        like_query = f"{query}%"
+        if exclude_user:
+            cur.execute(
+                "SELECT login FROM player WHERE login LIKE ? AND login != ? COLLATE NOCASE LIMIT ?",
+                (like_query, exclude_user, limit)
+            )
+        else:
+            cur.execute(
+                "SELECT login FROM player WHERE login LIKE ? COLLATE NOCASE LIMIT ?",
+                (like_query, limit)
+            )
+        rows = cur.fetchall()
+        con.close()
+        return [row["login"] for row in rows]
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при поиске пользователей: {e}")
+        return []
+
+
+def get_top_players(limit: int = 3):
+    try:
+        con = connect_db()
+        cur = con.cursor()
+        cur.execute("""
+            SELECT login, rang, avatar_filename
+            FROM player
+            ORDER BY rang DESC
+            LIMIT ?
+        """, (limit,))
+        rows = cur.fetchall()
+        con.close()
+
+        top_players = []
+        for row in rows:
+            top_players.append({
+                "login": row["login"],
+                "rang": row["rang"],
+                "avatar_filename": row["avatar_filename"]
+            })
+        return top_players
+    except sqlite3.Error as e:
+        logging.error(f"Ошибка при получении топ игроков: {e}")
+        return []
