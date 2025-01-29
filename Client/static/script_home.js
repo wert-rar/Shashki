@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const selectionModal = document.getElementById("selectionModal");
     const singleplayerBtn = document.getElementById("singleplayer-button");
-    const closeModalBtn = document.getElementById("closeModal");
     const playButton = document.getElementById("playButton");
     const selectedDifficulty = document.getElementById("selectedDifficulty");
     const selectedColor = document.getElementById("selectedColor");
@@ -17,8 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bellMobileCount = document.getElementById("bellMobileCount");
     const friendsDesktop = document.getElementById("friendsDesktop");
     const friendsMobile = document.getElementById("friendsMobile");
-    const friendsDesktopCount = document.getElementById("friendsDesktopCount");
-    const friendsMobileCount = document.getElementById("friendsMobileCount");
     const friendsModal = document.getElementById("friendsModal");
     const closeFriendsModal = document.getElementById("closeFriendsModal");
     const friendsList = document.getElementById("friendsList");
@@ -26,6 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeFriendName = document.getElementById("removeFriendName");
     const confirmRemoveFriendButton = document.getElementById("confirmRemoveFriendButton");
     const cancelRemoveFriendButton = document.getElementById("cancelRemoveFriendButton");
+    const multiplayerSelectionModal = document.getElementById("multiplayerSelectionModal");
+    const multiplayerBtn = document.getElementById("multiplayer-button");
+    const randomPlayerButton = document.getElementById("randomPlayerButton");
+    const friendButton = document.getElementById("friendButton");
+    const friendGameModal = document.getElementById("friendGameModal");
+    const inviteFriendButton = document.getElementById("inviteFriendButton");
+    const createRoomModal = document.getElementById("createRoomModal");
+    const startGameButton = document.getElementById("startGameButton");
+    const friendsToInvite = document.getElementById("friendsToInvite");
+    const backToMultiplayerSelection = document.getElementById("backToMultiplayerSelection");
+
     let friendToRemove = null;
 
     let selections = { difficulty: null, color: null };
@@ -278,7 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
             notification.style.transition = 'opacity 0.5s';
             notification.style.opacity = '0';
             setTimeout(() => {
-                notification.remove();
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
             }, 500);
         }, 2000);
     }
@@ -376,23 +386,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    closeNotificationModal.addEventListener('click', (event) => {
-        event.stopPropagation();
-        notificationModal.classList.remove('active');
-        bellDesktop.classList.remove('active');
-        bellMobile.classList.remove('active');
+    multiplayerBtn.addEventListener('click', () => {
+        multiplayerSelectionModal.style.display = "flex";
+        overlay.classList.add("active");
     });
 
-    closeFriendsModal.addEventListener('click', (event) => {
-        event.stopPropagation();
-        friendsModal.classList.remove('active');
-        friendsDesktop.classList.remove('active');
-        friendsMobile.classList.remove('active');
+    friendButton.addEventListener('click', () => {
+        multiplayerSelectionModal.style.display = "none";
+        overlay.classList.remove("active");
+        createRoomModal.style.display = "flex";
+        overlay.classList.add("active");
+        loadFriendsToInvite();
     });
+
+    randomPlayerButton.addEventListener('click', () => {
+        multiplayerSelectionModal.style.display = "none";
+        overlay.classList.remove("active");
+        startMultiplayerGame();
+    });
+
+    inviteFriendButton.addEventListener('click', () => {
+        alert("Функциональность приглашения друзей пока не реализована.");
+    });
+
+    startGameButton.addEventListener('click', () => {
+        const secondPlayerSlot = createRoomModal.querySelectorAll('.room-slots .slot')[1];
+        if (secondPlayerSlot && secondPlayerSlot.textContent.trim() !== 'Друг') {
+            startGameInRoom();
+        } else {
+            createNotification("Нужен второй игрок для начала игры.", "error");
+        }
+    });
+
+    multiplayerSelectionModal.addEventListener('click', (event) => {
+        if (event.target === multiplayerSelectionModal) {
+            multiplayerSelectionModal.style.display = "none";
+            overlay.classList.remove("active");
+        }
+    });
+
+    friendGameModal.addEventListener('click', (event) => {
+        if (event.target === friendGameModal) {
+            friendGameModal.style.display = "none";
+            overlay.classList.remove("active");
+        }
+    });
+
+    createRoomModal.addEventListener('click', (event) => {
+        if (event.target === createRoomModal) {
+            createRoomModal.style.display = "none";
+            overlay.classList.remove("active");
+        }
+    });
+
+    backToMultiplayerSelection.addEventListener('click', () => {
+        createRoomModal.style.display = "none";
+        multiplayerSelectionModal.style.display = "flex";
+        overlay.classList.add("active");
+    });
+
+    singleplayerBtn.onclick = function() {
+        selectionModal.style.display = "flex";
+        overlay.classList.add("active");
+    };
 
     selectionModal.addEventListener('click', (event) => {
         if (event.target === selectionModal) {
             selectionModal.style.display = "none";
+            overlay.classList.remove("active");
             resetSelections();
         }
     });
@@ -401,54 +462,38 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(300px)';
     }
 
-    singleplayerBtn.onclick = function() {
-        selectionModal.style.display = "flex";
+    window.onclick = function(event) {
+        if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop') && !event.target.closest('#bellMobile')) {
+            notificationModal.classList.remove('active');
+            bellDesktop.classList.remove('active');
+            bellMobile.classList.remove('active');
+        }
+        if (!event.target.closest('#friendsModal') && !event.target.closest('#friendsDesktop') && !event.target.closest('#friendsMobile')) {
+            friendsModal.classList.remove('active');
+            friendsDesktop.classList.remove('active');
+            friendsMobile.classList.remove('active');
+        }
+        if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
+            closeSidebar();
+        }
+        if (!event.target.closest('#selectionModal') && !event.target.closest('#singleplayer-button')) {
+            selectionModal.style.display = "none";
+            overlay.classList.remove("active");
+            resetSelections();
+        }
+        if (!event.target.closest('#multiplayerSelectionModal') && !event.target.closest('#multiplayer-button')) {
+            multiplayerSelectionModal.style.display = "none";
+            overlay.classList.remove("active");
+        }
+        if (!event.target.closest('#friendGameModal') && !event.target.closest('#friendButton')) {
+            friendGameModal.style.display = "none";
+            overlay.classList.remove("active");
+        }
+        if (!event.target.closest('#createRoomModal') && !event.target.closest('#friendButton')) {
+            createRoomModal.style.display = "none";
+            overlay.classList.remove("active");
+        }
     };
-
-    closeModalBtn.onclick = function() {
-        selectionModal.style.display = "none";
-        resetSelections();
-    };
-
-    if (window.innerWidth > 1280) {
-        window.onclick = function(event) {
-            if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop')) {
-                notificationModal.classList.remove('active');
-                bellDesktop.classList.remove('active');
-                bellMobile.classList.remove('active');
-            }
-            if (!event.target.closest('#friendsModal') && !event.target.closest('#friendsDesktop')) {
-                friendsModal.classList.remove('active');
-                friendsDesktop.classList.remove('active');
-                friendsMobile.classList.remove('active');
-            }
-            if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
-                closeSidebar();
-            }
-        };
-    }
-
-    if (window.innerWidth <= 1280) {
-        window.addEventListener('click', (event) => {
-            if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop') && !event.target.closest('#bellMobile')) {
-                if (notificationModal.classList.contains('active')) {
-                    notificationModal.classList.remove('active');
-                    bellDesktop.classList.remove('active');
-                    bellMobile.classList.remove('active');
-                    return;
-                }
-                if (friendsModal.classList.contains('active')) {
-                    friendsModal.classList.remove('active');
-                    friendsDesktop.classList.remove('active');
-                    friendsMobile.classList.remove('active');
-                    return;
-                }
-            }
-            if (!event.target.closest('#sidebar') && sidebar.classList.contains('active')) {
-                closeSidebar();
-            }
-        });
-    }
 
     function resetSelections() {
         selections.difficulty = null;
@@ -509,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 playButton.disabled = false;
             } else {
                 playButton.classList.remove('active');
-                playButton.disabled = true;
+                playButton.disabled = false;
             }
         }
 
@@ -586,14 +631,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.showLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'flex';
+        overlay.classList.add("active");
     };
 
     window.hideLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'none';
+        overlay.classList.remove("active");
     };
 
     window.hideGameOverModal = function() {
         document.getElementById('game-over-modal').style.display = 'none';
+        overlay.classList.remove("active");
     };
 
     window.leaveGame = function() {
@@ -636,6 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let points_text = points_gained >= 0 ? `Вы получили ${points_gained} очков к рангу.` : `Вы потеряли ${Math.abs(points_gained)} очков к рангу.`;
         message.innerHTML = `${resultText}<br>${points_text}`;
         modal.style.display = "flex";
+        overlay.classList.add("active");
     }
 
     function checkForActiveGame() {
@@ -689,6 +738,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     overlay.addEventListener("click", () => {
         closeSidebar();
+        notificationModal.classList.remove('active');
+        friendsModal.classList.remove('active');
+        multiplayerSelectionModal.style.display = "none";
+        friendGameModal.style.display = "none";
+        createRoomModal.style.display = "none";
     });
 
     hamburger.addEventListener("click", (event) => {
@@ -773,4 +827,77 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }, 2000);
     });
+
+    function loadFriendsToInvite() {
+        fetch('/get_friends')
+            .then(response => response.json())
+            .then(data => {
+                friendsToInvite.innerHTML = '';
+                if (data.friends && data.friends.length > 0) {
+                    data.friends.forEach(friend => {
+                        const friendInvite = document.createElement('div');
+                        friendInvite.classList.add('friend-invite');
+
+                        const friendName = document.createElement('span');
+                        friendName.textContent = friend;
+
+                        const inviteBtn = document.createElement('button');
+                        inviteBtn.textContent = 'Пригласить';
+                        inviteBtn.addEventListener('click', () => {
+                            inviteFriend(friend);
+                        });
+
+                        friendInvite.appendChild(friendName);
+                        friendInvite.appendChild(inviteBtn);
+                        friendsToInvite.appendChild(friendInvite);
+                    });
+                } else {
+                    friendsToInvite.innerHTML = "<p>У вас пока нет друзей для приглашения.</p>";
+                }
+            })
+            .catch(err => {
+                friendsToInvite.innerHTML = "<p>Не удалось загрузить список друзей.</p>";
+                console.error("Ошибка при загрузке друзей для приглашения:", err);
+            });
+    }
+
+    function inviteFriend(friendUsername) {
+        fetch('/invite_friend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_username: friendUsername })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(`Приглашение отправлено ${friendUsername}`, "success");
+            }
+        })
+        .catch(error => {
+            createNotification("Ошибка при отправке приглашения", "error");
+            console.error(error);
+        });
+    }
+
+    function startGameInRoom() {
+        fetch('/start_room_game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_id: game_id })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                window.location.href = `/board/${data.game_id}/${user_login}`;
+            }
+        })
+        .catch(error => {
+            createNotification("Ошибка при запуске игры", "error");
+            console.error(error);
+        });
+    }
 });
