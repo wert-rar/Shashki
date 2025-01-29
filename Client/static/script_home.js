@@ -22,11 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const friendsModal = document.getElementById("friendsModal");
     const closeFriendsModal = document.getElementById("closeFriendsModal");
     const friendsList = document.getElementById("friendsList");
-    const gameInviteModal = document.getElementById("gameInviteModal");
-    const inviteMessage = document.getElementById("invite-message");
-    const inviterName = document.getElementById("inviter-name");
-    const acceptInviteButton = document.getElementById("acceptInviteButton");
-    const declineInviteButton = document.getElementById("declineInviteButton");
     const removeFriendModal = document.getElementById("removeFriendModal");
     const removeFriendName = document.getElementById("removeFriendName");
     const confirmRemoveFriendButton = document.getElementById("confirmRemoveFriendButton");
@@ -132,17 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const menu = document.createElement('div');
                         menu.classList.add('friend-actions-menu', 'hide');
 
-                        const inviteButton = document.createElement('button');
-                        inviteButton.classList.add('invite-game-button');
-                        inviteButton.setAttribute('data-friend', friend);
-                        inviteButton.textContent = 'Пригласить в игру';
-
                         const removeButton = document.createElement('button');
                         removeButton.classList.add('remove-friend-button');
                         removeButton.setAttribute('data-friend', friend);
                         removeButton.textContent = 'Удалить из друзей';
 
-                        menu.appendChild(inviteButton);
                         menu.appendChild(removeButton);
 
                         friendActions.appendChild(menuButton);
@@ -159,12 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             });
                             menu.classList.toggle('show');
-                        });
-
-                        inviteButton.addEventListener('click', () => {
-                            const friendUsername = inviteButton.getAttribute('data-friend');
-                            inviteUserToGame(friendUsername);
-                            menu.classList.remove('show');
                         });
 
                         removeButton.addEventListener('click', () => {
@@ -193,29 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
-
-    function inviteUserToGame(friendUsername) {
-        fetch('/invite_game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ friend_username: friendUsername })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                createNotification(data.message, "success");
-                if (data.game_id) {
-                    window.location.href = `/board/${data.game_id}/${user_login}`;
-                }
-            }
-        })
-        .catch(error => {
-            createNotification("Ошибка при отправке приглашения", "error");
-            console.error(error);
-        });
-    }
 
     function removeFriend(friendUsername) {
         fetch('/remove_friend', {
@@ -342,66 +302,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(error => console.error('Ошибка при получении запросов в друзья:', error));
     }
 
-    function checkGameInvites() {
-        fetch('/get_game_invites')
-            .then(response => response.json())
-            .then(data => {
-                if (data.invites && data.invites.length > 0) {
-                    const inviteData = data.invites[0];
-                    gameInviteModal.style.display = 'flex';
-                    inviterName.textContent = inviteData.from_user;
-                }
-            })
-            .catch(error => {
-                console.error("Ошибка при получении игровых приглашений:", error);
-            });
-    }
-
-    acceptInviteButton.addEventListener('click', () => {
-        if (!inviterName.textContent) {
-            gameInviteModal.style.display = 'none';
-            return;
-        }
-        const sender_username = inviterName.textContent;
-        respondGameInvite(sender_username, "accept");
-    });
-
-    declineInviteButton.addEventListener('click', () => {
-        if (!inviterName.textContent) {
-            gameInviteModal.style.display = 'none';
-            return;
-        }
-        const sender_username = inviterName.textContent;
-        respondGameInvite(sender_username, "decline");
-    });
-
-    function respondGameInvite(sender, responseType) {
-        fetch('/respond_game_invite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sender_username: sender, response: responseType })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                createNotification(data.message, "success");
-                if (responseType === "accept" && data.game_id) {
-                    window.location.href = `/board/${data.game_id}/${user_login}`;
-                }
-            }
-            gameInviteModal.style.display = 'none';
-        })
-        .catch(error => {
-            createNotification("Ошибка при ответе на приглашение", "error");
-            console.error(error);
-        });
-    }
-
     checkFriendRequests();
     setInterval(checkFriendRequests, 5000);
-    setInterval(checkGameInvites, 5000);
 
     function toggleNotifications(event) {
         event.stopPropagation();
