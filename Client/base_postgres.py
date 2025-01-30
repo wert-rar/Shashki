@@ -54,34 +54,6 @@ class GameInvitation(Base):
 def init_db():
     Base.metadata.create_all(bind=engine)
 
-
-def send_game_invite_db_with_gameid(sender: str, receiver: str, game_id: int) -> str:
-    session = SessionLocal()
-    try:
-        if sender == receiver:
-            return "self_invite"
-
-        existing = session.query(GameInvitation).filter_by(from_user=sender, to_user=receiver, status="pending").first()
-        if existing:
-            return "already_sent"
-
-        reverse_existing = session.query(GameInvitation).filter_by(from_user=receiver, to_user=sender,
-                                                                   status="pending").first()
-        if reverse_existing:
-            return "reverse_already_sent"
-
-        new_invite = GameInvitation(
-            from_user=sender,
-            to_user=receiver,
-            status="pending",
-            game_id=game_id
-        )
-        session.add(new_invite)
-        session.commit()
-        return "sent"
-    finally:
-        session.close()
-
 def send_game_invite_db(sender: str, receiver: str) -> str:
     session = SessionLocal()
     try:
@@ -97,51 +69,6 @@ def send_game_invite_db(sender: str, receiver: str) -> str:
         session.add(new_invite)
         session.commit()
         return "sent"
-    finally:
-        session.close()
-
-def get_incoming_game_invites_db(receiver: str) -> list:
-    session = SessionLocal()
-    try:
-        invites = session.query(GameInvitation).filter_by(to_user=receiver, status="pending").all()
-        return [{"from_user": i.from_user} for i in invites]
-    finally:
-        session.close()
-
-
-def respond_game_invite_db(sender: str, receiver: str, response: str):
-    session = SessionLocal()
-    try:
-        invite = (
-            session.query(GameInvitation)
-            .filter_by(from_user=sender, to_user=receiver, status="pending")
-            .first()
-        )
-        if not invite:
-            return False, None
-
-        if response == "accept":
-            invite.status = "accepted"
-            session.commit()
-            existing_game_id = invite.game_id
-            if existing_game_id:
-                from game import update_game_with_user_in_db
-                try:
-                    updated = update_game_with_user_in_db(existing_game_id, receiver, "b")
-                    if updated:
-                        return True, existing_game_id
-                    else:
-                        return True, None
-                except ValueError:
-                    return True, None
-            else:
-                return True, None
-        elif response == "decline":
-            invite.status = "declined"
-            session.commit()
-            return True, None
-        else:
-            return False, None
     finally:
         session.close()
 

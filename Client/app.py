@@ -53,9 +53,6 @@ from base_postgres import (
     respond_friend_request_db,
     get_friends_db,
     remove_friend_db,
-    get_incoming_game_invites_db,
-    send_game_invite_db_with_gameid,
-    respond_game_invite_db
 )
 ghost_counter = itertools.count(1)
 ghost_lock = threading.Lock()
@@ -118,6 +115,7 @@ status_ = {
     "ns1": "Игра не началась из-за отсутствия хода",
     "e1": "Ошибка при запросе к серверу"
 }
+
 def get_piece_at(pieces, x, y):
     for piece in pieces:
         if piece['x'] == x and piece['y'] == y:
