@@ -1,6 +1,6 @@
 import time, threading, json
-from base import SessionLocal, Game as DBGame
-
+from base import SessionLocal
+from models import Game as DBGame
 all_games_lock = threading.Lock()
 all_games_dict = {}
 
