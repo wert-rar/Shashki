@@ -1,8 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import select, update, and_, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func
 from sqlalchemy import create_engine
 import logging
 
@@ -53,18 +55,14 @@ def check_user_exists(user_login, session: Session | None = None):
 
 @connect
 def register_user(user_login, user_password, session: Session | None = None):
-    if check_user_exists(user_login):
-        logging.warning(f"Пользователь с логином '{user_login}' уже существует.")
-        return False
-
     hashed_password = utils.hash_password(user_password)
-
     try:
         session.add(Player(login=user_login, password=hashed_password))
         session.commit()
         return True
-    except Exception as e:
-        logging.error(f"Ошибка при регистрации пользователя: {e}")
+    except IntegrityError:
+        session.rollback()
+        logging.warning(f"Пользователь с логином '{user_login}' уже существует.")
         return False
 
 @connect
@@ -85,19 +83,17 @@ def authenticate_user(user_login, user_password, session: Session | None = None)
 
 @connect
 def get_user_by_login(user_login, session: Session | None = None) -> dict:
-    """
-    Возвращает пользователя как словарь по его логину.
-    """
     user = session.scalar(select(Player).where(Player.login == user_login))
-    if user:
-        return dict(user)
-    return None
+    return user.to_dict() if user else None
 
 
 @connect
 def update_user_rang(user_login, points, session: Session | None = None):
-
-    session.execute(update(Player).where(Player.login == user_login).values(rang=Player.rang + points))
+    session.execute(
+        update(Player)
+        .where(Player.login == user_login)
+        .values(rang=func.coalesce(Player.rang, 0) + points)
+    )
     session.commit()
 
 @connect
@@ -115,9 +111,12 @@ def add_completed_game(user_login, game_id, date_start, rating_before, rating_af
 
 @connect
 def get_user_history(user_login, session: Session | None = None):
-
-    result = session.execute(select(CompletedGames).where(CompletedGames.user_login == user_login).order_by(CompletedGames.ID.asc()))
-    return [dict(game_history) for game_history in result]
+    games = session.scalars(
+        select(CompletedGames)
+        .where(CompletedGames.user_login == user_login)
+        .order_by(CompletedGames.ID.asc())
+    ).all()
+    return [game.to_dict() for game in games]
 
 @connect
 def update_user_avatar(user_login, filename, session: Session | None = None):
@@ -197,22 +196,13 @@ def search_users(query: str, exclude_user: str = None, limit: int = 10, session:
 @connect
 def get_top_players(limit: int = 3, session: Session | None = None):
     try:
-        stmt = select(Player).order_by(Player.rang.desc()).limit(limit)
+        players = session.scalars(
+            select(Player)
+            .order_by(Player.rang.desc())
+            .limit(limit)
+        ).all()
 
-        # Выполняем запрос
-        result = session.execute(stmt)
-        rows = result.scalars().all()
-
-        # Преобразуем результаты в список словарей
-        top_players = []
-        for row in rows:
-            top_players.append({
-                "login": row.login,
-                "rang": row.rang,
-                "avatar_filename": row.avatar_filename
-            })
-
-        return top_players
+        return [player.to_dict() for player in players]
     except Exception as e:
         logging.error(f"Ошибка при получении топ игроков: {e}")
         return []

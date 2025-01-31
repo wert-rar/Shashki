@@ -34,6 +34,17 @@ class Player(Base):
             "avatar_filename": self.avatar_filename
         }.items()
 
+    def to_dict(self):
+        return {
+            "user_id": self.user_id,
+            "login": self.login,
+            "rang": self.rang,
+            "wins": self.wins,
+            "losses": self.losses,
+            "draws": self.draws,
+            "avatar_filename": self.avatar_filename
+        }
+
 
 class CompletedGames(Base):
     __tablename__ = 'completed_games'
@@ -45,6 +56,19 @@ class CompletedGames(Base):
     rating_after = Column(Integer)
     rating_change = Column(Integer)
     result = Column(String)
+
+    def to_dict(self):
+        return {
+            "ID": self.ID,
+            "user_login": self.user_login,
+            "game_id": self.game_id,
+            "date_start": self.date_start,
+            "rating_before": self.rating_before,
+            "rating_after": self.rating_after,
+            "rating_change": self.rating_change,
+            "result": self.result
+        }
+
 
 class RememberToken(Base):
     __tablename__ = 'remember_token'
