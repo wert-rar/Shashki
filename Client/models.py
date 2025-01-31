@@ -3,26 +3,41 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
 
 Base = declarative_base()
 
 
 #--------------------------------------------------------Tables from sqlite---------------------------------------------
 class Player(Base):
+    __tablename__ = 'players'
     user_id = Column(BigInteger, primary_key=True, index=True)
     login = Column(String, unique=True)
     password = Column(String)
-    rang = Column(Integer,default=0)
+    rang = Column(Integer, default=0)
     wins = Column(Integer, default=0)
     losses = Column(Integer, default=0)
     draws = Column(Integer, default=0)
     avatar_filename = Column(String)
 
+    def __iter__(self):
+        """
+        Позволяет преобразовать объект Player в словарь с помощью dict().
+        """
+        yield from {
+            "user_id": self.user_id,
+            "login": self.login,
+            "password": self.password,
+            "rang": self.rang,
+            "wins": self.wins,
+            "losses": self.losses,
+            "draws": self.draws,
+            "avatar_filename": self.avatar_filename
+        }.items()
+
 
 class CompletedGames(Base):
-    ID = Column(Integer,primary_key=True, index=True)
+    __tablename__ = 'completed_games'
+    ID = Column(Integer, primary_key=True, index=True)
     user_login = Column(String, nullable=False)
     game_id = Column(BigInteger)
     date_start = Column(String, nullable=False)
@@ -32,6 +47,7 @@ class CompletedGames(Base):
     result = Column(String)
 
 class RememberToken(Base):
+    __tablename__ = 'remember_token'
     ID = Column(Integer, primary_key=True, index=True)
     user_login = Column(String)
     token = Column(String, unique=True)

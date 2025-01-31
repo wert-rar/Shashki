@@ -22,7 +22,6 @@ from game import (
     get_or_create_ephemeral_game,
     all_games_lock,
     all_games_dict,
-    update_game_status_in_db,
     get_db_pieces,
     update_db_pieces,
     create_new_game_in_db

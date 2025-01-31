@@ -1,24 +1,19 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, select, update, and_, or_
-from sqlalchemy.orm import relationship, Session
-from sqlalchemy.sql import func
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import select, update, and_, or_
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import logging
 
 import utils
-from Client.models import Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove
-
-Base = declarative_base()
+from Client.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove
 
 DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
 #DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 
 def connect(method):
@@ -36,7 +31,7 @@ def connect(method):
     def wrapper(*args, **kwargs):
         with SessionLocal() as session:
             try:
-                return  method(*args, session=session)
+                return method(*args, session=session)
             except Exception as e:
                 session.rollback()
                 raise Exception(f'Ошибка при работе с базой данных: {repr(e)} args:\n{args} kwargs:\n{kwargs}')
@@ -44,7 +39,6 @@ def connect(method):
                 session.close()
 
     return wrapper
-
 
 
 def init_db():
@@ -58,7 +52,7 @@ def check_user_exists(user_login, session: Session | None = None):
 
 
 @connect
-def register_user(user_login, user_password,session: Session | None = None):
+def register_user(user_login, user_password, session: Session | None = None):
     if check_user_exists(user_login):
         logging.warning(f"Пользователь с логином '{user_login}' уже существует.")
         return False
@@ -74,11 +68,11 @@ def register_user(user_login, user_password,session: Session | None = None):
         return False
 
 @connect
-def authenticate_user(user_login, user_password,session: Session | None = None):
+def authenticate_user(user_login, user_password, session: Session | None = None):
 
     row = session.scalar(select(Player).where(Player.login == user_login))
     if row:
-        stored_password = row["password"]
+        stored_password = row.password
         if utils.verify_password(user_password, stored_password):
             logging.info(f"Пользователь '{user_login}' успешно аутентифицирован.")
             return True
@@ -90,8 +84,14 @@ def authenticate_user(user_login, user_password,session: Session | None = None):
         return False
 
 @connect
-def get_user_by_login(user_login,session: Session | None = None) -> Player:
-    return session.scalar(select(Player).where(Player.login == user_login))
+def get_user_by_login(user_login, session: Session | None = None) -> dict:
+    """
+    Возвращает пользователя как словарь по его логину.
+    """
+    user = session.scalar(select(Player).where(Player.login == user_login))
+    if user:
+        return dict(user)
+    return None
 
 
 @connect
@@ -106,18 +106,18 @@ def update_user_stats(user_login, wins=0, losses=0, draws=0, session: Session | 
     session.commit()
 
 @connect
-def add_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result,session: Session | None = None):
+def add_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result, session: Session | None = None):
 
     session.add(CompletedGames(user_login=user_login, game_id=game_id, date_start=date_start,
-                               rating_before=rating_before, rating_after=rating_after, rating_change = rating_change,
+                               rating_before=rating_before, rating_after=rating_after, rating_change=rating_change,
                                result=result))
     session.commit()
 
 @connect
-def get_user_history(user_login,session: Session | None = None):
+def get_user_history(user_login, session: Session | None = None):
 
     result = session.execute(select(CompletedGames).where(CompletedGames.user_login == user_login).order_by(CompletedGames.ID.asc()))
-    return [dict(game_history) for  game_history in result]
+    return [dict(game_history) for game_history in result]
 
 @connect
 def update_user_avatar(user_login, filename, session: Session | None = None):
@@ -136,7 +136,7 @@ def add_remember_token(user_login, token, expires_at, session: Session | None = 
         return False
 
 @connect
-def get_user_by_remember_token(token,session: Session | None = None):
+def get_user_by_remember_token(token, session: Session | None = None):
 
     row = session.scalar(select(RememberToken).where(RememberToken.token == token))
     if row:
@@ -144,14 +144,14 @@ def get_user_by_remember_token(token,session: Session | None = None):
         if datetime.now() < expires_at:
             return row.user_login
         else:
-            delete_remember_token(token,session)
+            delete_remember_token(token, session)
             return None
     return None
 
 @connect
 def delete_remember_token(token, session: Session | None = None):
     try:
-        r = session.scalar(select(RememberToken).where(RememberToken.token==token))
+        r = session.scalar(select(RememberToken).where(RememberToken.token == token))
         session.delete(r)
         session.commit()
         logging.info(f"Токен '{token}' удален.")
@@ -161,8 +161,9 @@ def delete_remember_token(token, session: Session | None = None):
 @connect
 def delete_all_remember_tokens(user_login, session: Session | None = None):
     try:
-        r = session.scalars(select(RememberToken).where(RememberToken.user_login== user_login))
-        session.delete(r)
+        r = session.scalars(select(RememberToken).where(RememberToken.user_login == user_login))
+        for token in r:
+            session.delete(token)
         session.commit()
         logging.info(f"Все токены для пользователя '{user_login}' удалены.")
     except Exception as e:
@@ -188,13 +189,13 @@ def search_users(query: str, exclude_user: str = None, limit: int = 10, session:
                 Player.login.like(like_query)
             ).limit(limit)
         rows = session.scalars(stmt)
-        return [row.user_login for row in rows]
+        return [row for row in rows]
     except Exception as e:
         logging.error(f"Ошибка при поиске пользователей: {e}")
         return []
 
 @connect
-def get_top_players(limit: int = 3,  session: Session | None = None):
+def get_top_players(limit: int = 3, session: Session | None = None):
     try:
         stmt = select(Player).order_by(Player.rang.desc()).limit(limit)
 
@@ -326,8 +327,10 @@ def get_friends_db(user: str, session: Session | None = None) -> list:
 @connect
 def remove_friend_db(user: str, friend_username: str, session: Session | None = None) -> bool:
         relations = session.query(FriendRelation).filter(
-            or_(and_((FriendRelation.user_login == user),(FriendRelation.friend_login == friend_username)),
-            and_((FriendRelation.user_login == friend_username),(FriendRelation.friend_login == user)))
+            or_(
+                and_((FriendRelation.user_login == user), (FriendRelation.friend_login == friend_username)),
+                and_((FriendRelation.user_login == friend_username), (FriendRelation.friend_login == user))
+            )
         ).all()
 
         if not relations:
@@ -338,7 +341,7 @@ def remove_friend_db(user: str, friend_username: str, session: Session | None = 
         return True
 
 @connect
-def add_move(game_id:int, move_record:dict, session: Session | None = None):
+def add_move(game_id: int, move_record: dict, session: Session | None = None):
 
     session.add(GameMove(
         game_id=game_id,
@@ -351,7 +354,6 @@ def add_move(game_id:int, move_record:dict, session: Session | None = None):
         promotion=move_record['promotion']
     ))
     session.commit()
-    session.close()
 
 @connect
 def get_game_moves_from_db(game_id, session: Session | None = None):
@@ -366,7 +368,6 @@ def get_game_moves_from_db(game_id, session: Session | None = None):
             "promotion": m.promotion
         })
     return move_list
-
 
 
 
