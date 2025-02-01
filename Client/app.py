@@ -195,9 +195,16 @@ def profile(username):
     if user_row:
         user = dict(user_row)
         user_history = base.get_user_history(username)
-        wins = sum(1 for game in user_history if game['result'] == 'win')
-        losses = sum(1 for game in user_history if game['result'] == 'lose')
-        draws = sum(1 for game in user_history if game['result'] == 'draw')
+        wins = 0
+        losses = 0
+        draws = 0
+        for game in user_history:
+            if game['result'] == 'win':
+                wins += 1
+            elif game['result'] == 'lose':
+                losses += 1
+            else:
+                draws += 1
         total_games = wins + losses + draws
         current_user = session.get('user')
         is_own_profile = (username == current_user)
@@ -997,6 +1004,7 @@ def load_user_from_remember_token():
                     base.delete_remember_token(token)
                     g.new_remember_token = new_token
                     g.new_expires_at = new_expires_at
+
 @app.after_request
 def set_new_remember_token(response):
     if hasattr(g, 'new_remember_token') and g.new_remember_token:
