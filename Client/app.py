@@ -1,7 +1,6 @@
 import os
 
-import logging, subprocess, hmac, hashlib, threading, time
-import itertools
+import logging, subprocess, hmac, hashlib, time
 import secrets
 
 from datetime import timedelta, datetime, timezone
@@ -9,7 +8,6 @@ from datetime import timedelta, datetime, timezone
 from flask import g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
 from flask_wtf.csrf import CSRFProtect
 
@@ -31,8 +29,6 @@ import base
 import utils
 import game_engine
 
-ghost_counter = itertools.count(1)
-ghost_lock = threading.Lock()
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -275,18 +271,8 @@ def internal_server_error(e):
 @app.route('/start_game')
 @csrf.exempt
 def start_game():
-    user_login = session.get('user')
-    if not user_login:
-        with ghost_lock:
-            ghost_num = next(ghost_counter)
-            ghost_username = f"ghost{ghost_num}"
-        session['user'] = ghost_username
-        session['is_ghost'] = True
-        user_login = ghost_username
-    elif user_login.startswith('ghost'):
-        session['is_ghost'] = True
-    else:
-        session['is_ghost'] = False
+    user_login = utils.ensure_user()
+
     game_id = session.get('game_id')
     if game_id:
         try:
@@ -315,6 +301,7 @@ def start_game():
                 else:
                     session['search_start_time'] = time.time()
                     return render_template('waiting.html', game_id=game_id_int, user_login=user_login)
+
     waiting_game = find_waiting_game_in_db()
     if waiting_game:
         color = 'w' if not waiting_game.f_user else 'b'
@@ -327,6 +314,7 @@ def start_game():
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
+
     game_id_new = create_new_game_in_db(user_login)
     if not game_id_new:
         flash('Не удалось создать игру.', 'error')
@@ -334,8 +322,8 @@ def start_game():
     session['game_id'] = game_id_new
     session['color'] = 'w'
     session['search_start_time'] = time.time()
-    g = get_or_create_ephemeral_game(session['game_id'])
-    if g and g.f_user and g.c_user:
+    g_obj = get_or_create_ephemeral_game(session['game_id'])
+    if g_obj and g_obj.f_user and g_obj.c_user:
         return redirect(url_for('get_board', game_id=session['game_id'], user_login=user_login))
     else:
         return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
@@ -396,6 +384,19 @@ def check_game_status_route():
 @app.route("/move", methods=["POST"])
 @csrf.exempt
 def move():
+    def finalize_and_respond(game, user_login, game_id_int):
+        result_move, points_gained = game_engine.finalize_game(game, user_login)
+        response_data = {
+            "status_": game.status,
+            "pieces": get_db_pieces(game_id_int),
+            "move_history": base.get_game_moves_from_db(game_id_int),
+            "result": result_move,
+            "points_gained": points_gained,
+            "white_countdown": int(game.white_countdown_remaining),
+            "black_countdown": int(game.black_countdown_remaining)
+        }
+        return jsonify(response_data)
+
     data = request.json
     selected_piece = data.get("selected_piece")
     new_pos = data.get("new_pos")
@@ -456,28 +457,16 @@ def move():
         game.update_timers()
 
         game.move_history.append(move_record)
-        base.add_move(game_id_int,move_record)
+        base.add_move(game_id_int, move_record)
         if game.status in ['w3', 'b3', 'n', 'ns1']:
-            result_move, points_gained = game_engine.finalize_game(game, user_login)
-            response_data = {
-                "status_": game.status,
-                "pieces": get_db_pieces(game_id_int),
-                "white_time": max(round(game.white_time_remaining), 0),
-                "black_time": max(round(game.black_time_remaining), 0),
-                "move_history": game.get_game_moves_from_db(game_id_int),
-                "result": result_move,
-                "points_gained": points_gained,
-                "white_countdown": round(game.white_countdown_remaining),
-                "black_countdown": round(game.black_countdown_remaining)
-            }
-            return jsonify(response_data)
+            return finalize_and_respond(game, user_login, game_id_int)
         if result['move_result'] == 'continue_capture':
             game.status = f"{current_player}4"
             game.must_capture_piece = result['next_capture_piece']
             return jsonify({
                 "status_": game.status,
                 "pieces": get_db_pieces(game_id_int),
-                "move_history": game.get_game_moves_from_db(game_id_int),
+                "move_history": base.get_game_moves_from_db(game_id_int),
                 "multiple_capture": True,
                 "white_countdown": int(game.white_countdown_remaining),
                 "black_countdown": int(game.black_countdown_remaining)
@@ -491,58 +480,18 @@ def move():
         p = get_db_pieces(game_id_int)
         if game_engine.is_all_kings(p):
             game.status = "n"
-            result_move, points_gained = game_engine.finalize_game(game, user_login)
-            response_data = {
-                "status_": "n",
-                "pieces": p,
-                "move_history": base.get_game_moves_from_db(game_id_int),
-                "result": result_move,
-                "points_gained": points_gained,
-                "white_countdown": int(game.white_countdown_remaining),
-                "black_countdown": int(game.black_countdown_remaining)
-            }
-            return jsonify(response_data)
+            return finalize_and_respond(game, user_login, game_id_int)
         if game_engine.check_draw(p):
             game.status = "n"
-            result_move, points_gained = game_engine.finalize_game(game, user_login)
-            response_data = {
-                "status_": "n",
-                "pieces": p,
-                "move_history": base.get_game_moves_from_db(game_id_int),
-                "result": result_move,
-                "points_gained": points_gained,
-                "white_countdown": int(game.white_countdown_remaining),
-                "black_countdown": int(game.black_countdown_remaining)
-            }
-            return jsonify(response_data)
+            return finalize_and_respond(game, user_login, game_id_int)
         opponent_color = 'b' if current_player == 'w' else 'w'
         opponent_pieces = [x for x in p if x['color'] == (0 if opponent_color == 'w' else 1)]
         if not opponent_pieces:
             game.status = f"{current_player}3"
-            result_move, points_gained = game_engine.finalize_game(game, user_login)
-            response_data = {
-                "status_": game.status,
-                "pieces": get_db_pieces(game_id_int),
-                "move_history": base.get_game_moves_from_db(game_id_int),
-                "result": result_move,
-                "points_gained": points_gained,
-                "white_countdown": int(game.white_countdown_remaining),
-                "black_countdown": int(game.black_countdown_remaining)
-            }
-            return jsonify(response_data)
+            return finalize_and_respond(game, user_login, game_id_int)
         if not game_engine.can_player_move(p, 0 if opponent_color == 'w' else 1):
             game.status = "n"
-            result_move, points_gained = game_engine.finalize_game(game, user_login)
-            response_data = {
-                "status_": "n",
-                "pieces": get_db_pieces(game_id_int),
-                "move_history": base.get_game_moves_from_db(game_id_int),
-                "result": result_move,
-                "points_gained": points_gained,
-                "white_countdown": int(game.white_countdown_remaining),
-                "black_countdown": int(game.black_countdown_remaining)
-            }
-            return jsonify(response_data)
+            return finalize_and_respond(game, user_login, game_id_int)
         return jsonify({
             "status_": game.status,
             "pieces": get_db_pieces(game_id_int),
@@ -854,19 +803,11 @@ def start_singleplayer():
     if request.method == "POST":
         difficulty = request.form.get("difficulty")
         color = request.form.get("color")
-        user_login = session.get('user')
-        if not user_login:
-            with ghost_lock:
-                ghost_num = next(ghost_counter)
-                ghost_username = f"ghost{ghost_num}"
-            session['user'] = ghost_username
-            session['is_ghost'] = True
-        else:
-            session['is_ghost'] = False
+        user_login = utils.ensure_user()
         if difficulty not in ["easy", "medium", "hard"]:
             flash('Неизвестная сложность', 'error')
             return redirect(url_for('home'))
-        return redirect(url_for(f'singleplayer_{difficulty}', username=session['user'], color=color))
+        return redirect(url_for(f'singleplayer_{difficulty}', username=user_login, color=color))
     else:
         return redirect(url_for('home'))
 
@@ -902,62 +843,22 @@ def favicon():
 @app.route('/upload_avatar', methods=['POST'])
 def upload_avatar():
     logging.debug("Начало загрузки аватарки")
-    if 'user' not in session:
-        logging.warning("Пользователь не аутентифицирован")
-        abort(403)
-    user_login = session['user']
-    user = base.get_user_by_login(user_login)
-    if not user or user_login.startswith('ghost'):
-        logging.warning("Пользователь не найден или является ghost")
-        abort(403)
-
+    user_login, user = utils.get_valid_user(session, base)
     if 'avatar' not in request.files:
         flash('Нет файла для загрузки', 'error')
         logging.warning("Файл не найден в запросе")
         return redirect(url_for('profile', username=user_login))
-
     file = request.files['avatar']
-
-    if file.filename == '':
-        flash('Вы не выбрали файл', 'error')
-        logging.warning("Файл не выбран пользователем")
+    safe_filename, error = utils.process_and_save_avatar(file, user_login, app.config['UPLOAD_FOLDER'], ALLOWED_EXTENSIONS)
+    if error:
+        flash(error, 'error')
         return redirect(url_for('profile', username=user_login))
-
-    if file and utils.allowed_file(file.filename,ALLOWED_EXTENSIONS):
-        logging.debug(f"Файл {file.filename} прошел проверку расширения")
-        if not utils.is_image(file.stream):
-            flash('Загружаемый файл не является допустимым изображением.', 'error')
-            logging.error("Файл не является допустимым изображением")
-            return redirect(url_for('profile', username=user_login))
-
-        new_filename = f"{user_login}.jpg"
-        safe_filename = secure_filename(new_filename)
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
-        logging.debug(f"Безопасное имя файла: {safe_filename}, путь сохранения: {save_path}")
-
-        try:
-            utils.save_secure_image(file, save_path)
-            logging.debug("Изображение успешно сохранено и перекодировано")
-        except Exception:
-            flash('Ошибка при обработке изображения.', 'error')
-            logging.exception("Ошибка при сохранении изображения")
-            return redirect(url_for('profile', username=user_login))
-
-        old_avatar = user["avatar_filename"]
-        if old_avatar and old_avatar != safe_filename:
-            old_path = os.path.join(app.config['UPLOAD_FOLDER'], old_avatar)
-            if os.path.exists(old_path):
-                os.remove(old_path)
-                logging.debug("Старый аватар удален")
-
-        base.update_user_avatar(user_login, safe_filename)
-        flash('Аватар успешно обновлен!', 'success')
-        logging.info("Аватар успешно обновлен для пользователя")
-    else:
-        flash('Недопустимый файл', 'error')
-        logging.error("Файл не прошел проверку разрешенных расширений")
-
+    utils.remove_old_avatar(user.get("avatar_filename"), safe_filename, app.config['UPLOAD_FOLDER'])
+    base.update_user_avatar(user_login, safe_filename)
+    flash('Аватар успешно обновлен!', 'success')
+    logging.info("Аватар успешно обновлен для пользователя")
     return redirect(url_for('profile', username=user_login))
+
 
 @app.route('/delete_avatar', methods=['POST'])
 @csrf.exempt
@@ -1130,8 +1031,6 @@ def get_top_players_route():
     except Exception as e:
         logging.error(f"Ошибка при обработке топ игроков: {e}")
         return jsonify({"error": "Не удалось получить топ игроков"}), 500
-
-
 
 
 if __name__ == "__main__":

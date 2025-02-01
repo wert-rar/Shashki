@@ -215,18 +215,17 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
     if abs(dest_x - x) > 1:
         dx = 1 if dest_x > x else -1
         dy = 1 if dest_y > y else -1
-        current_x, current_y = x + dx, y + dy
-        while current_x != dest_x and current_y != dest_y:
+        for step in range(1, abs(dest_x - x)):
+            current_x = x + dx * step
+            current_y = y + dy * step
             piece_at_square = get_piece_at(new_pieces, current_x, current_y)
-            if piece_at_square and piece_at_square['color'] != selected_piece['color']:
-                new_pieces.remove(piece_at_square)
-                captured = True
-                captured_pieces.append({'x': current_x, 'y': current_y})
+            if piece_at_square:
+                if piece_at_square['color'] != selected_piece['color']:
+                    new_pieces.remove(piece_at_square)
+                    captured = True
+                    captured_pieces.append({'x': current_x, 'y': current_y})
                 break
-            elif piece_at_square:
-                break
-            current_x += dx
-            current_y += dy
+
     promotion_occurred = False
     for piece in new_pieces:
         if piece['x'] == x and piece['y'] == y:
@@ -251,10 +250,7 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 'multiple_capture': True,
                 'next_capture_piece': moved_piece.copy()
             }
-        else:
-            game.must_capture_piece = None
-    else:
-        game.must_capture_piece = None
+    game.must_capture_piece = None
     return {
         'move_result': 'valid',
         'new_pieces': new_pieces,
@@ -263,4 +259,3 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'multiple_capture': False,
         'promotion': promotion_occurred
     }
-
