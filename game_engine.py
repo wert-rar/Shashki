@@ -128,12 +128,12 @@ def finalize_game(game, user_login):
         if not getattr(game, 'rank_updated', False):
             update_game_status_in_db(game.game_id, 'completed')
             if not user_is_ghost:
-                user_rank_before = base.get_user_by_login(user_login).rang
+                user_rank_before = base.get_user_by_login(user_login)["rang"]
                 date_end = datetime.datetime.now().isoformat()
                 base.add_completed_game(user_login, game.game_id, date_end, user_rank_before, user_rank_before, 0, result_move)
             opponent_login = game.f_user if game.f_user != user_login else game.c_user
             if opponent_login and not opponent_login.startswith('ghost'):
-                opp_rank_before = base.get_user_by_login(opponent_login).rang
+                opp_rank_before = base.get_user_by_login(opponent_login)["rang"]
                 date_end = datetime.datetime.now().isoformat()
                 base.add_completed_game(opponent_login, game.game_id, date_end, opp_rank_before, opp_rank_before, 0, result_move)
             game.rank_updated = True
@@ -152,7 +152,7 @@ def finalize_game(game, user_login):
         opponent_login = game.f_user if game.f_user != user_login else game.c_user
         opponent_is_ghost = opponent_login.startswith('ghost')
         if not user_is_ghost:
-            user_rank_before = base.get_user_by_login(user_login).rang
+            user_rank_before = base.get_user_by_login(user_login)["rang"]
             if result_move == 'win':
                 base.update_user_rang(user_login, points_gained)
                 base.update_user_stats(user_login, wins=1)
@@ -167,12 +167,12 @@ def finalize_game(game, user_login):
                 base.update_user_stats(user_login, draws=1)
                 if not opponent_is_ghost:
                     base.update_user_stats(opponent_login, draws=1)
-            user_rank_after = base.get_user_by_login(user_login).rang
+            user_rank_after = base.get_user_by_login(user_login)["rang"]
             user_rating_change = user_rank_after - user_rank_before
             date_end = datetime.datetime.now().isoformat()
             base.add_completed_game(user_login, game.game_id, date_end, user_rank_before, user_rank_after, user_rating_change, result_move)
         if not opponent_is_ghost:
-            opponent_rank_before = base.get_user_by_login(opponent_login).rang
+            opponent_rank_before = base.get_user_by_login(opponent_login)["rang"]
             if result_move == 'win':
                 opponent_result_move = 'lose'
                 base.update_user_stats(opponent_login, losses=1)
@@ -189,7 +189,7 @@ def finalize_game(game, user_login):
             else:
                 opponent_result_move = None
             if opponent_result_move is not None:
-                opponent_rank_after = base.get_user_by_login(opponent_login).rang
+                opponent_rank_after = base.get_user_by_login(opponent_login)["rang"]
                 opponent_rating_change = opponent_rank_after - opponent_rank_before
                 date_end = datetime.datetime.now().isoformat()
                 base.add_completed_game(opponent_login, game.game_id, date_end, opponent_rank_before, opponent_rank_after, opponent_rating_change, opponent_result_move)

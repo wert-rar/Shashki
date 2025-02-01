@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, update, and_, or_
+from sqlalchemy import select, update, and_, or_, union_all
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -57,11 +57,10 @@ def check_user_exists(user_login, session: Session | None = None):
 def register_user(user_login, user_password, session: Session | None = None):
     hashed_password = utils.hash_password(user_password)
     try:
-        session.add(Player(login=user_login, password=hashed_password))
-        session.commit()
+        with session.begin():
+            session.add(Player(login=user_login, password=hashed_password))
         return True
     except IntegrityError:
-        session.rollback()
         logging.warning(f"Пользователь с логином '{user_login}' уже существует.")
         return False
 
@@ -89,25 +88,34 @@ def get_user_by_login(user_login, session: Session | None = None) -> dict:
 
 @connect
 def update_user_rang(user_login, points, session: Session | None = None):
-    session.execute(
-        update(Player)
-        .where(Player.login == user_login)
-        .values(rang=func.coalesce(Player.rang, 0) + points)
-    )
-    session.commit()
+    try:
+        with session.begin():
+            session.execute(
+                update(Player)
+                .where(Player.login == user_login)
+                .values(rang=func.coalesce(Player.rang, 0) + points)
+            )
+    except Exception as e:
+        logging.error(f"Ошибка обновления ранга: {e}")
 
 @connect
 def update_user_stats(user_login, wins=0, losses=0, draws=0, session: Session | None = None):
-    session.execute(update(Player).where(Player.login == user_login).values(wins=Player.wins + wins, losses=Player.losses + losses, draws=Player.draws + draws))
-    session.commit()
+    try:
+        with session.begin():
+            session.execute(update(Player).where(Player.login == user_login)
+                            .values(wins=Player.wins + wins, losses=Player.losses + losses, draws=Player.draws + draws))
+    except Exception as e:
+        logging.error(f"Ошибка обновления статистики: {e}")
 
 @connect
 def add_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result, session: Session | None = None):
-
-    session.add(CompletedGames(user_login=user_login, game_id=game_id, date_start=date_start,
-                               rating_before=rating_before, rating_after=rating_after, rating_change=rating_change,
-                               result=result))
-    session.commit()
+    try:
+        with session.begin():
+            session.add(CompletedGames(user_login=user_login, game_id=game_id, date_start=date_start,
+                                       rating_before=rating_before, rating_after=rating_after, rating_change=rating_change,
+                                       result=result))
+    except Exception as e:
+        logging.error(f"Ошибка при добавлении завершенной игры: {e}")
 
 @connect
 def get_user_history(user_login, session: Session | None = None):
@@ -232,43 +240,41 @@ def send_game_invite_db(sender: str, receiver: str, session: Session | None = No
 
 @connect
 def send_friend_request_db(sender: str, receiver: str, session: Session | None = None) -> str:
-        if sender == receiver:
-            return "self_request"
+    if sender == receiver:
+        return "self_request"
 
-        existing = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver).first()
-        if existing:
-            if existing.status == "pending":
-                return "already_sent"
-            elif existing.status == "accepted":
-                return "already_friends"
-            elif existing.status == "declined":
-                existing.status = "pending"
-                session.commit()
-                return "sent_again"
-            else:
-                return "error"
+    try:
+        with session.begin():
+            existing = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver).first()
+            if existing:
+                if existing.status == "pending":
+                    return "already_sent"
+                elif existing.status == "accepted":
+                    return "already_friends"
+                elif existing.status == "declined":
+                    existing.status = "pending"
+                    return "sent_again"
+                else:
+                    return "error"
 
-        reverse_existing = session.query(FriendRelation).filter_by(user_login=receiver, friend_login=sender).first()
-        if reverse_existing:
-            if reverse_existing.status == "pending":
-                return "receiver_already_sent"
-            elif reverse_existing.status == "accepted":
-                return "already_friends"
-            elif reverse_existing.status == "declined":
-                reverse_existing.status = "pending"
-                session.commit()
-                return "sent_again"
-            else:
-                return "error"
+            reverse_existing = session.query(FriendRelation).filter_by(user_login=receiver, friend_login=sender).first()
+            if reverse_existing:
+                if reverse_existing.status == "pending":
+                    return "receiver_already_sent"
+                elif reverse_existing.status == "accepted":
+                    return "already_friends"
+                elif reverse_existing.status == "declined":
+                    reverse_existing.status = "pending"
+                    return "sent_again"
+                else:
+                    return "error"
 
-        new_request = FriendRelation(
-            user_login=sender,
-            friend_login=receiver,
-            status="pending"
-        )
-        session.add(new_request)
-        session.commit()
+            new_request = FriendRelation(user_login=sender, friend_login=receiver, status="pending")
+            session.add(new_request)
         return "sent"
+    except Exception as e:
+        logging.error(f"Ошибка при отправке запроса в друзья: {e}")
+        return "error"
 
 @connect
 def get_incoming_friend_requests_db(user: str, session: Session | None = None) -> list:
@@ -301,34 +307,36 @@ def respond_friend_request_db(sender: str, receiver: str, response: str, session
 
 @connect
 def get_friends_db(user: str, session: Session | None = None) -> list:
-        sent_accepted = (
-            session.query(FriendRelation)
-            .filter_by(user_login=user, status="accepted")
-            .all()
-        )
-        received_accepted = (
-            session.query(FriendRelation)
-            .filter_by(friend_login=user, status="accepted")
-            .all()
-        )
-        friends = [rel.friend_login for rel in sent_accepted] + [rel.user_login for rel in received_accepted]
-        return list(set(friends))
+    sent_query = select(FriendRelation.friend_login).where(
+        FriendRelation.user_login == user,
+        FriendRelation.status == "accepted"
+    )
+    received_query = select(FriendRelation.user_login).where(
+        FriendRelation.friend_login == user,
+        FriendRelation.status == "accepted"
+    )
+    union_query = union_all(sent_query, received_query)
+    friends = session.scalars(union_query).all()
+    return list(set(friends))
 
 @connect
 def remove_friend_db(user: str, friend_username: str, session: Session | None = None) -> bool:
-        relations = session.query(FriendRelation).filter(
-            or_(
-                and_((FriendRelation.user_login == user), (FriendRelation.friend_login == friend_username)),
-                and_((FriendRelation.user_login == friend_username), (FriendRelation.friend_login == user))
-            )
-        ).all()
-
-        if not relations:
-            return False
-        for rel in relations:
-            session.delete(rel)
-        session.commit()
+    try:
+        with session.begin():
+            relations = session.query(FriendRelation).filter(
+                or_(
+                    and_((FriendRelation.user_login == user), (FriendRelation.friend_login == friend_username)),
+                    and_((FriendRelation.user_login == friend_username), (FriendRelation.friend_login == user))
+                )
+            ).all()
+            if not relations:
+                return False
+            for rel in relations:
+                session.delete(rel)
         return True
+    except Exception as e:
+        logging.error(f"Ошибка при удалении друга: {e}")
+        return False
 
 @connect
 def add_move(game_id: int, move_record: dict, session: Session | None = None):

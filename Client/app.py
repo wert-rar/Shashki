@@ -198,7 +198,11 @@ def profile(username):
     user_row = base.get_user_by_login(username)
     if user_row:
         user = dict(user_row)
-        total_games = user['wins'] + user['losses'] + user['draws']
+        user_history = base.get_user_history(username)
+        wins = sum(1 for game in user_history if game['result'] == 'win')
+        losses = sum(1 for game in user_history if game['result'] == 'lose')
+        draws = sum(1 for game in user_history if game['result'] == 'draw')
+        total_games = wins + losses + draws
         current_user = session.get('user')
         is_own_profile = (username == current_user)
         in_game = False
@@ -213,7 +217,6 @@ def profile(username):
                         game_id = game_id_int
             except (ValueError, TypeError):
                 in_game = False
-        user_history = base.get_user_history(username)
         avatar_filename = user['avatar_filename']
         if avatar_filename:
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
@@ -224,9 +227,9 @@ def profile(username):
             profile_user_login=user['login'],
             rang=user['rang'],
             total_games=total_games,
-            wins=user['wins'],
-            losses=user['losses'],
-            draws=user['draws'],
+            wins=wins,
+            losses=losses,
+            draws=draws,
             is_own_profile=is_own_profile,
             in_game=in_game,
             game_id=game_id,
