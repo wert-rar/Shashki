@@ -261,6 +261,7 @@
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
         #return-to-game {
             position: absolute;
             bottom: 20px;
@@ -275,27 +276,40 @@
             display: none;
             z-index: 2;
         }
+
         #return-to-game h2 {
             font-size: 1.5rem;
             color: var(--success-color);
             margin-bottom: 10px;
         }
+
         #return-to-game p {
             font-size: 1rem;
             margin-bottom: 20px;
         }
+
         #return-to-game .button {
             background-color: var(--warning-color);
         }
+
+        #return-to-game .button {
+            width: 250px;
+            font-size: 18px;
+            padding: 15px 20px;
+        }
+
         #return-to-game .button.leave-button {
             background-color: var(--error-color);
         }
+
         #return-to-game .button.leave-button:hover {
             background-color: var(--error-color-hover);
         }
+
         #return-to-game .button + .button {
             margin-left: 15px;
         }
+
         #leave-game-modal,
         #game-over-modal,
         #multiplayerSelectionModal
@@ -423,8 +437,6 @@
         #removeFriendModal .RemoveFriend .button-group .button {
             width: 45%;
         }
-
-
 
         .GameOver {
             background: var(--card-background);
@@ -994,14 +1006,32 @@
                 box-shadow: none;
                 border-color: transparent;
             }
+        }
 
-            @media (max-width: 360px) {
-                #notificationModal, #friendsModal {
-                    width: 240px;
-                    max-height: 40vh;
-                    padding: 15px;
-                    font-size: 0.9rem;
-                }
+        .return-short {
+            display: none;
+        }
+
+        @media (max-width: 420px) {
+            #return-to-game .button {
+                width: 150px;
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+            .return-full {
+                display: none;
+            }
+            .return-short {
+                display: inline;
+            }
+        }
+
+        @media (max-width: 360px) {
+            #notificationModal, #friendsModal {
+                width: 240px;
+                max-height: 40vh;
+                padding: 15px;
+                font-size: 0.9rem;
             }
         }
 
@@ -1330,7 +1360,10 @@
     <div id="return-to-game">
         <h2>У вас есть активная игра</h2>
         <p>Вы можете вернуться к вашей текущей игре.</p>
-        <button class="button" onclick="returnToGame()">Вернуться в игру</button>
+        <button class="button" onclick="returnToGame()">
+            <span class="return-full">Вернуться в игру</span>
+            <span class="return-short">Вернуться</span>
+        </button>
         <button class="button leave-button" onclick="showLeaveGameModal()">Покинуть игру</button>
     </div>
 
