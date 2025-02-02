@@ -42,6 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentIndex = 0;
     let game_id = null;
 
+    if (closeNotificationModal) {
+          closeNotificationModal.addEventListener('click', (e) => {
+                e.stopPropagation();
+                notificationModal.classList.remove('active');
+                bellDesktop.classList.remove('active');
+                bellMobile.classList.remove('active');
+          });
+    }
+
+    if (closeFriendsModal) {
+          closeFriendsModal.addEventListener('click', (e) => {
+                e.stopPropagation();
+                friendsModal.classList.remove('active');
+                friendsDesktop.classList.remove('active');
+                friendsMobile.classList.remove('active');
+          });
+    }
+
     function fetchNotifications() {
         fetch('/get_notifications')
             .then(response => response.json())
@@ -686,6 +704,23 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = "flex";
         overlay.classList.add("active");
     }
+
+    const gameOverModal = document.getElementById('game-over-modal');
+        if (gameOverModal) {
+          gameOverModal.addEventListener('click', function(e) {
+            if (e.target === gameOverModal) {
+              hideGameOverModal();
+            }
+          });
+
+          const gameOverContent = gameOverModal.querySelector('.GameOver');
+          if (gameOverContent) {
+            gameOverContent.addEventListener('click', function(e) {
+              e.stopPropagation();
+            });
+          }
+        }
+
 
     function checkForActiveGame() {
         fetch('/check_game_status')
