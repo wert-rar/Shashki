@@ -1177,6 +1177,15 @@
             }
         }
     </style>
+
+    <style>
+        {% if not ('user' in session and user_is_registered) %}
+            .friends-button,
+            .bell-button {
+                display: none;
+            }
+        {% endif %}
+    </style>
 </head>
 <body>
     <div id="selectionModal" class="modal">
