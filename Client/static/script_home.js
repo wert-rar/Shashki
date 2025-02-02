@@ -27,15 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const multiplayerBtn = document.getElementById("multiplayer-button");
     const randomPlayerButton = document.getElementById("randomPlayerButton");
     const friendButton = document.getElementById("friendButton");
-    const friendGameModal = document.getElementById("friendGameModal");
-    const inviteFriendButton = document.getElementById("inviteFriendButton");
     const createRoomModal = document.getElementById("createRoomModal");
     const startGameButton = document.getElementById("startGameButton");
     const friendsToInvite = document.getElementById("friendsToInvite");
     const backToMultiplayerSelection = document.getElementById("backToMultiplayerSelection");
-
     let friendToRemove = null;
-
     let selections = { difficulty: null, color: null };
     let startX = 0;
     let endX = 0;
@@ -43,21 +39,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let game_id = null;
 
     if (closeNotificationModal) {
-          closeNotificationModal.addEventListener('click', (e) => {
-                e.stopPropagation();
-                notificationModal.classList.remove('active');
-                bellDesktop.classList.remove('active');
-                bellMobile.classList.remove('active');
-          });
+        closeNotificationModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notificationModal.classList.remove('active');
+            bellDesktop.classList.remove('active');
+            bellMobile.classList.remove('active');
+        });
     }
 
     if (closeFriendsModal) {
-          closeFriendsModal.addEventListener('click', (e) => {
-                e.stopPropagation();
-                friendsModal.classList.remove('active');
-                friendsDesktop.classList.remove('active');
-                friendsMobile.classList.remove('active');
-          });
+        closeFriendsModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+            friendsModal.classList.remove('active');
+            friendsDesktop.classList.remove('active');
+            friendsMobile.classList.remove('active');
+        });
+    }
+
+    if (removeFriendModal) {
+        removeFriendModal.addEventListener('click', (e) => {
+            if (e.target === removeFriendModal) {
+                removeFriendModal.style.display = 'none';
+            }
+        });
     }
 
     function fetchNotifications() {
@@ -71,16 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         notifItem.classList.add("notification-item");
                         notifItem.style.padding = "10px";
                         notifItem.style.borderBottom = "1px solid #444";
-
                         const notifText = document.createElement("p");
                         notifText.textContent = `Запрос в друзья от ${sender}`;
                         notifItem.appendChild(notifText);
-
                         const btnContainer = document.createElement("div");
                         btnContainer.style.marginTop = "5px";
                         btnContainer.style.display = "flex";
                         btnContainer.style.gap = "10px";
-
                         const acceptBtn = document.createElement("button");
                         acceptBtn.textContent = "Принять";
                         acceptBtn.style.flex = "1";
@@ -94,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             e.stopPropagation();
                             respondFriendRequest(sender, "accept", notifItem);
                         });
-
                         const declineBtn = document.createElement("button");
                         declineBtn.textContent = "Отклонить";
                         declineBtn.style.flex = "1";
@@ -108,11 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             e.stopPropagation();
                             respondFriendRequest(sender, "decline", notifItem);
                         });
-
                         btnContainer.appendChild(acceptBtn);
                         btnContainer.appendChild(declineBtn);
                         notifItem.appendChild(btnContainer);
-
                         notificationList.appendChild(notifItem);
                     });
                     updateNotificationCount(data.notifications.length);
@@ -131,41 +129,30 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => {
                 friendsList.innerHTML = '';
-
                 if (data.friends && data.friends.length > 0) {
                     data.friends.forEach(friend => {
                         const friendItem = document.createElement('div');
                         friendItem.classList.add('friend-item');
-
                         const profileLink = document.createElement('a');
                         profileLink.href = `/profile/${friend}`;
                         profileLink.textContent = friend;
-
                         friendItem.appendChild(profileLink);
-
                         const friendActions = document.createElement('div');
                         friendActions.classList.add('friend-actions');
-
                         const menuButton = document.createElement('button');
                         menuButton.classList.add('friend-actions-menu-button');
                         menuButton.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
-
                         const menu = document.createElement('div');
                         menu.classList.add('friend-actions-menu', 'hide');
-
                         const removeButton = document.createElement('button');
                         removeButton.classList.add('remove-friend-button');
                         removeButton.setAttribute('data-friend', friend);
                         removeButton.textContent = 'Удалить из друзей';
-
                         menu.appendChild(removeButton);
-
                         friendActions.appendChild(menuButton);
                         friendActions.appendChild(menu);
-
                         friendItem.appendChild(friendActions);
                         friendsList.appendChild(friendItem);
-
                         menuButton.addEventListener('click', (e) => {
                             e.stopPropagation();
                             document.querySelectorAll('.friend-actions-menu.show').forEach((otherMenu) => {
@@ -175,10 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                             menu.classList.toggle('show');
                         });
-
                         removeButton.addEventListener('click', () => {
                             friendToRemove = removeButton.getAttribute('data-friend');
                             removeFriendName.textContent = friendToRemove;
+                            friendsModal.classList.remove('active');
                             removeFriendModal.style.display = 'flex';
                             menu.classList.remove('show');
                         });
@@ -281,17 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
             container.id = "notification-container";
             document.body.appendChild(container);
         }
-
         const notification = document.createElement("div");
         notification.classList.add("notification", type);
         notification.innerHTML = message;
-
         const progressBar = document.createElement("div");
         progressBar.classList.add("progress-bar");
         notification.appendChild(progressBar);
-
         container.appendChild(notification);
-
         notification.addEventListener("click", () => {
             notification.style.transition = 'opacity 0.5s';
             notification.style.opacity = '0';
@@ -299,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 notification.remove();
             }, 500);
         });
-
         setTimeout(() => {
             notification.style.transition = 'opacity 0.5s';
             notification.style.opacity = '0';
@@ -423,44 +405,11 @@ document.addEventListener('DOMContentLoaded', () => {
         startMultiplayerGame();
     });
 
-    inviteFriendButton.addEventListener('click', () => {
-        alert("Функциональность приглашения друзей пока не реализована.");
-    });
-
-    startGameButton.addEventListener('click', () => {
-        const secondPlayerSlot = createRoomModal.querySelectorAll('.room-slots .slot')[1];
-        if (secondPlayerSlot && secondPlayerSlot.textContent.trim() !== 'Друг') {
-            startGameInRoom();
-        } else {
-            createNotification("Нужен второй игрок для начала игры.", "error");
-        }
-    });
-
     multiplayerSelectionModal.addEventListener('click', (event) => {
         if (event.target === multiplayerSelectionModal) {
             multiplayerSelectionModal.style.display = "none";
             overlay.classList.remove("active");
         }
-    });
-
-    friendGameModal.addEventListener('click', (event) => {
-        if (event.target === friendGameModal) {
-            friendGameModal.style.display = "none";
-            overlay.classList.remove("active");
-        }
-    });
-
-    createRoomModal.addEventListener('click', (event) => {
-        if (event.target === createRoomModal) {
-            createRoomModal.style.display = "none";
-            overlay.classList.remove("active");
-        }
-    });
-
-    backToMultiplayerSelection.addEventListener('click', () => {
-        createRoomModal.style.display = "none";
-        multiplayerSelectionModal.style.display = "flex";
-        overlay.classList.add("active");
     });
 
     singleplayerBtn.onclick = function() {
@@ -503,10 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
             multiplayerSelectionModal.style.display = "none";
             overlay.classList.remove("active");
         }
-        if (!event.target.closest('#friendGameModal') && !event.target.closest('#friendButton')) {
-            friendGameModal.style.display = "none";
-            overlay.classList.remove("active");
-        }
         if (!event.target.closest('#createRoomModal') && !event.target.closest('#friendButton')) {
             createRoomModal.style.display = "none";
             overlay.classList.remove("active");
@@ -526,7 +471,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const isSmallScreen = window.innerWidth <= 530;
-
     if (!isSmallScreen) {
         document.querySelectorAll('.card[data-type="difficulty"]').forEach(function(card) {
             card.addEventListener('click', function() {
@@ -556,7 +500,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         const swipeContainer = document.getElementById("difficultySwipe");
         const difficultyCards = swipeContainer.querySelectorAll('.card');
-
         function updateSwipe() {
             swipeContainer.style.transform = `translateX(-${currentIndex * 120}px)`;
             selectedDifficulty.value = difficultyCards[currentIndex].getAttribute('data-value');
@@ -575,25 +518,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 playButton.disabled = false;
             }
         }
-
         document.getElementById("rightArrow").addEventListener("click", () => {
             currentIndex = (currentIndex + 1) % difficultyCards.length;
             updateSwipe();
         });
-
         document.getElementById("leftArrow").addEventListener("click", () => {
             currentIndex = (currentIndex - 1 + difficultyCards.length) % difficultyCards.length;
             updateSwipe();
         });
-
         swipeContainer.addEventListener('touchstart', e => {
             startX = e.touches[0].clientX;
         }, false);
-
         swipeContainer.addEventListener('touchmove', e => {
             endX = e.touches[0].clientX;
         }, false);
-
         swipeContainer.addEventListener('touchend', () => {
             let deltaX = endX - startX;
             if (Math.abs(deltaX) > 30) {
@@ -605,7 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSwipe();
             }
         }, false);
-
         updateSwipe();
     }
 
@@ -706,21 +643,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const gameOverModal = document.getElementById('game-over-modal');
-        if (gameOverModal) {
-          gameOverModal.addEventListener('click', function(e) {
+    if (gameOverModal) {
+        gameOverModal.addEventListener('click', function(e) {
             if (e.target === gameOverModal) {
-              hideGameOverModal();
+                hideGameOverModal();
             }
-          });
-
-          const gameOverContent = gameOverModal.querySelector('.GameOver');
-          if (gameOverContent) {
+        });
+        const gameOverContent = gameOverModal.querySelector('.GameOver');
+        if (gameOverContent) {
             gameOverContent.addEventListener('click', function(e) {
-              e.stopPropagation();
+                e.stopPropagation();
             });
-          }
         }
-
+    }
 
     function checkForActiveGame() {
         fetch('/check_game_status')
@@ -752,8 +687,13 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(0)';
         overlay.classList.add("active");
         hamburger.classList.add("open");
-        if (window.innerWidth <= 1280 && friendsMobile) {
-            friendsMobile.style.display = 'none';
+        if (window.innerWidth <= 1280) {
+            if (friendsMobile) {
+                friendsMobile.style.display = 'none';
+            }
+            if (bellMobile) {
+                bellMobile.style.display = 'none';
+            }
         }
     }
 
@@ -762,8 +702,13 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.style.transform = 'translateX(300px)';
         overlay.classList.remove("active");
         hamburger.classList.remove("open");
-        if (window.innerWidth <= 1280 && friendsMobile) {
-            friendsMobile.style.display = 'block';
+        if (window.innerWidth <= 1280) {
+            if (friendsMobile) {
+                friendsMobile.style.display = 'block';
+            }
+            if (bellMobile) {
+                bellMobile.style.display = 'block';
+            }
         }
         sidebar.addEventListener('transitionend', function handler() {
             sidebar.classList.remove("active");
@@ -776,8 +721,8 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationModal.classList.remove('active');
         friendsModal.classList.remove('active');
         multiplayerSelectionModal.style.display = "none";
-        friendGameModal.style.display = "none";
         createRoomModal.style.display = "none";
+        overlay.classList.remove("active");
     });
 
     hamburger.addEventListener("click", (event) => {
@@ -872,16 +817,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     data.friends.forEach(friend => {
                         const friendInvite = document.createElement('div');
                         friendInvite.classList.add('friend-invite');
-
                         const friendName = document.createElement('span');
                         friendName.textContent = friend;
-
                         const inviteBtn = document.createElement('button');
                         inviteBtn.textContent = 'Пригласить';
                         inviteBtn.addEventListener('click', () => {
                             inviteFriend(friend);
                         });
-
                         friendInvite.appendChild(friendName);
                         friendInvite.appendChild(inviteBtn);
                         friendsToInvite.appendChild(friendInvite);
@@ -933,6 +875,36 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => {
             createNotification("Ошибка при запуске игры", "error");
             console.error(error);
+        });
+    }
+
+    if (backToMultiplayerSelection) {
+        backToMultiplayerSelection.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createRoomModal.style.display = "none";
+            multiplayerSelectionModal.style.display = "flex";
+            overlay.classList.add("active");
+        });
+    }
+
+    if (createRoomModal) {
+        createRoomModal.addEventListener('click', (e) => {
+            if (e.target === createRoomModal) {
+                createRoomModal.style.display = "none";
+                overlay.classList.remove("active");
+            }
+        });
+    }
+
+    if (startGameButton) {
+        startGameButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            const slots = createRoomModal.querySelectorAll('.room-slots .slot');
+            if (slots[1] && slots[1].textContent.trim() !== 'Друг') {
+                startGameInRoom();
+            } else {
+                createNotification("Нужен второй игрок для начала игры", "error");
+            }
         });
     }
 });

@@ -298,8 +298,8 @@
         }
         #leave-game-modal,
         #game-over-modal,
-        #multiplayerSelectionModal,
-        #friendGameModal {
+        #multiplayerSelectionModal
+        {
             position: fixed;
             top: 0;
             left: 0;
@@ -339,8 +339,7 @@
         #leave-game-modal {
             background: rgba(0, 0, 0, 0.6);
         }
-        #game-over-modal,
-        #friendGameModal{
+        #game-over-modal {
             background: rgba(0, 0, 0, 0.2);
             z-index: 4;
         }
@@ -519,13 +518,7 @@
             color: var(--text-color);
         }
 
-        #friendGameModal .modal-content h2 {
-            margin-bottom: 20px;
-            color: var(--text-color);
-        }
-
-        #multiplayerSelectionModal .modal-content p,
-        #friendGameModal .modal-content p {
+        #multiplayerSelectionModal .modal-content p {
             margin-bottom: 30px;
             font-size: 1rem;
         }
@@ -535,8 +528,7 @@
             margin: 10px;
         }
 
-        #multiplayerSelectionModal .modal-content,
-        #friendGameModal .modal-content {
+        #multiplayerSelectionModal .modal-content {
             width: 700px;
             min-height: 500px;
         }
@@ -556,9 +548,6 @@
 
         #multiplayerSelectionModal .modal-content .modal-buttons .button {
             width: 48%;
-        }
-        #friendGameModal .button#inviteFriendButton {
-            width: 100%;
         }
 
         #createRoomModal .start-game-button {
@@ -861,23 +850,23 @@
             visibility: hidden;
         }
 
-        #notificationModal.active, #friendsModal.active, #multiplayerSelectionModal.active, #friendGameModal.active, #createRoomModal.active {
+        #notificationModal.active, #friendsModal.active, #multiplayerSelectionModal.active, #createRoomModal.active {
             opacity: 1;
             visibility: visible;
         }
 
-        #notificationModal .modal-header, #friendsModal .modal-header, #multiplayerSelectionModal .modal-header, #friendGameModal .modal-header, #createRoomModal .modal-header {
+        #notificationModal .modal-header, #friendsModal .modal-header, #multiplayerSelectionModal .modal-header, #createRoomModal .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        #notificationModal .modal-header h2, #friendsModal .modal-header h2, #multiplayerSelectionModal .modal-header h2, #friendGameModal .modal-header h2, #createRoomModal .modal-header h2 {
+        #notificationModal .modal-header h2, #friendsModal .modal-header h2, #multiplayerSelectionModal .modal-header h2, #createRoomModal .modal-header h2 {
             font-size: 1.2rem;
             color: var(--text-color);
         }
 
-        #notificationModal .modal-body, #friendsModal .modal-body, #multiplayerSelectionModal .modal-body, #friendGameModal .modal-body, #createRoomModal .modal-body {
+        #notificationModal .modal-body, #friendsModal .modal-body, #multiplayerSelectionModal .modal-body, #createRoomModal .modal-body {
             flex: 1;
             margin-top: 20px;
             color: var(--text-color);
@@ -1007,7 +996,7 @@
             }
 
             @media (max-width: 360px) {
-                #notificationModal, #friendsModal, #friendGameModal {
+                #notificationModal, #friendsModal {
                     width: 240px;
                     max-height: 40vh;
                     padding: 15px;
@@ -1079,7 +1068,6 @@
         }
 
         #multiplayerSelectionModal .modal-content,
-        #friendGameModal .modal-content,
         #createRoomModal .modal-content {
             width: 700px;
             min-height: 500px;
@@ -1095,10 +1083,6 @@
 
         #multiplayerSelectionModal .modal-content .modal-buttons .button {
             width: 48%;
-        }
-
-        #friendGameModal .button#inviteFriendButton {
-            width: 100%;
         }
 
         #createRoomModal .room-slots {
@@ -1247,14 +1231,6 @@
                 <button class="button" id="randomPlayerButton">Игра со случайным игроком</button>
                 <button class="button" id="friendButton">Создать комнату</button>
             </div>
-        </div>
-    </div>
-
-    <div id="friendGameModal" class="modal">
-        <div class="modal-content">
-            <h2>Создание комнаты</h2>
-            <p>Здесь вы сможете выбрать друзей для игры.</p>
-            <button class="button" id="inviteFriendButton">Пригласить друга</button>
         </div>
     </div>
 
