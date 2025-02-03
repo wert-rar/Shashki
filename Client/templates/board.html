@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body onload="onLoad()">
-
     <div class="header">
         <div class="timers">
             <div class="timer-container">
@@ -24,45 +23,48 @@
             </div>
         </div>
     </div>
-
     <div class="board-container">
-        <canvas id="board"></canvas>
+        <div id="board-wrapper">
+            <div class="player-info-opponent">
+                <img src="{{ opponent_avatar_url }}" alt="Avatar">
+                <span>{{ opponent_login }} ({{ opponent_rank }})</span>
+                <span class="player-timer" id="opponent-timer">15:00</span>
+            </div>
+            <canvas id="board"></canvas>
+            <div class="player-info-self">
+                <img src="{{ user_avatar_url }}" alt="Avatar">
+                <span>{{ user_login }} ({{ user_rank }})</span>
+                <span class="player-timer" id="self-timer">15:00</span>
+            </div>
+        </div>
     </div>
-
     <audio id="sound-game-found" src="{{ url_for('static', filename='sounds/game_found.mp3') }}" preload="auto"></audio>
     <audio id="sound-move" src="{{ url_for('static', filename='sounds/move.mp3') }}" preload="auto"></audio>
     <audio id="sound-victory" src="{{ url_for('static', filename='sounds/victory.mp3') }}" preload="auto"></audio>
     <audio id="sound-defeat" src="{{ url_for('static', filename='sounds/defeat.mp3') }}" preload="auto"></audio>
-
     <div class="sidebar">
         <h2>Меню</h2>
         <button id="give-up-button" onclick="give_up()">Сдаться</button>
-        <button id="give-draw-button" onclick="give_draw()">Предложить ничью</button>
+        <button id="give-draw-button" onclick="give_draw()">Ничья</button>
     </div>
-
     <div id="history-view-indicator" class="history-indicator" style="display: none;">
         <span>Просмотр истории ходов</span>
         <button onclick="returnToCurrentView()">Вернуться к текущему состоянию</button>
     </div>
-
     <div id="surrender-modal" class="modal">
         <div class="modal-content">
             <h2>Подтверждение сдачи</h2>
             <p>Вы уверены, что хотите сдаться? Это будет считаться поражением.</p>
             <button onclick="confirmSurrender()">Сдаться</button>
-            <button onclick="closeModal('surrender-modal')">Отмена</button>
         </div>
     </div>
-
     <div id="offer-draw-modal" class="modal">
         <div class="modal-content">
             <h2>Предложение ничьей</h2>
             <p>Вы уверены, что хотите предложить ничью?</p>
             <button onclick="confirmOfferDraw()">Предложить</button>
-            <button onclick="closeModal('offer-draw-modal')">Отмена</button>
         </div>
     </div>
-
     <div id="profile-modal" class="modal">
         <div class="modal-content">
             <h2>Профиль игрока</h2>
@@ -75,14 +77,12 @@
             <button onclick="closeModal('profile-modal')">Закрыть</button>
         </div>
     </div>
-
     <div class="moves-sidebar">
         <h2>Ходы игроков</h2>
         <div class="moves-container">
             <ul class="moves-list"></ul>
         </div>
     </div>
-
     <div id="game-over-modal" class="modal">
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
@@ -93,7 +93,6 @@
             </div>
         </div>
     </div>
-
     <div id="draw-offer-modal" class="modal">
         <div class="modal-content">
             <h2>Предложение ничьей</h2>
@@ -102,7 +101,17 @@
             <button onclick="respond_draw('decline')">Отклонить</button>
         </div>
     </div>
-
+    <div id="mobile-bar">
+        <div id="mobile-settings-icon">&#9776;</div>
+        <div id="mobile-settings-text">Настройки</div>
+    </div>
+    <div id="mobile-settings-modal" class="modal">
+        <div class="modal-content">
+            <h2>Настройки</h2>
+            <button class="mobile-btn" onclick="give_up()">Сдаться</button>
+            <button class="mobile-btn" onclick="give_draw()">Ничья</button>
+        </div>
+    </div>
     <script>
         const user_login = "{{ user_login }}";
         const game_id = {{ game_id }};
@@ -111,6 +120,8 @@
         const is_ghost = "{{ is_ghost }}" === "True" || "{{ is_ghost }}" === "true";
         const user_avatar_url = "{{ user_avatar_url }}";
         const opponent_avatar_url = "{{ opponent_avatar_url }}";
+        const user_rank = "{{ user_rank }}";
+        const opponent_rank = "{{ opponent_rank }}";
         console.log(`User: ${user_login}, Game ID: ${game_id}, Color: ${user_color}, Opponent: ${opponent_login}, Is Ghost: ${is_ghost}`);
     </script>
     <script src="/static/script.js"></script>

@@ -96,17 +96,24 @@ def get_board(game_id, user_login):
     user = base.get_user_by_login(user_login)
     if is_ghost:
         user_avatar_url = '/static/avatars/default_avatar.jpg'
+        user_rank = "0"
     else:
-        avatar_filename = user['avatar_filename']
+        avatar_filename = user.get('avatar_filename')
+        user_rank = str(user.get('rang', "0"))
         if avatar_filename:
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
         else:
             user_avatar_url = '/static/avatars/default_avatar.jpg'
     opponent = base.get_user_by_login(opponent_login)
-    if opponent and (not opponent_login.startswith('ghost')) and opponent['avatar_filename']:
-        opponent_avatar_url = url_for('static', filename='avatars/' + opponent['avatar_filename'])
+    if opponent and (not opponent_login.startswith('ghost')):
+        opponent_rank = str(opponent.get('rang', "0"))
+        if opponent.get('avatar_filename'):
+            opponent_avatar_url = url_for('static', filename='avatars/' + opponent['avatar_filename'])
+        else:
+            opponent_avatar_url = '/static/avatars/default_avatar.jpg'
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
+        opponent_rank = "0"
     return render_template(
         'board.html',
         user_login=user_login,
@@ -117,7 +124,9 @@ def get_board(game_id, user_login):
         c_user=game.c_user,
         is_ghost=is_ghost,
         user_avatar_url=user_avatar_url,
-        opponent_avatar_url=opponent_avatar_url
+        opponent_avatar_url=opponent_avatar_url,
+        user_rank=user_rank,
+        opponent_rank=opponent_rank
     )
 
 @app.route("/register", methods=["GET", "POST"])
@@ -912,7 +921,6 @@ def send_friend_request():
         "self_request": ({"error": "Нельзя добавить себя в друзья"}, 400),
     }
 
-    # Получаем сообщение и статус из словаря или возвращаем ошибку по умолчанию
     message, status_code = status_messages.get(status, ({"error": "Не удалось отправить запрос"}, 500))
     return jsonify(message), status_code
 
