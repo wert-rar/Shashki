@@ -1,17 +1,12 @@
 import os
-
 import logging, subprocess, hmac, hashlib, time
 import secrets
-
 from datetime import timedelta, datetime, timezone
-
 from flask import g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
 from flask_wtf.csrf import CSRFProtect
-
-
 from game import (
     get_game_status_internally,
     find_waiting_game_in_db,
@@ -22,24 +17,19 @@ from game import (
     all_games_dict,
     get_db_pieces,
     update_db_pieces,
-    create_new_game_in_db
+    create_new_game_in_db,
+    update_game_status_in_db
 )
 import base
-
 import utils
 import game_engine
 
 logging.basicConfig(level=logging.DEBUG)
-
-
 app = Flask(__name__)
 app.secret_key = 'superpupersecretkey'
 csrf = CSRFProtect(app)
-
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
-
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,
@@ -48,14 +38,8 @@ app.config.update(
 )
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 limiter.init_app(app)
-
-
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'avatars')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-
-
-
 status_ = {
     "w1": "Ход белых",
     "b1": "Ход черных",
@@ -148,6 +132,7 @@ def register():
             flash('Пользователь уже существует', 'error')
             return redirect(url_for('register'))
     return render_template('register.html')
+
 def find_active_game(user_login):
     with all_games_lock:
         for g_id, g_obj in all_games_dict.items():
@@ -288,7 +273,6 @@ def internal_server_error(e):
 @csrf.exempt
 def start_game():
     user_login = utils.ensure_user()
-
     game_id = session.get('game_id')
     if game_id:
         try:
@@ -317,7 +301,6 @@ def start_game():
                 else:
                     session['search_start_time'] = time.time()
                     return render_template('waiting.html', game_id=game_id_int, user_login=user_login)
-
     waiting_game = find_waiting_game_in_db()
     if waiting_game:
         color = 'w' if not waiting_game.f_user else 'b'
@@ -330,7 +313,6 @@ def start_game():
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
-
     game_id_new = create_new_game_in_db(user_login)
     if not game_id_new:
         flash('Не удалось создать игру.', 'error')
@@ -412,7 +394,6 @@ def move():
             "black_countdown": int(game.black_countdown_remaining)
         }
         return jsonify(response_data)
-
     data = request.json
     selected_piece = data.get("selected_piece")
     new_pos = data.get("new_pos")
@@ -443,7 +424,6 @@ def move():
             p,
             game
         )
-
         if result['move_result'] == 'invalid':
             return jsonify({"error": "Invalid move"}), 400
         updated_pieces = result['new_pieces']
@@ -471,7 +451,6 @@ def move():
             game.black_countdown_remaining = 0
         game.last_update_time = time.time()
         game.update_timers()
-
         game.move_history.append(move_record)
         base.add_move(game_id_int, move_record)
         if game.status in ['w3', 'b3', 'n', 'ns1']:
@@ -565,29 +544,22 @@ def give_up_route():
         user_login = data.get("user_login")
         if not game_id or not user_login:
             return jsonify({"error": "Недостаточно данных для сдачи"}), 400
-
         try:
             game_id_int = int(game_id)
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid game ID"}), 400
-
         game = get_or_create_ephemeral_game(game_id_int)
         if not game:
             return jsonify({"error": "Игра не найдена"}), 404
-
         if user_login not in [game.f_user, game.c_user]:
             abort(403)
-
         user_color = 'w' if user_login == game.f_user else 'b'
         if user_color == 'w':
             game.status = 'b3'
         else:
             game.status = 'w3'
-
         result_move, points_gained = game_engine.finalize_game(game, user_login)
-
         updated_pieces = get_db_pieces(game.game_id)
-
         response = {
             "status_": game.status,
             "pieces": updated_pieces,
@@ -708,33 +680,25 @@ def get_possible_moves_route():
     user_login = session.get('user')
     if game_id is None:
         return jsonify({"error": "Game ID is required"}), 400
-
     try:
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-
     game = get_or_create_ephemeral_game(game_id_int)
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
-
     if user_login not in [game.f_user, game.c_user]:
         abort(403)
-
     current_player = game.current_player
     user_color = game.user_color(user_login)
-
     if user_color != current_player:
         return jsonify({"moves": []}), 200
-
     p = get_db_pieces(game_id_int)
     if not selected_piece or 'x' not in selected_piece or 'y' not in selected_piece:
         return jsonify({"error": "Invalid piece coordinates"}), 400
-
     x, y = selected_piece['x'], selected_piece['y']
     color = 0 if current_player == 'w' else 1
     moves = []
-
     if game.must_capture_piece:
         if (x, y) == (game.must_capture_piece['x'], game.must_capture_piece['y']):
             valid_moves = game_engine.get_possible_moves(p, color, must_capture_piece=game.must_capture_piece)
@@ -742,7 +706,6 @@ def get_possible_moves_route():
     else:
         valid_moves = game_engine.get_possible_moves(p, color)
         moves = valid_moves.get((x, y), [])
-
     return jsonify({"moves": moves})
 
 @app.route('/api/profile/<username>', methods=['GET'])
@@ -865,7 +828,12 @@ def upload_avatar():
         logging.warning("Файл не найден в запросе")
         return redirect(url_for('profile', username=user_login))
     file = request.files['avatar']
-    safe_filename, error = utils.process_and_save_avatar(file, user_login, app.config['UPLOAD_FOLDER'], ALLOWED_EXTENSIONS)
+    safe_filename, error = utils.process_and_save_avatar(
+        file,
+        user_login,
+        app.config['UPLOAD_FOLDER'],
+        ALLOWED_EXTENSIONS
+    )
     if error:
         flash(error, 'error')
         return redirect(url_for('profile', username=user_login))
@@ -874,7 +842,6 @@ def upload_avatar():
     flash('Аватар успешно обновлен!', 'success')
     logging.info("Аватар успешно обновлен для пользователя")
     return redirect(url_for('profile', username=user_login))
-
 
 @app.route('/delete_avatar', methods=['POST'])
 @csrf.exempt
@@ -911,7 +878,6 @@ def send_friend_request():
     if not user_row:
         return jsonify({"error": "Пользователь не найден"}), 404
     status = base.send_friend_request_db(sender, friend_username)
-
     status_messages = {
         "sent": ({"message": "Запрос успешно отправлен"}, 200),
         "already_sent": ({"message": "Вы уже отправили запрос этому пользователю"}, 200),
@@ -920,7 +886,6 @@ def send_friend_request():
         "sent_again": ({"message": "Запрос успешно отправлен"}, 200),
         "self_request": ({"error": "Нельзя добавить себя в друзья"}, 400),
     }
-
     message, status_code = status_messages.get(status, ({"error": "Не удалось отправить запрос"}, 500))
     return jsonify(message), status_code
 
@@ -959,8 +924,9 @@ def get_notifications():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     receiver = session.get("user")
-    requests_list = base.get_incoming_friend_requests_db(receiver)
-    return jsonify({"notifications": requests_list}), 200
+    friend_requests = base.get_incoming_friend_requests_db(receiver)
+    game_invitations = base.get_incoming_game_invitations_db(receiver)
+    return jsonify({"friend_requests": friend_requests, "game_invitations": game_invitations}), 200
 
 @app.route("/get_friends", methods=["GET"])
 @csrf.exempt
@@ -992,7 +958,6 @@ def search_users():
     query = request.args.get("query", "").strip()
     if not query:
         return jsonify({"results": []})
-
     current_user = session.get('user')
     results = base.search_users(query, exclude_user=current_user, limit=10)
     return jsonify({"results": results})
@@ -1048,6 +1013,125 @@ def get_top_players_route():
         logging.error(f"Ошибка при обработке топ игроков: {e}")
         return jsonify({"error": "Не удалось получить топ игроков"}), 500
 
+@app.route("/create_room", methods=["POST"])
+@csrf.exempt
+def create_room():
+    user_login = session.get("user")
+    if not user_login:
+        return jsonify({"error": "Not authenticated"}), 403
+    new_game_id = create_new_game_in_db(user_login)
+    if not new_game_id:
+        return jsonify({"error": "Unable to create room"}), 500
+    session["game_id"] = new_game_id
+    session["color"] = "w"
+    return jsonify({"game_id": new_game_id}), 200
+
+@app.route("/invite_friend", methods=["POST"])
+@csrf.exempt
+def invite_friend():
+    user_login = session.get("user")
+    if not user_login:
+        return jsonify({"error": "Not authenticated"}), 403
+    data = request.get_json()
+    friend_username = data.get("friend_username")
+    game_id = data.get("game_id")
+    if not friend_username or not game_id:
+        return jsonify({"error": "Missing friend username or game_id"}), 400
+    status = base.send_game_invite_db(user_login, friend_username, game_id)
+    if status == "self_invite":
+        return jsonify({"error": "Cannot invite yourself"}), 400
+    elif status == "already_sent":
+        return jsonify({"error": "Invitation already sent"}), 400
+    elif status == "reverse_already_sent":
+        return jsonify({"error": "User has already invited you"}), 400
+    elif status == "sent":
+        return jsonify({"message": "Invitation sent"}), 200
+    return jsonify({"error": "Unknown error"}), 500
+
+@app.route("/respond_game_invite", methods=["POST"])
+@csrf.exempt
+def respond_game_invite():
+    data = request.get_json()
+    user_login = session.get("user")
+    if not user_login:
+        return jsonify({"error": "Not authenticated"}), 403
+    from_user = data.get("from_user")
+    game_id = data.get("game_id")
+    response_ = data.get("response")
+    if not from_user or not game_id or not response_:
+        return jsonify({"error": "Missing data"}), 400
+    if response_ not in ["accept", "decline"]:
+        return jsonify({"error": "Invalid response"}), 400
+    updated = base.respond_game_invite_db(from_user, user_login, game_id, response_)
+    if not updated:
+        return jsonify({"error": "Invitation not found"}), 400
+    if response_ == "accept":
+        with all_games_lock:
+            game_obj = all_games_dict.get(int(game_id))
+            if not game_obj:
+                game_obj = get_or_create_ephemeral_game(int(game_id))
+            if game_obj and not game_obj.c_user:
+                game_obj.c_user = user_login
+            session['game_id'] = game_id
+            if game_obj.f_user == user_login:
+                session['color'] = 'w'
+            else:
+                session['color'] = 'b'
+    return jsonify({"message": f"Invitation {response_}ed", "game_id": game_id}), 200
+
+@app.route("/check_room_status", methods=["GET"])
+@csrf.exempt
+def check_room_status():
+    game_id = request.args.get("game_id")
+    if not game_id:
+        return jsonify({"error": "Missing game_id"}), 400
+    game_obj = all_games_dict.get(int(game_id))
+    if not game_obj:
+        game_obj = get_or_create_ephemeral_game(int(game_id))
+    if not game_obj:
+        return jsonify({"error": "Room not found"}), 404
+    db_status = get_game_status_internally(int(game_id))
+    return jsonify({
+        "creator": game_obj.f_user,
+        "joined_user": game_obj.c_user,
+        "game_status": db_status if db_status else game_obj.status
+    }), 200
+
+@app.route("/cancel_room", methods=["POST"])
+@csrf.exempt
+def cancel_room():
+    user_login = session.get("user")
+    data = request.get_json()
+    if not user_login:
+        return jsonify({"error": "Not authenticated"}), 403
+    game_id = data.get("game_id")
+    if not game_id:
+        return jsonify({"error": "Missing game_id"}), 400
+    game_obj = get_or_create_ephemeral_game(int(game_id))
+    if not game_obj or game_obj.f_user != user_login:
+        return jsonify({"error": "Room not found or no permission"}), 400
+    remove_game_in_db(int(game_id))
+    base.remove_game_invite_by_game_id(int(game_id))
+    return jsonify({"message": "Room canceled"}), 200
+
+@app.route("/start_room_game", methods=["POST"])
+@csrf.exempt
+def start_room_game():
+    data = request.get_json()
+    game_id = data.get("game_id")
+    if not game_id:
+        return jsonify({"error": "Missing game_id"}), 400
+    game_obj = get_or_create_ephemeral_game(int(game_id))
+    if not game_obj:
+        return jsonify({"error": "Game not found"}), 404
+    if not (game_obj.f_user and game_obj.c_user):
+        return jsonify({"error": "Not enough players"}), 400
+    update_game_status_in_db(game_obj.game_id, "current")
+    game_obj.status = "w1"
+    if session.get("user") == game_obj.f_user:
+        session["game_id"] = game_id
+        session["color"] = "w"
+    return jsonify({"game_id": game_obj.game_id}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)

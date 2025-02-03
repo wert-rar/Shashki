@@ -1,22 +1,16 @@
 from datetime import datetime
-
-from sqlalchemy import select, update, and_, or_, union_all
+from sqlalchemy import select, update, and_, or_, union_all, func, create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import func
-from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 import logging
-
 import utils
-from Client.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove
+from Client.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove, Game
 
 DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
 #DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 def connect(method):
     """
@@ -29,7 +23,6 @@ def connect(method):
             Returns:
             wrapper (callable): The decorated function. This function will handle the database session management.
         """
-
     def wrapper(*args, **kwargs):
         with SessionLocal() as session:
             try:
@@ -39,9 +32,7 @@ def connect(method):
                 raise Exception(f'Ошибка при работе с базой данных: {repr(e)} args:\n{args} kwargs:\n{kwargs}')
             finally:
                 session.close()
-
     return wrapper
-
 
 def init_db():
     Base.metadata.create_all(bind=engine)
@@ -51,7 +42,6 @@ def init_db():
 @connect
 def check_user_exists(user_login, session: Session | None = None):
     return session.scalar(select(Player).where(Player.login == user_login)) is not None
-
 
 @connect
 def register_user(user_login, user_password, session: Session | None = None):
@@ -66,7 +56,6 @@ def register_user(user_login, user_password, session: Session | None = None):
 
 @connect
 def authenticate_user(user_login, user_password, session: Session | None = None):
-
     row = session.scalar(select(Player).where(Player.login == user_login))
     if row:
         stored_password = row.password
@@ -85,16 +74,11 @@ def get_user_by_login(user_login, session: Session | None = None) -> dict:
     user = session.scalar(select(Player).where(Player.login == user_login))
     return user.to_dict() if user else None
 
-
 @connect
 def update_user_rang(user_login, points, session: Session | None = None):
     try:
         with session.begin():
-            session.execute(
-                update(Player)
-                .where(Player.login == user_login)
-                .values(rang=func.coalesce(Player.rang, 0) + points)
-            )
+            session.execute(update(Player).where(Player.login == user_login).values(rang=func.coalesce(Player.rang, 0) + points))
     except Exception as e:
         logging.error(f"Ошибка обновления ранга: {e}")
 
@@ -102,8 +86,7 @@ def update_user_rang(user_login, points, session: Session | None = None):
 def update_user_stats(user_login, wins=0, losses=0, draws=0, session: Session | None = None):
     try:
         with session.begin():
-            session.execute(update(Player).where(Player.login == user_login)
-                            .values(wins=Player.wins + wins, losses=Player.losses + losses, draws=Player.draws + draws))
+            session.execute(update(Player).where(Player.login == user_login).values(wins=Player.wins + wins, losses=Player.losses + losses, draws=Player.draws + draws))
     except Exception as e:
         logging.error(f"Ошибка обновления статистики: {e}")
 
@@ -111,26 +94,19 @@ def update_user_stats(user_login, wins=0, losses=0, draws=0, session: Session | 
 def add_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result, session: Session | None = None):
     try:
         with session.begin():
-            session.add(CompletedGames(user_login=user_login, game_id=game_id, date_start=date_start,
-                                       rating_before=rating_before, rating_after=rating_after, rating_change=rating_change,
-                                       result=result))
+            session.add(CompletedGames(user_login=user_login, game_id=game_id, date_start=date_start, rating_before=rating_before, rating_after=rating_after, rating_change=rating_change, result=result))
     except Exception as e:
         logging.error(f"Ошибка при добавлении завершенной игры: {e}")
 
 @connect
 def get_user_history(user_login, session: Session | None = None):
-    games = session.scalars(
-        select(CompletedGames)
-        .where(CompletedGames.user_login == user_login)
-        .order_by(CompletedGames.ID.asc())
-    ).all()
+    games = session.scalars(select(CompletedGames).where(CompletedGames.user_login == user_login).order_by(CompletedGames.ID.asc())).all()
     return [game.to_dict() for game in games]
 
 @connect
 def update_user_avatar(user_login, filename, session: Session | None = None):
     session.execute(update(Player).where(Player.login == user_login).values(avatar_filename=filename))
     session.commit()
-
 
 @connect
 def add_remember_token(user_login, token, expires_at, session: Session | None = None):
@@ -144,7 +120,6 @@ def add_remember_token(user_login, token, expires_at, session: Session | None = 
 
 @connect
 def get_user_by_remember_token(token, session: Session | None = None):
-
     row = session.scalar(select(RememberToken).where(RememberToken.token == token))
     if row:
         expires_at = datetime.fromisoformat(row.expires_at)
@@ -180,21 +155,12 @@ def delete_all_remember_tokens(user_login, session: Session | None = None):
 def search_users(query: str, exclude_user: str = None, limit: int = 10, session: Session | None = None):
     if not query:
         return []
-
     try:
-
         like_query = f"{query}%"
         if exclude_user:
-            stmt = select(Player.login).where(
-                and_(
-                    Player.login.like(like_query),
-                    Player.login != exclude_user
-                )
-            ).limit(limit)
+            stmt = select(Player.login).where(and_(Player.login.like(like_query), Player.login != exclude_user)).limit(limit)
         else:
-            stmt = select(Player.login).where(
-                Player.login.like(like_query)
-            ).limit(limit)
+            stmt = select(Player.login).where(Player.login.like(like_query)).limit(limit)
         rows = session.scalars(stmt)
         return [row for row in rows]
     except Exception as e:
@@ -204,45 +170,57 @@ def search_users(query: str, exclude_user: str = None, limit: int = 10, session:
 @connect
 def get_top_players(limit: int = 3, session: Session | None = None):
     try:
-        players = session.scalars(
-            select(Player)
-            .order_by(Player.rang.desc())
-            .limit(limit)
-        ).all()
-
+        players = session.scalars(select(Player).order_by(Player.rang.desc()).limit(limit)).all()
         return [player.to_dict() for player in players]
     except Exception as e:
         logging.error(f"Ошибка при получении топ игроков: {e}")
         return []
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
-
 @connect
-def send_game_invite_db(sender: str, receiver: str, session: Session | None = None) -> str:
-
+def send_game_invite_db(sender: str, receiver: str, game_id: int, session: Session | None = None) -> str:
     if sender == receiver:
         return "self_invite"
-
-    existing = session.query(GameInvitation).filter_by(from_user=sender, to_user=receiver, status="pending").first()
-    if existing:
+    existing = session.query(GameInvitation).filter_by(from_user=sender, to_user=receiver, game_id=game_id).first()
+    if existing and existing.status == "pending":
         return "already_sent"
-
-    reverse_existing = session.query(GameInvitation).filter_by(from_user=receiver, to_user=sender, status="pending").first()
-    if reverse_existing:
+    reverse_existing = session.query(GameInvitation).filter_by(from_user=receiver, to_user=sender, game_id=game_id).first()
+    if reverse_existing and reverse_existing.status == "pending":
         return "reverse_already_sent"
-
-    new_invite = GameInvitation(from_user=sender, to_user=receiver, status="pending")
+    new_invite = GameInvitation(from_user=sender, to_user=receiver, status="pending", game_id=game_id)
     session.add(new_invite)
     session.commit()
     return "sent"
 
 @connect
+def respond_game_invite_db(from_user: str, to_user: str, game_id: int, response: str, session: Session | None = None) -> bool:
+    invite = session.query(GameInvitation).filter_by(from_user=from_user, to_user=to_user, game_id=game_id, status="pending").first()
+    if not invite:
+        return False
+    if response == "accept":
+        invite.status = "accepted"
+    else:
+        invite.status = "declined"
+    session.commit()
+    if invite.status == "accepted":
+        db_game = session.query(Game).filter_by(game_id=game_id).first()
+        if db_game and db_game.c_user is None:
+            db_game.c_user = to_user
+            session.commit()
+    return True
+
+@connect
+def remove_game_invite_by_game_id(game_id: int, session: Session | None = None):
+    invites = session.query(GameInvitation).filter_by(game_id=game_id).all()
+    for inv in invites:
+        session.delete(inv)
+    session.commit()
+
+@connect
 def send_friend_request_db(sender: str, receiver: str, session: Session | None = None) -> str:
     if sender == receiver:
         return "self_request"
-
     try:
         with session.begin():
             existing = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver).first()
@@ -256,7 +234,6 @@ def send_friend_request_db(sender: str, receiver: str, session: Session | None =
                     return "sent_again"
                 else:
                     return "error"
-
             reverse_existing = session.query(FriendRelation).filter_by(user_login=receiver, friend_login=sender).first()
             if reverse_existing:
                 if reverse_existing.status == "pending":
@@ -268,7 +245,6 @@ def send_friend_request_db(sender: str, receiver: str, session: Session | None =
                     return "sent_again"
                 else:
                     return "error"
-
             new_request = FriendRelation(user_login=sender, friend_login=receiver, status="pending")
             session.add(new_request)
         return "sent"
@@ -278,43 +254,27 @@ def send_friend_request_db(sender: str, receiver: str, session: Session | None =
 
 @connect
 def get_incoming_friend_requests_db(user: str, session: Session | None = None) -> list:
-        records = (
-            session.query(FriendRelation)
-            .filter_by(friend_login=user, status="pending")
-            .all()
-        )
-        return [r.user_login for r in records]
+    records = session.query(FriendRelation).filter_by(friend_login=user, status="pending").all()
+    return [r.user_login for r in records]
 
 @connect
 def respond_friend_request_db(sender: str, receiver: str, response: str, session: Session | None = None) -> bool:
-        record = (
-            session.query(FriendRelation)
-            .filter_by(user_login=sender, friend_login=receiver, status="pending")
-            .first()
-        )
-        if not record:
-            return False
-
-        if response == "accept":
-            record.status = "accepted"
-        elif response == "decline":
-            record.status = "declined"
-        else:
-            return False
-
-        session.commit()
-        return True
+    record = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver, status="pending").first()
+    if not record:
+        return False
+    if response == "accept":
+        record.status = "accepted"
+    elif response == "decline":
+        record.status = "declined"
+    else:
+        return False
+    session.commit()
+    return True
 
 @connect
 def get_friends_db(user: str, session: Session | None = None) -> list:
-    sent_query = select(FriendRelation.friend_login).where(
-        FriendRelation.user_login == user,
-        FriendRelation.status == "accepted"
-    )
-    received_query = select(FriendRelation.user_login).where(
-        FriendRelation.friend_login == user,
-        FriendRelation.status == "accepted"
-    )
+    sent_query = select(FriendRelation.friend_login).where(FriendRelation.user_login == user, FriendRelation.status == "accepted")
+    received_query = select(FriendRelation.user_login).where(FriendRelation.friend_login == user, FriendRelation.status == "accepted")
     union_query = union_all(sent_query, received_query)
     friends = session.scalars(union_query).all()
     return list(set(friends))
@@ -323,12 +283,7 @@ def get_friends_db(user: str, session: Session | None = None) -> list:
 def remove_friend_db(user: str, friend_username: str, session: Session | None = None) -> bool:
     try:
         with session.begin():
-            relations = session.query(FriendRelation).filter(
-                or_(
-                    and_((FriendRelation.user_login == user), (FriendRelation.friend_login == friend_username)),
-                    and_((FriendRelation.user_login == friend_username), (FriendRelation.friend_login == user))
-                )
-            ).all()
+            relations = session.query(FriendRelation).filter(or_(and_((FriendRelation.user_login == user), (FriendRelation.friend_login == friend_username)), and_((FriendRelation.user_login == friend_username), (FriendRelation.friend_login == user)))).all()
             if not relations:
                 return False
             for rel in relations:
@@ -340,17 +295,7 @@ def remove_friend_db(user: str, friend_username: str, session: Session | None = 
 
 @connect
 def add_move(game_id: int, move_record: dict, session: Session | None = None):
-
-    session.add(GameMove(
-        game_id=game_id,
-        player=move_record['player'],
-        from_x=move_record['from']['x'],
-        from_y=move_record['from']['y'],
-        to_x=move_record['to']['x'],
-        to_y=move_record['to']['y'],
-        captured_piece=move_record['captured'],
-        promotion=move_record['promotion']
-    ))
+    session.add(GameMove(game_id=game_id, player=move_record['player'], from_x=move_record['from']['x'], from_y=move_record['from']['y'], to_x=move_record['to']['x'], to_y=move_record['to']['y'], captured_piece=move_record['captured'], promotion=move_record['promotion']))
     session.commit()
 
 @connect
@@ -358,16 +303,13 @@ def get_game_moves_from_db(game_id, session: Session | None = None):
     moves = session.query(GameMove).filter_by(game_id=game_id).order_by(GameMove.move_id).all()
     move_list = []
     for m in moves:
-        move_list.append({
-            "player": m.player,
-            "from": {"x": m.from_x, "y": m.from_y},
-            "to": {"x": m.to_x, "y": m.to_y},
-            "captured": m.captured_piece,
-            "promotion": m.promotion
-        })
+        move_list.append({"player": m.player, "from": {"x": m.from_x, "y": m.from_y}, "to": {"x": m.to_x, "y": m.to_y}, "captured": m.captured_piece, "promotion": m.promotion})
     return move_list
 
-
-
-if __name__ == "__main__":
-    init_db()
+@connect
+def get_incoming_game_invitations_db(user: str, session: Session | None = None) -> list:
+    records = session.query(GameInvitation).filter_by(to_user=user, status="pending").all()
+    invites = []
+    for r in records:
+        invites.append({"from_user": r.from_user, "game_id": r.game_id})
+    return invites

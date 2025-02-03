@@ -37,7 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let endX = 0;
     let currentIndex = 0;
     let game_id = null;
-
+    let currentRoomId = null;
+    let pollInterval = null;
     if (closeNotificationModal) {
         closeNotificationModal.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -46,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
             bellMobile.classList.remove('active');
         });
     }
-
     if (closeFriendsModal) {
         closeFriendsModal.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
             friendsMobile.classList.remove('active');
         });
     }
-
     if (removeFriendModal) {
         removeFriendModal.addEventListener('click', (e) => {
             if (e.target === removeFriendModal) {
@@ -63,67 +62,157 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    function fetchNotifications() {
+    function fetchNotifications(openedManually) {
         fetch('/get_notifications')
             .then(response => response.json())
             .then(data => {
-                if (data.notifications && data.notifications.length > 0) {
+                let friendRequests = data.friend_requests || [];
+                let gameInvitations = data.game_invitations || [];
+                let totalNotifications = friendRequests.length + gameInvitations.length;
+                updateNotificationCount(totalNotifications);
+                if (openedManually) {
                     notificationList.innerHTML = "";
-                    data.notifications.forEach(sender => {
-                        const notifItem = document.createElement("div");
-                        notifItem.classList.add("notification-item");
-                        notifItem.style.padding = "10px";
-                        notifItem.style.borderBottom = "1px solid #444";
-                        const notifText = document.createElement("p");
-                        notifText.textContent = `Запрос в друзья от ${sender}`;
-                        notifItem.appendChild(notifText);
-                        const btnContainer = document.createElement("div");
-                        btnContainer.style.marginTop = "5px";
-                        btnContainer.style.display = "flex";
-                        btnContainer.style.gap = "10px";
-                        const acceptBtn = document.createElement("button");
-                        acceptBtn.textContent = "Принять";
-                        acceptBtn.style.flex = "1";
-                        acceptBtn.style.padding = "5px";
-                        acceptBtn.style.background = "#28a745";
-                        acceptBtn.style.border = "none";
-                        acceptBtn.style.borderRadius = "5px";
-                        acceptBtn.style.cursor = "pointer";
-                        acceptBtn.style.color = "#fff";
-                        acceptBtn.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                            respondFriendRequest(sender, "accept", notifItem);
+                    if (totalNotifications > 0) {
+                        friendRequests.forEach(sender => {
+                            const notifItem = document.createElement("div");
+                            notifItem.classList.add("notification-item");
+                            notifItem.style.padding = "10px";
+                            notifItem.style.borderBottom = "1px solid #444";
+                            const notifText = document.createElement("p");
+                            notifText.textContent = `Запрос в друзья от ${sender}`;
+                            notifItem.appendChild(notifText);
+                            const btnContainer = document.createElement("div");
+                            btnContainer.style.marginTop = "5px";
+                            btnContainer.style.display = "flex";
+                            btnContainer.style.gap = "10px";
+                            const acceptBtn = document.createElement("button");
+                            acceptBtn.textContent = "Принять";
+                            acceptBtn.style.flex = "1";
+                            acceptBtn.style.padding = "5px";
+                            acceptBtn.style.background = "#28a745";
+                            acceptBtn.style.border = "none";
+                            acceptBtn.style.borderRadius = "5px";
+                            acceptBtn.style.cursor = "pointer";
+                            acceptBtn.style.color = "#fff";
+                            acceptBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                respondFriendRequest(sender, "accept", notifItem);
+                            });
+                            const declineBtn = document.createElement("button");
+                            declineBtn.textContent = "Отклонить";
+                            declineBtn.style.flex = "1";
+                            declineBtn.style.padding = "5px";
+                            declineBtn.style.background = "#dc3545";
+                            declineBtn.style.border = "none";
+                            declineBtn.style.borderRadius = "5px";
+                            declineBtn.style.cursor = "pointer";
+                            declineBtn.style.color = "#fff";
+                            declineBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                respondFriendRequest(sender, "decline", notifItem);
+                            });
+                            btnContainer.appendChild(acceptBtn);
+                            btnContainer.appendChild(declineBtn);
+                            notifItem.appendChild(btnContainer);
+                            notificationList.appendChild(notifItem);
                         });
-                        const declineBtn = document.createElement("button");
-                        declineBtn.textContent = "Отклонить";
-                        declineBtn.style.flex = "1";
-                        declineBtn.style.padding = "5px";
-                        declineBtn.style.background = "#dc3545";
-                        declineBtn.style.border = "none";
-                        declineBtn.style.borderRadius = "5px";
-                        declineBtn.style.cursor = "pointer";
-                        declineBtn.style.color = "#fff";
-                        declineBtn.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                            respondFriendRequest(sender, "decline", notifItem);
+                        gameInvitations.forEach(inv => {
+                            const notifItem = document.createElement("div");
+                            notifItem.classList.add("notification-item");
+                            notifItem.style.padding = "10px";
+                            notifItem.style.borderBottom = "1px solid #444";
+                            const notifText = document.createElement("p");
+                            notifText.textContent = `Приглашение в игру от ${inv.from_user}, ID: ${inv.game_id}`;
+                            notifItem.appendChild(notifText);
+                            const btnContainer = document.createElement("div");
+                            btnContainer.style.marginTop = "5px";
+                            btnContainer.style.display = "flex";
+                            btnContainer.style.gap = "10px";
+                            const acceptBtn = document.createElement("button");
+                            acceptBtn.textContent = "Принять";
+                            acceptBtn.style.flex = "1";
+                            acceptBtn.style.padding = "5px";
+                            acceptBtn.style.background = "#28a745";
+                            acceptBtn.style.border = "none";
+                            acceptBtn.style.borderRadius = "5px";
+                            acceptBtn.style.cursor = "pointer";
+                            acceptBtn.style.color = "#fff";
+                            acceptBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                respondGameInvite(inv.from_user, inv.game_id, "accept", notifItem);
+                            });
+                            const declineBtn = document.createElement("button");
+                            declineBtn.textContent = "Отклонить";
+                            declineBtn.style.flex = "1";
+                            declineBtn.style.padding = "5px";
+                            declineBtn.style.background = "#dc3545";
+                            declineBtn.style.border = "none";
+                            declineBtn.style.borderRadius = "5px";
+                            declineBtn.style.cursor = "pointer";
+                            declineBtn.style.color = "#fff";
+                            declineBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                respondGameInvite(inv.from_user, inv.game_id, "decline", notifItem);
+                            });
+                            btnContainer.appendChild(acceptBtn);
+                            btnContainer.appendChild(declineBtn);
+                            notifItem.appendChild(btnContainer);
+                            notificationList.appendChild(notifItem);
                         });
-                        btnContainer.appendChild(acceptBtn);
-                        btnContainer.appendChild(declineBtn);
-                        notifItem.appendChild(btnContainer);
-                        notificationList.appendChild(notifItem);
-                    });
-                    updateNotificationCount(data.notifications.length);
-                } else {
-                    notificationList.innerHTML = "<p>Новых уведомлений нет</p>";
-                    updateNotificationCount(0);
+                    } else {
+                        notificationList.innerHTML = "<p>Новых уведомлений нет</p>";
+                    }
                 }
             })
-            .catch(err => {
-                console.error("Ошибка при получении уведомлений:", err);
-            });
+            .catch(() => {});
+    }
+    function respondGameInvite(fromUser, gameId, responseType, notifElement) {
+        fetch('/respond_game_invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_user: fromUser,
+                game_id: gameId,
+                response: responseType
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+                notifElement.remove();
+
+                notificationModal.classList.remove('active');
+                bellDesktop.classList.remove('active');
+                bellMobile.classList.remove('active');
+
+                if (responseType === "accept" && data.game_id) {
+                    window.currentRoomId = data.game_id;
+                    joinRoom(window.currentRoomId, false);
+                }
+            }
+        })
+        .catch(() => {
+            createNotification("Ошибка при ответе на приглашение", "error");
+        });
     }
 
+    function joinRoom(gameId) {
+        currentRoomId = gameId;
+        createRoomModal.style.display = "flex";
+        overlay.classList.add("active");
+        loadFriendsToInvite();
+        startPollingRoomStatus();
+        const slots = document.querySelectorAll('.room-slots .slot');
+        if (slots[0]) {
+            slots[0].innerHTML = `<p>Ожидание...</p>`;
+        }
+        if (slots[1]) {
+            slots[1].innerHTML = `<p>Ожидание...</p>`;
+        }
+    }
     function fetchFriends() {
         fetch('/get_friends')
             .then(response => response.json())
@@ -174,12 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     friendsList.innerHTML = "<p>У вас пока нет друзей</p>";
                 }
             })
-            .catch(err => {
-                console.error("Ошибка при получении друзей:", err);
+            .catch(() => {
                 friendsList.innerHTML = "<p>Не удалось загрузить список друзей.</p>";
             });
     }
-
     document.addEventListener('click', (event) => {
         const isMenu = event.target.closest('.friend-actions-menu');
         const isMenuButton = event.target.closest('.friend-actions-menu-button');
@@ -189,7 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
-
     function removeFriend(friendUsername) {
         fetch('/remove_friend', {
             method: 'POST',
@@ -205,12 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchFriends();
             }
         })
-        .catch(error => {
+        .catch(() => {
             createNotification("Ошибка при удалении друга", "error");
-            console.error(error);
         });
     }
-
     confirmRemoveFriendButton.addEventListener('click', () => {
         if (friendToRemove) {
             removeFriend(friendToRemove);
@@ -218,12 +302,10 @@ document.addEventListener('DOMContentLoaded', () => {
         friendToRemove = null;
         removeFriendModal.style.display = 'none';
     });
-
     cancelRemoveFriendButton.addEventListener('click', () => {
         removeFriendModal.style.display = 'none';
         friendToRemove = null;
     });
-
     function updateNotificationCount(count) {
         if (bellDesktopCount && bellMobileCount) {
             if (count > 0) {
@@ -237,7 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
     function respondFriendRequest(sender, responseType, notifElement) {
         fetch('/respond_friend_request', {
             method: 'POST',
@@ -253,14 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 createNotification(`Вы отклонили запрос от ${sender}`, "error");
             }
             notifElement.remove();
-            checkFriendRequests();
         })
-        .catch(error => {
+        .catch(() => {
             createNotification("Ошибка при отправке ответа", "error");
-            console.error(error);
         });
     }
-
     function createNotification(message, type) {
         let container = document.getElementById("notification-container");
         if (!container) {
@@ -292,29 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }, 2000);
     }
-
-    function checkFriendRequests() {
-        fetch('/get_friend_requests')
-            .then(response => response.json())
-            .then(data => {
-                if (bellDesktopCount && bellMobileCount) {
-                    if (data.requests && data.requests.length > 0) {
-                        bellDesktopCount.textContent = data.requests.length;
-                        bellMobileCount.textContent = data.requests.length;
-                        bellDesktopCount.style.display = 'block';
-                        bellMobileCount.style.display = 'block';
-                    } else {
-                        bellDesktopCount.style.display = 'none';
-                        bellMobileCount.style.display = 'none';
-                    }
-                }
-            })
-            .catch(error => console.error('Ошибка при получении запросов в друзья:', error));
-    }
-
-    checkFriendRequests();
-    setInterval(checkFriendRequests, 5000);
-
     function toggleNotifications(event) {
         event.stopPropagation();
         if (notificationModal.classList.contains('active')) {
@@ -330,11 +385,9 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationModal.classList.add('active');
             bellDesktop.classList.add('active');
             bellMobile.classList.add('active');
-            fetchNotifications();
-            updateNotificationCount(0);
+            fetchNotifications(true);
         }
     }
-
     function toggleFriends(event) {
         event.stopPropagation();
         if (friendsModal.classList.contains('active')) {
@@ -353,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchFriends();
         }
     }
-
     if (bellDesktop) {
         bellDesktop.addEventListener('click', toggleNotifications);
         bellDesktop.addEventListener('touchend', (e) => {
@@ -361,7 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleNotifications(e);
         });
     }
-
     if (bellMobile) {
         bellMobile.addEventListener('click', toggleNotifications);
         bellMobile.addEventListener('touchend', (e) => {
@@ -369,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleNotifications(e);
         });
     }
-
     if (friendsDesktop) {
         friendsDesktop.addEventListener('click', toggleFriends);
         friendsDesktop.addEventListener('touchend', (e) => {
@@ -377,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleFriends(e);
         });
     }
-
     if (friendsMobile) {
         friendsMobile.addEventListener('click', toggleFriends);
         friendsMobile.addEventListener('touchend', (e) => {
@@ -385,38 +434,30 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleFriends(e);
         });
     }
-
     multiplayerBtn.addEventListener('click', () => {
         multiplayerSelectionModal.style.display = "flex";
         overlay.classList.add("active");
     });
-
-    friendButton.addEventListener('click', () => {
-        multiplayerSelectionModal.style.display = "none";
-        overlay.classList.remove("active");
-        createRoomModal.style.display = "flex";
-        overlay.classList.add("active");
-        loadFriendsToInvite();
-    });
-
     randomPlayerButton.addEventListener('click', () => {
         multiplayerSelectionModal.style.display = "none";
         overlay.classList.remove("active");
         startMultiplayerGame();
     });
-
+    friendButton.addEventListener('click', () => {
+        multiplayerSelectionModal.style.display = "none";
+        overlay.classList.remove("active");
+        createRoom();
+    });
     multiplayerSelectionModal.addEventListener('click', (event) => {
         if (event.target === multiplayerSelectionModal) {
             multiplayerSelectionModal.style.display = "none";
             overlay.classList.remove("active");
         }
     });
-
     singleplayerBtn.onclick = function() {
         selectionModal.style.display = "flex";
         overlay.classList.add("active");
     };
-
     selectionModal.addEventListener('click', (event) => {
         if (event.target === selectionModal) {
             selectionModal.style.display = "none";
@@ -424,11 +465,9 @@ document.addEventListener('DOMContentLoaded', () => {
             resetSelections();
         }
     });
-
     if (!sidebar.classList.contains("active")) {
         sidebar.style.transform = 'translateX(300px)';
     }
-
     window.onclick = function(event) {
         if (!event.target.closest('#notificationModal') && !event.target.closest('#bellDesktop') && !event.target.closest('#bellMobile')) {
             notificationModal.classList.remove('active');
@@ -453,11 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.classList.remove("active");
         }
         if (!event.target.closest('#createRoomModal') && !event.target.closest('#friendButton')) {
+            if (createRoomModal.style.display === "flex") {
+                cancelRoom();
+            }
             createRoomModal.style.display = "none";
             overlay.classList.remove("active");
         }
     };
-
     function resetSelections() {
         selections.difficulty = null;
         selections.color = null;
@@ -469,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playButton.classList.remove('active');
         playButton.disabled = true;
     }
-
     const isSmallScreen = window.innerWidth <= 530;
     if (!isSmallScreen) {
         document.querySelectorAll('.card[data-type="difficulty"]').forEach(function(card) {
@@ -545,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, false);
         updateSwipe();
     }
-
     document.querySelectorAll('.card[data-type="color"]').forEach(function(card) {
         card.addEventListener('click', function() {
             let type = this.getAttribute('data-type');
@@ -571,11 +610,168 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-
+    function createRoom() {
+        fetch('/create_room', {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.game_id) {
+                currentRoomId = data.game_id;
+                createRoomModal.style.display = "flex";
+                overlay.classList.add("active");
+                loadFriendsToInvite();
+                startPollingRoomStatus();
+                const slots = document.querySelectorAll('.room-slots .slot');
+                if (slots[0]) {
+                    slots[0].innerHTML = `<p>${user_login}</p>`;
+                }
+                game_id = currentRoomId;
+            } else {
+                createNotification(data.error || "Error creating room", "error");
+            }
+        })
+        .catch(() => {});
+    }
+    function loadFriendsToInvite() {
+        fetch('/get_friends')
+            .then(response => response.json())
+            .then(data => {
+                friendsToInvite.innerHTML = '';
+                if (data.friends && data.friends.length > 0) {
+                    data.friends.forEach(friend => {
+                        const friendInvite = document.createElement('div');
+                        friendInvite.classList.add('friend-invite');
+                        const friendName = document.createElement('span');
+                        friendName.textContent = friend;
+                        const inviteBtn = document.createElement('button');
+                        inviteBtn.textContent = 'Пригласить';
+                        inviteBtn.addEventListener('click', () => {
+                            inviteFriend(friend);
+                        });
+                        friendInvite.appendChild(friendName);
+                        friendInvite.appendChild(inviteBtn);
+                        friendsToInvite.appendChild(friendInvite);
+                    });
+                } else {
+                    friendsToInvite.innerHTML = "<p>У вас пока нет друзей для приглашения.</p>";
+                }
+            })
+            .catch(() => {
+                friendsToInvite.innerHTML = "<p>Не удалось загрузить список друзей.</p>";
+            });
+    }
+    function inviteFriend(friendUsername) {
+        if (!currentRoomId) return;
+        fetch('/invite_friend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_username: friendUsername, game_id: currentRoomId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+            }
+        })
+        .catch(() => {});
+    }
+    function startPollingRoomStatus() {
+        if (pollInterval) return;
+        pollInterval = setInterval(() => {
+            if (!currentRoomId) return;
+            fetch(`/check_room_status?game_id=${currentRoomId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) return;
+                const slots = document.querySelectorAll('.room-slots .slot');
+                if (slots[0] && data.creator) {
+                    slots[0].innerHTML = `<p>${data.creator}</p>`;
+                }
+                if (slots[1] && data.joined_user) {
+                    slots[1].innerHTML = `<p>${data.joined_user}</p>`;
+                }
+                if (data.game_status === 'current' || data.game_status === 'active') {
+                    window.location.href = `/board/${currentRoomId}/${user_login}`;
+                }
+            })
+            .catch(() => {});
+        }, 3000);
+    }
+    function stopPollingRoomStatus() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+    function cancelRoom() {
+        if (!currentRoomId) return;
+        fetch('/cancel_room', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_id: currentRoomId })
+        })
+        .then(() => {
+            currentRoomId = null;
+        })
+        .catch(() => {});
+        stopPollingRoomStatus();
+    }
+    function startGameInRoom() {
+        if (!game_id) {
+            createNotification("Комната не найдена", "error");
+            return;
+        }
+        fetch('/start_room_game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game_id: game_id })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification("Игра запущена!", "success");
+            }
+        })
+        .catch(() => {});
+    }
+    if (backToMultiplayerSelection) {
+        backToMultiplayerSelection.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createRoomModal.style.display = "none";
+            overlay.classList.remove("active");
+            multiplayerSelectionModal.style.display = "flex";
+            overlay.classList.add("active");
+            cancelRoom();
+        });
+    }
+    if (createRoomModal) {
+        createRoomModal.addEventListener('click', (e) => {
+            if (e.target === createRoomModal) {
+                createRoomModal.style.display = "none";
+                overlay.classList.remove("active");
+                cancelRoom();
+            }
+        });
+    }
+    if (startGameButton) {
+        startGameButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            const slots = createRoomModal.querySelectorAll('.room-slots .slot');
+            if (slots[1] && slots[1].textContent.trim() !== 'Друг') {
+                startGameInRoom();
+            } else {
+                createNotification("Нужен второй игрок для начала игры", "error");
+            }
+        });
+    }
     window.startMultiplayerGame = function() {
         window.location.href = '/start_game';
     };
-
     window.returnToGame = function() {
         if (game_id && user_login) {
             window.location.href = `/board/${game_id}/${user_login}`;
@@ -583,28 +779,24 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Активная игра не найдена.");
         }
     };
-
     window.showLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'flex';
         overlay.classList.add("active");
     };
-
     window.hideLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'none';
         overlay.classList.remove("active");
     };
-
     window.hideGameOverModal = function() {
         document.getElementById('game-over-modal').style.display = 'none';
         overlay.classList.remove("active");
     };
-
     window.leaveGame = function() {
         if (game_id && user_login) {
             fetch('/give_up', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ game_id: game_id, user_login: user_login })
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game_id: game_id, user_login: user_login })
             })
             .then(response => response.json())
             .then(data => {
@@ -616,14 +808,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     displayGameOverMessage(data);
                 }
             })
-            .catch(error => {
+            .catch(() => {
                 alert('Произошла ошибка при покидании игры.');
             });
         } else {
             alert("Активная игра не найдена.");
         }
     };
-
     function displayGameOverMessage(data) {
         const modal = document.getElementById("game-over-modal");
         const message = document.getElementById("game-over-message");
@@ -641,7 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = "flex";
         overlay.classList.add("active");
     }
-
     const gameOverModal = document.getElementById('game-over-modal');
     if (gameOverModal) {
         gameOverModal.addEventListener('click', function(e) {
@@ -656,7 +846,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-
     function checkForActiveGame() {
         fetch('/check_game_status')
             .then(response => {
@@ -676,11 +865,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('return-to-game').style.display = 'none';
                 }
             })
-            .catch(error => {
+            .catch(() => {
                 document.getElementById('return-to-game').style.display = 'none';
             });
     }
-
     function openSidebar() {
         sidebar.classList.add("active");
         sidebar.style.transition = 'transform 0.3s ease-out';
@@ -696,7 +884,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
     function closeSidebar() {
         sidebar.style.transition = 'transform 0.5s ease-out';
         sidebar.style.transform = 'translateX(300px)';
@@ -715,7 +902,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.removeEventListener('transitionend', handler);
         });
     }
-
     overlay.addEventListener("click", () => {
         closeSidebar();
         notificationModal.classList.remove('active');
@@ -724,7 +910,6 @@ document.addEventListener('DOMContentLoaded', () => {
         createRoomModal.style.display = "none";
         overlay.classList.remove("active");
     });
-
     hamburger.addEventListener("click", (event) => {
         event.stopPropagation();
         if (sidebar.classList.contains("active")) {
@@ -733,7 +918,6 @@ document.addEventListener('DOMContentLoaded', () => {
             openSidebar();
         }
     });
-
     if (window.innerWidth <= 1280) {
         sidebar.style.transform = 'translateX(300px)';
         let touchStartX = null;
@@ -764,18 +948,20 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTranslateX = 0;
         }, false);
     }
-
     function handlePageShow(event) {
         if (event.persisted) {
             checkForActiveGame();
         }
     }
-
+    function pollAll() {
+        checkForActiveGame();
+        fetchNotifications(false);
+    }
     checkForActiveGame();
-    setInterval(checkForActiveGame, 5000);
+    fetchNotifications(false);
+    setInterval(pollAll, 5000);
     createSnowflakes();
     window.addEventListener('pageshow', handlePageShow);
-
     function createSnowflakes() {
         const snowContainer = document.getElementById('snow-container');
         const snowflakeCount = 50;
@@ -791,7 +977,6 @@ document.addEventListener('DOMContentLoaded', () => {
             snowContainer.appendChild(snowflake);
         }
     }
-
     const notifications = document.querySelectorAll('.notification');
     notifications.forEach((notif) => {
         notif.addEventListener('click', () => {
@@ -807,104 +992,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }, 2000);
     });
-
-    function loadFriendsToInvite() {
-        fetch('/get_friends')
-            .then(response => response.json())
-            .then(data => {
-                friendsToInvite.innerHTML = '';
-                if (data.friends && data.friends.length > 0) {
-                    data.friends.forEach(friend => {
-                        const friendInvite = document.createElement('div');
-                        friendInvite.classList.add('friend-invite');
-                        const friendName = document.createElement('span');
-                        friendName.textContent = friend;
-                        const inviteBtn = document.createElement('button');
-                        inviteBtn.textContent = 'Пригласить';
-                        inviteBtn.addEventListener('click', () => {
-                            inviteFriend(friend);
-                        });
-                        friendInvite.appendChild(friendName);
-                        friendInvite.appendChild(inviteBtn);
-                        friendsToInvite.appendChild(friendInvite);
-                    });
-                } else {
-                    friendsToInvite.innerHTML = "<p>У вас пока нет друзей для приглашения.</p>";
-                }
-            })
-            .catch(err => {
-                friendsToInvite.innerHTML = "<p>Не удалось загрузить список друзей.</p>";
-                console.error("Ошибка при загрузке друзей для приглашения:", err);
-            });
-    }
-
-    function inviteFriend(friendUsername) {
-        fetch('/invite_friend', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ friend_username: friendUsername })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                createNotification(`Приглашение отправлено ${friendUsername}`, "success");
-            }
-        })
-        .catch(error => {
-            createNotification("Ошибка при отправке приглашения", "error");
-            console.error(error);
-        });
-    }
-
-    function startGameInRoom() {
-        fetch('/start_room_game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ game_id: game_id })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                window.location.href = `/board/${data.game_id}/${user_login}`;
-            }
-        })
-        .catch(error => {
-            createNotification("Ошибка при запуске игры", "error");
-            console.error(error);
-        });
-    }
-
-    if (backToMultiplayerSelection) {
-        backToMultiplayerSelection.addEventListener('click', (e) => {
-            e.stopPropagation();
-            createRoomModal.style.display = "none";
-            multiplayerSelectionModal.style.display = "flex";
-            overlay.classList.add("active");
-        });
-    }
-
-    if (createRoomModal) {
-        createRoomModal.addEventListener('click', (e) => {
-            if (e.target === createRoomModal) {
-                createRoomModal.style.display = "none";
-                overlay.classList.remove("active");
-            }
-        });
-    }
-
-    if (startGameButton) {
-        startGameButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            const slots = createRoomModal.querySelectorAll('.room-slots .slot');
-            if (slots[1] && slots[1].textContent.trim() !== 'Друг') {
-                startGameInRoom();
-            } else {
-                createNotification("Нужен второй игрок для начала игры", "error");
-            }
-        });
-    }
 });
