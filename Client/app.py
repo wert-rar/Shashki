@@ -7,19 +7,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
 from flask_wtf.csrf import CSRFProtect
-from game import (
-    get_game_status_internally,
-    find_waiting_game_in_db,
-    update_game_with_user_in_db,
-    remove_game_in_db,
-    get_or_create_ephemeral_game,
-    all_games_lock,
-    all_games_dict,
-    get_db_pieces,
-    update_db_pieces,
-    create_new_game_in_db,
-    update_game_status_in_db
-)
+from base import init_db
+from game import get_game_status_internally, find_waiting_game_in_db, update_game_with_user_in_db, remove_game_in_db, get_or_create_ephemeral_game, all_games_lock, all_games_dict, get_db_pieces, update_db_pieces, create_new_game_in_db, update_game_status_in_db
 import base
 import utils
 import game_engine
@@ -98,20 +87,7 @@ def get_board(game_id, user_login):
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
         opponent_rank = "0"
-    return render_template(
-        'board.html',
-        user_login=user_login,
-        game_id=game_id,
-        user_color=user_color,
-        opponent_login=opponent_login,
-        f_user=game.f_user,
-        c_user=game.c_user,
-        is_ghost=is_ghost,
-        user_avatar_url=user_avatar_url,
-        opponent_avatar_url=opponent_avatar_url,
-        user_rank=user_rank,
-        opponent_rank=opponent_rank
-    )
+    return render_template('board.html', user_login=user_login, game_id=game_id, user_color=user_color, opponent_login=opponent_login, f_user=game.f_user, c_user=game.c_user, is_ghost=is_ghost, user_avatar_url=user_avatar_url, opponent_avatar_url=opponent_avatar_url, user_rank=user_rank, opponent_rank=opponent_rank)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -219,21 +195,7 @@ def profile(username):
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
         else:
             user_avatar_url = '/static/avatars/default_avatar.jpg'
-        return render_template(
-            'profile.html',
-            profile_user_login=user['login'],
-            rang=user['rang'],
-            total_games=total_games,
-            wins=wins,
-            losses=losses,
-            draws=draws,
-            is_own_profile=is_own_profile,
-            in_game=in_game,
-            game_id=game_id,
-            current_user_login=current_user,
-            user_history=user_history,
-            user_avatar_url=user_avatar_url
-        )
+        return render_template('profile.html', profile_user_login=user['login'], rang=user['rang'], total_games=total_games, wins=wins, losses=losses, draws=draws, is_own_profile=is_own_profile, in_game=in_game, game_id=game_id, current_user_login=current_user, user_history=user_history, user_avatar_url=user_avatar_url)
     else:
         abort(404)
 
@@ -253,11 +215,11 @@ def logout():
     return resp
 
 @app.errorhandler(404)
-def page_not_found():
+def page_not_found(e=None):
     return render_template('404.html'), 404
 
 @app.errorhandler(403)
-def forbidden():
+def forbidden(e=None):
     return render_template('403.html'), 403
 
 @app.route('/trigger_error')
@@ -301,9 +263,10 @@ def start_game():
                 else:
                     session['search_start_time'] = time.time()
                     return render_template('waiting.html', game_id=game_id_int, user_login=user_login)
+
     waiting_game = find_waiting_game_in_db()
     if waiting_game:
-        color = 'w' if not waiting_game.f_user else 'b'
+        color = 'w' if waiting_game.f_user is None else 'b'
         try:
             updated = update_game_with_user_in_db(waiting_game.game_id, user_login, color)
             if updated:
@@ -313,10 +276,12 @@ def start_game():
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
+
     game_id_new = create_new_game_in_db(user_login)
     if not game_id_new:
         flash('Не удалось создать игру.', 'error')
         return redirect(url_for('home'))
+
     session['game_id'] = game_id_new
     session['color'] = 'w'
     session['search_start_time'] = time.time()
@@ -417,13 +382,7 @@ def move():
     with game.lock:
         game.update_timers()
         p = get_db_pieces(game_id_int)
-        result = game_engine.validate_move(
-            selected_piece,
-            new_pos,
-            current_player,
-            p,
-            game
-        )
+        result = game_engine.validate_move(selected_piece, new_pos, current_player, p, game)
         if result['move_result'] == 'invalid':
             return jsonify({"error": "Invalid move"}), 400
         updated_pieces = result['new_pieces']
@@ -828,12 +787,7 @@ def upload_avatar():
         logging.warning("Файл не найден в запросе")
         return redirect(url_for('profile', username=user_login))
     file = request.files['avatar']
-    safe_filename, error = utils.process_and_save_avatar(
-        file,
-        user_login,
-        app.config['UPLOAD_FOLDER'],
-        ALLOWED_EXTENSIONS
-    )
+    safe_filename, error = utils.process_and_save_avatar(file, user_login, app.config['UPLOAD_FOLDER'], ALLOWED_EXTENSIONS)
     if error:
         flash(error, 'error')
         return redirect(url_for('profile', username=user_login))
@@ -1013,19 +967,6 @@ def get_top_players_route():
         logging.error(f"Ошибка при обработке топ игроков: {e}")
         return jsonify({"error": "Не удалось получить топ игроков"}), 500
 
-@app.route("/create_room", methods=["POST"])
-@csrf.exempt
-def create_room():
-    user_login = session.get("user")
-    if not user_login:
-        return jsonify({"error": "Пользователь не авторизован"}), 403
-    new_game_id = create_new_game_in_db(user_login)
-    if not new_game_id:
-        return jsonify({"error": "Не удалось создать комнату"}), 500
-    session["game_id"] = new_game_id
-    session["color"] = "w"
-    return jsonify({"game_id": new_game_id}), 200
-
 @app.route("/invite_friend", methods=["POST"])
 @csrf.exempt
 def invite_friend():
@@ -1034,10 +975,10 @@ def invite_friend():
         return jsonify({"error": "Пользователь не авторизован"}), 403
     data = request.get_json()
     friend_username = data.get("friend_username")
-    game_id = data.get("game_id")
-    if not friend_username or not game_id:
-        return jsonify({"error": "Отсутствует имя друга или game_id"}), 400
-    status = base.send_game_invite_db(user_login, friend_username, game_id)
+    room_id = data.get("game_id")
+    if not friend_username or not room_id:
+        return jsonify({"error": "Отсутствует имя друга или room_id"}), 400
+    status = base.send_game_invite_db(user_login, friend_username, room_id)
     if status == "self_invite":
         return jsonify({"error": "Нельзя пригласить самого себя"}), 400
     elif status == "already_sent":
@@ -1056,47 +997,51 @@ def respond_game_invite():
     if not user_login:
         return jsonify({"error": "Пользователь не авторизован"}), 403
     from_user = data.get("from_user")
-    game_id = data.get("game_id")
+    room_id = data.get("room_id")    # <-- переименовали, чтобы было понятно
     response_ = data.get("response")
-    if not from_user or not game_id or not response_:
+    if not from_user or not room_id or not response_:
         return jsonify({"error": "Отсутствуют необходимые данные"}), 400
     if response_ not in ["accept", "decline"]:
         return jsonify({"error": "Некорректный ответ"}), 400
-    updated = base.respond_game_invite_db(from_user, user_login, game_id, response_)
+    updated = base.respond_game_invite_db(from_user, user_login, int(room_id), response_)
     if not updated:
         return jsonify({"error": "Приглашение не найдено"}), 400
     if response_ == "accept":
-        with all_games_lock:
-            game_obj = all_games_dict.get(int(game_id))
-            if not game_obj:
-                game_obj = get_or_create_ephemeral_game(int(game_id))
-            if game_obj and not game_obj.c_user:
-                game_obj.c_user = user_login
-            session['game_id'] = game_id
-            if game_obj.f_user == user_login:
-                session['color'] = 'w'
-            else:
-                session['color'] = 'b'
-        return jsonify({"message": "Приглашение принято", "game_id": game_id}), 200
+        db_session = base.SessionLocal()
+        base.update_room_occupant_db(int(room_id), user_login, session=db_session)
+        db_session.close()
+        return jsonify({"message": "Приглашение принято", "room_id": room_id}), 200
     else:
-        return jsonify({"message": "Приглашение отклонено", "game_id": game_id}), 200
+        return jsonify({"message": "Приглашение отклонено", "room_id": room_id}), 200
 
 @app.route("/check_room_status", methods=["GET"])
 @csrf.exempt
 def check_room_status():
-    game_id = request.args.get("game_id")
-    if not game_id:
-        return jsonify({"error": "Отсутствует game_id"}), 400
-    game_obj = all_games_dict.get(int(game_id))
-    if not game_obj:
-        game_obj = get_or_create_ephemeral_game(int(game_id))
-    if not game_obj:
+    room_id = request.args.get("game_id")
+    if not room_id:
+        return jsonify({"error": "Отсутствует room_id"}), 400
+    db_session = base.SessionLocal()
+    room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
+    if not room_obj:
+        db_session.close()
         return jsonify({"error": "Комната не найдена"}), 404
-    db_status = get_game_status_internally(int(game_id))
+    creator = room_obj.room_creator
+    occupant = room_obj.occupant
+    game_id = room_obj.game_id
+
+    db_status = None
+    if game_id:
+        db_status = get_game_status_internally(game_id)
+
+        if occupant and creator and db_status == 'unstarted':
+            update_game_status_in_db(game_id, 'current')
+            db_status = 'current'
+
+    db_session.close()
     return jsonify({
-        "creator": game_obj.f_user,
-        "joined_user": game_obj.c_user,
-        "game_status": db_status if db_status else game_obj.status
+        "creator": creator,
+        "joined_user": occupant,
+        "game_status": db_status if db_status else "waiting"
     }), 200
 
 @app.route("/cancel_room", methods=["POST"])
@@ -1120,20 +1065,87 @@ def cancel_room():
 @csrf.exempt
 def start_room_game():
     data = request.get_json()
-    game_id = data.get("game_id")
-    if not game_id:
-        return jsonify({"error": "Отсутствует game_id"}), 400
-    game_obj = get_or_create_ephemeral_game(int(game_id))
-    if not game_obj:
-        return jsonify({"error": "Игра не найдена"}), 404
-    if not (game_obj.f_user and game_obj.c_user):
+    room_id = data.get("game_id")
+    if not room_id:
+        return jsonify({"error": "Отсутствует room_id"}), 400
+
+    db_session = base.SessionLocal()
+    room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
+    if not room_obj:
+        db_session.close()
+        return jsonify({"error": "Комната не найдена"}), 404
+
+    if not (room_obj.occupant and room_obj.room_creator):
+        db_session.close()
         return jsonify({"error": "Недостаточно игроков"}), 400
-    update_game_status_in_db(game_obj.game_id, "current")
-    game_obj.status = "w1"
-    if session.get("user") == game_obj.f_user:
-        session["game_id"] = game_id
-        session["color"] = "w"
-    return jsonify({"game_id": game_obj.game_id}), 200
+
+    new_game_id = create_new_game_in_db(room_obj.room_creator, forced_game_id=room_id)
+    if not new_game_id:
+        db_session.close()
+        return jsonify({"error": "Не удалось создать игру"}), 500
+
+    from models import Game as DBGame
+    db_game = db_session.query(DBGame).filter(DBGame.game_id == new_game_id).first()
+    if db_game and not db_game.c_user:
+        db_game.c_user = room_obj.occupant
+        db_session.commit()
+
+    base.update_room_game_db(room_id, new_game_id, session=db_session)
+    db_session.close()
+
+    game_obj = get_or_create_ephemeral_game(new_game_id)
+    if game_obj:
+        with game_obj.lock:
+            game_obj.status = "w1"
+            if not game_obj.c_user:
+                game_obj.c_user = room_obj.occupant
+
+    session["game_id"] = new_game_id
+    session["color"] = "w"
+    return jsonify({"game_id": new_game_id}), 200
+
+@app.route("/room")
+def new_room():
+    user_login = session.get("user")
+    if not user_login:
+        flash("Пользователь не авторизован", "error")
+        return redirect(url_for('login'))
+    import random
+    room_id_candidate = random.randint(1, 99999999)
+    db_session = base.SessionLocal()
+    existing = base.get_room_by_room_id_db(room_id_candidate, session=db_session)
+    while existing:
+        room_id_candidate = random.randint(1, 99999999)
+        existing = base.get_room_by_room_id_db(room_id_candidate, session=db_session)
+    created_room = base.create_room_db(room_id_candidate, user_login, session=db_session)
+    db_session.close()
+    if not created_room:
+        flash('Не удалось создать комнату', 'error')
+        return redirect(url_for('home'))
+    return redirect(url_for('show_room', room_id=room_id_candidate))
+
+@app.route("/room/<int:room_id>")
+def show_room(room_id):
+    if 'user' not in session:
+        flash("Пользователь не авторизован", "error")
+        return redirect(url_for('login'))
+    user_login = session.get('user')
+    db_session = base.SessionLocal()
+    room_obj = base.get_room_by_room_id_db(room_id, session=db_session)
+    db_session.close()
+    if not room_obj:
+        flash("Комната не найдена", "error")
+        return redirect(url_for('home'))
+    is_creator = (room_obj.room_creator == user_login)
+    return render_template("create_room.html", room_id=room_id, user_login=user_login, is_creator=is_creator)
+
+@app.route('/get_current_user')
+def get_current_user():
+    if 'user' in session:
+        return jsonify({"user": session['user']})
+    return jsonify({"user": None})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
+    init_db()

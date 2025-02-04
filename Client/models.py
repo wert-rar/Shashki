@@ -117,3 +117,12 @@ class GameInvitation(Base):
     to_user = Column(String, nullable=False)
     status = Column(String, default="pending")
     game_id = Column(Integer, nullable=True)
+
+class Room(Base):
+    __tablename__ = "rooms"
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, unique=True)
+    game_id = Column(Integer, ForeignKey('games.game_id'), nullable=True)
+    room_creator = Column(String, nullable=False)
+    occupant = Column(String, nullable=True)
+

@@ -174,9 +174,14 @@ def get_or_create_ephemeral_game(game_id):
 
 def find_waiting_game_in_db():
     db_session = SessionLocal()
-    db_game = db_session.query(DBGame).filter(DBGame.status == 'unstarted', DBGame.c_user.is_(None)).first()
+    db_game = db_session.query(DBGame).filter(
+        DBGame.status == 'unstarted',
+        DBGame.c_user.is_(None),
+        DBGame.f_user.isnot(None)
+    ).order_by(DBGame.game_id.asc()).first()
     db_session.close()
     return db_game
+
 
 def update_game_with_user_in_db(game_id, user_login, color):
     db_session = SessionLocal()
@@ -208,6 +213,7 @@ def update_game_with_user_in_db(game_id, user_login, color):
         return False
     db_session.commit()
     db_session.close()
+
     game_obj = get_or_create_ephemeral_game(game_id)
     if game_obj:
         with game_obj.lock:
@@ -215,30 +221,64 @@ def update_game_with_user_in_db(game_id, user_login, color):
                 game_obj.f_user = user_login
             else:
                 game_obj.c_user = user_login
+            if game_obj.f_user and game_obj.c_user:
+                game_obj.status = 'w1'
+                game_obj.current_player = 'w'
     return True
 
-def create_new_game_in_db(user_login):
+def create_new_game_in_db(user_login, forced_game_id=None):
     import random
     db_session = SessionLocal()
-    while True:
-        game_id_candidate = random.randint(1, 99999999)
-        exists = db_session.query(DBGame).filter(DBGame.game_id == game_id_candidate).first()
-        if not exists:
-            break
-    new_db_game = DBGame(
-        game_id=game_id_candidate,
-        f_user=user_login,
-        c_user=None,
-        status='unstarted',
-        board_state=json.dumps(pieces)
-    )
-    db_session.add(new_db_game)
-    db_session.commit()
-    db_session.close()
-    new_game = Game(f_user=user_login, c_user=None, game_id=game_id_candidate)
-    with all_games_lock:
-        all_games_dict[game_id_candidate] = new_game
-    return game_id_candidate
+    try:
+        if forced_game_id is not None:
+            existing_game = db_session.query(DBGame).filter(DBGame.game_id == forced_game_id).first()
+            if not existing_game:
+                new_db_game = DBGame(
+                    game_id=forced_game_id,
+                    f_user=user_login,
+                    c_user=None,
+                    status='unstarted',
+                    board_state=json.dumps(pieces)
+                )
+                db_session.add(new_db_game)
+                db_session.commit()
+
+                new_game = Game(f_user=user_login, c_user=None, game_id=forced_game_id)
+                with all_games_lock:
+                    all_games_dict[forced_game_id] = new_game
+
+                db_session.close()
+                return forced_game_id
+            else:
+                db_session.close()
+                return existing_game.game_id
+
+        while True:
+            game_id_candidate = random.randint(1, 99999999)
+            exists = db_session.query(DBGame).filter(DBGame.game_id == game_id_candidate).first()
+            if not exists:
+                break
+
+        new_db_game = DBGame(
+            game_id=game_id_candidate,
+            f_user=user_login,
+            c_user=None,
+            status='unstarted',
+            board_state=json.dumps(pieces)
+        )
+        db_session.add(new_db_game)
+        db_session.commit()
+
+        new_game = Game(f_user=user_login, c_user=None, game_id=game_id_candidate)
+        with all_games_lock:
+            all_games_dict[game_id_candidate] = new_game
+
+        db_session.close()
+        return game_id_candidate
+
+    except:
+        db_session.close()
+        raise
 
 def remove_game_in_db(game_id):
     db_session = SessionLocal()

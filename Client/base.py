@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 import logging
 import utils
-from Client.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove, Game
+from Client.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove, Game, Room
 
 DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
 #DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
@@ -313,3 +313,32 @@ def get_incoming_game_invitations_db(user: str, session: Session | None = None) 
     for r in records:
         invites.append({"from_user": r.from_user, "game_id": r.game_id})
     return invites
+
+@connect
+def create_room_db(room_id, creator, session: Session | None = None):
+    room = Room(room_id=room_id, room_creator=creator)
+    session.add(room)
+    session.commit()
+    return room
+
+@connect
+def get_room_by_room_id_db(room_id, session: Session | None = None):
+    return session.query(Room).filter_by(room_id=room_id).first()
+
+@connect
+def update_room_occupant_db(room_id, occupant_login, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return None
+    room.occupant = occupant_login
+    session.commit()
+    return room
+
+@connect
+def update_room_game_db(room_id, new_game_id, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return None
+    room.game_id = new_game_id
+    session.commit()
+    return room
