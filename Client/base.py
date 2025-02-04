@@ -342,3 +342,46 @@ def update_room_game_db(room_id, new_game_id, session: Session | None = None):
     room.game_id = new_game_id
     session.commit()
     return room
+
+@connect
+def leave_room_db(room_id, user, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return False
+    if room.room_creator == user:
+        return True
+    elif room.occupant == user:
+        room.occupant = None
+        session.commit()
+        return True
+    return False
+
+@connect
+def delete_room_db(room_id, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if room:
+        session.delete(room)
+        session.commit()
+        return True
+    return False
+
+@connect
+def leave_room_db(room_id, user, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return False
+    if room.room_creator == user:
+        if room.occupant:
+            room.room_creator = room.occupant
+            room.occupant = None
+            session.commit()
+            return True
+        else:
+            session.delete(room)
+            session.commit()
+            return True
+    elif room.occupant == user:
+        room.occupant = None
+        session.commit()
+        return True
+    return False

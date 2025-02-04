@@ -161,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/respond_game_invite', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // посылаем room_id вместо game_id
             body: JSON.stringify({
                 from_user: fromUser,
                 room_id: roomId,
@@ -178,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 notificationModal.classList.remove('active');
                 bellDesktop.classList.remove('active');
                 bellMobile.classList.remove('active');
-                // проверяем data.room_id
                 if (responseType === "accept" && data.room_id) {
                     window.location.href = "/room/" + data.room_id;
                 }
@@ -605,6 +603,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const leaveRoomButton = document.getElementById('leaveRoomButton');
+    if (leaveRoomButton) {
+        leaveRoomButton.addEventListener('click', () => {
+            fetch('/leave_room', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: currentRoomId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    window.location.href = '/';
+                }
+            })
+            .catch(() => {
+                alert('Ошибка при выходе из комнаты');
+            });
+        });
+    }
+
     window.showLeaveGameModal = function() {
         document.getElementById('leave-game-modal').style.display = 'flex';
         overlay.classList.add("active");
@@ -818,4 +838,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }, 2000);
     });
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+    var roomModal = document.getElementById('roomModal');
+    if(roomModal) {
+        roomModal.classList.add('active');
+        document.getElementById('closeRoomModal').addEventListener('click', function(){
+            roomModal.classList.remove('active');
+        });
+    }
 });

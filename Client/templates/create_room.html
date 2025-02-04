@@ -8,13 +8,15 @@
         *, *::before, *::after {
             box-sizing: border-box;
         }
-
         :root {
             --text-color: #e0e0e0;
+            --primary-color: #9C27B0;
+            --primary-hover: #8E24AA;
+            --menu-bg: #2a2a44;
             --error-color: #ff0000;
             --success-color: #28a745;
+            --gold-color: #FFD700;
         }
-
         html, body {
             margin: 0;
             padding: 0;
@@ -22,24 +24,21 @@
             height: 100vh;
             overflow: hidden;
         }
-
         @keyframes custom-fade-right {
             0% {
                 opacity: 0;
-                transform: translateX(-30px);
+                transform: translateX(-15px);
             }
             100% {
                 opacity: 1;
                 transform: translateX(0);
             }
         }
-
         body {
             background-color: #0e0e1a;
             color: #e0e0e0;
             font-family: 'Roboto', sans-serif;
         }
-
         .wrapper {
             display: flex;
             justify-content: center;
@@ -48,7 +47,6 @@
             height: 100%;
             padding: 30px;
         }
-
         .CreatRoom {
             background: #1a1a2e;
             padding: 30px;
@@ -65,104 +63,10 @@
                         0 0 40px rgba(100, 90, 200, 0.4);
             position: relative;
         }
-
-        .CreatRoom h2 {
-            margin-bottom: 20px;
-        }
-
-        .room-slots {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-        }
-
-        .slot {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid #2a2a44;
-            border-radius: 10px;
-            padding: 20px;
-            width: 150px;
-            text-align: center;
-        }
-
-        .friends-list {
-            margin-top: 20px;
-            text-align: left;
-        }
-
-        .friends-list h3 {
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-
-        .friend-invite {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 0;
-            border-bottom: 1px solid #2a2a44;
-        }
-
-        .friend-invite:last-child {
-            border-bottom: none;
-        }
-
-        .friend-invite button {
-            background-color: #9C27B0;
-            color: #fff;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .friend-invite button:hover {
-            background-color: #8E24AA;
-        }
-
-        .waiting-btn {
-            background-color: #757575;
-            color: #fff;
-            cursor: default;
-            pointer-events: none;
-            user-select: none;
-        }
-
-        .in-room-btn {
-            background-color: #4caf50;
-            color: #fff;
-            cursor: default;
-            pointer-events: none;
-            user-select: none;
-        }
-
-        .start-game-button {
-            width: 100%;
-            max-width: 550px;
-            margin: 20px auto 0;
-            display: block;
-            background-color: #9C27B0;
-            color: #fff;
-            padding: 15px 20px;
-            border: none;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.3s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .start-game-button:hover {
-            background-color: #8E24AA;
-        }
-
         .back-button {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 15px;
+            left: 15px;
             font-size: 24px;
             color: var(--text-color);
             background: none;
@@ -174,12 +78,107 @@
             transform: translateX(-30px);
             animation: custom-fade-right 1s forwards;
         }
-
         .back-button:hover {
             transform: translateX(-27px) scale(1.2);
-            color: var(--error-color);
+            color: var(--primary-hover);
         }
-
+        .CreatRoom h2 {
+            margin-bottom: 20px;
+        }
+        .room-slots {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .creator-slot-container {
+            position: relative;
+            display: inline-block;
+        }
+        .creator-crown {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            color: var(--gold-color);
+        }
+        .slot {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #2a2a44;
+            border-radius: 10px;
+            padding: 20px;
+            width: 150px;
+            text-align: center;
+            position: relative;
+        }
+        .creator-slot {
+            border-color: var(--gold-color);
+            box-shadow: 0 0 10px var(--gold-color);
+        }
+        .friends-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .friends-list h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        .friend-invite {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #2a2a44;
+        }
+        .friend-invite:last-child {
+            border-bottom: none;
+        }
+        .friend-invite button {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .friend-invite button:hover {
+            background-color: var(--primary-hover);
+        }
+        .waiting-btn {
+            background-color: #757575;
+            color: #fff;
+            cursor: default;
+            pointer-events: none;
+            user-select: none;
+        }
+        .in-room-btn {
+            background-color: #4caf50;
+            color: #fff;
+            cursor: default;
+            pointer-events: none;
+            user-select: none;
+        }
+        .start-game-button {
+            width: 100%;
+            max-width: 550px;
+            margin: 20px auto 0;
+            display: block;
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .start-game-button:hover {
+            background-color: var(--primary-hover);
+        }
         #notification-container {
             position: fixed;
             top: 20px;
@@ -188,7 +187,6 @@
             max-width: 80%;
             z-index: 9999;
         }
-
         .notification {
             position: relative;
             background: #333;
@@ -200,20 +198,16 @@
             overflow: hidden;
             animation: fadeIn 0.5s;
         }
-
         .notification.success {
             background-color: var(--success-color);
         }
-
         .notification.error {
             background-color: var(--error-color);
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateX(20px); }
             to { opacity: 1; transform: translateX(0); }
         }
-
         .progress-bar {
             position: absolute;
             bottom: 0;
@@ -223,39 +217,92 @@
             width: 100%;
             animation: progress 2s linear forwards;
         }
-
         @keyframes progress {
             0% { width: 100%; }
             100% { width: 0; }
         }
+        .menu-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 3;
+        }
+        .menu-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 35px;
+            right: 0;
+            background-color: var(--menu-bg);
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .dropdown-menu button {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 10px 15px;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .dropdown-menu button:hover {
+            background-color: var(--primary-hover);
+        }
     </style>
 </head>
 <body>
-<div class="wrapper">
-    <div class="CreatRoom">
-        <button class="back-button" id="backToHome"><i class="fa-solid fa-arrow-left"></i></button>
-        <h2>Комната</h2>
-        <div class="room-slots">
-            <div class="slot" id="slot1"></div>
-            <div class="slot" id="slot2"></div>
-        </div>
-        {% if is_creator %}
-        <div class="friends-list">
-            <h3>Друзья</h3>
-            <div id="friendsToInvite">
-                <p>Загрузка друзей...</p>
+    <div class="wrapper">
+        <div class="CreatRoom">
+            <button class="back-button" onclick="window.location.href='/'">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div class="menu-container">
+                <button class="menu-btn" id="menuBtn"><i class="fa-solid fa-bars"></i></button>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <button id="leaveRoomBtn">Покинуть</button>
+                    {% if is_creator %}
+                    <button id="deleteRoomBtn">Удалить</button>
+                    {% endif %}
+                </div>
             </div>
+            <h2>Комната</h2>
+            <div class="room-slots">
+                <div class="creator-slot-container">
+                    <div class="creator-crown"><i class="fa-solid fa-crown"></i></div>
+                    <div class="slot creator-slot" id="slot1">
+                        <p></p>
+                    </div>
+                </div>
+                <div class="slot" id="slot2">
+                    <p>Ожидание...</p>
+                </div>
+            </div>
+            {% if is_creator %}
+            <div class="friends-list">
+                <h3>Друзья</h3>
+                <div id="friendsToInvite">
+                    <p>Загрузка друзей...</p>
+                </div>
+            </div>
+            <button class="start-game-button" id="startGameButton">Начать</button>
+            {% endif %}
         </div>
-        <button class="start-game-button" id="startGameButton">Начать игру</button>
-        {% endif %}
     </div>
-</div>
-<div id="notification-container"></div>
-<script>
-    var currentRoomId = {{ room_id }};
-    var user_login = "{{ user_login }}";
-    var is_creator = {{ is_creator|tojson }};
-</script>
-<script src="{{ url_for('static', filename='script_create_room.js') }}"></script>
+    <div id="notification-container"></div>
+    <script>
+        var currentRoomId = {{ room_id }};
+        var user_login = "{{ user_login }}";
+        var is_creator = {{ is_creator|tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='script_create_room.js') }}"></script>
 </body>
 </html>

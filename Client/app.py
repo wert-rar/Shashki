@@ -1,17 +1,41 @@
 import os
-import logging, subprocess, hmac, hashlib, time
+import logging
+import subprocess
+import hmac
+import hashlib
+import time
 import secrets
-from datetime import timedelta, datetime, timezone
+import game_engine
+import base
+import utils
+from datetime import (timedelta,
+                      datetime,
+                      timezone)
 from flask import g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort, flash, make_response
+from flask import (Flask,
+                   render_template,
+                   request,
+                   jsonify,
+                   redirect,
+                   url_for,
+                   session, abort,
+                   flash,
+                   make_response)
 from flask_wtf.csrf import CSRFProtect
 from base import init_db
-from game import get_game_status_internally, find_waiting_game_in_db, update_game_with_user_in_db, remove_game_in_db, get_or_create_ephemeral_game, all_games_lock, all_games_dict, get_db_pieces, update_db_pieces, create_new_game_in_db, update_game_status_in_db
-import base
-import utils
-import game_engine
+from game import (get_game_status_internally,
+                  find_waiting_game_in_db,
+                  update_game_with_user_in_db,
+                  remove_game_in_db,
+                  get_or_create_ephemeral_game,
+                  all_games_lock,
+                  all_games_dict,
+                  get_db_pieces,
+                  update_db_pieces,
+                  create_new_game_in_db,
+                  update_game_status_in_db)
 
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
@@ -47,11 +71,12 @@ status_ = {
 def home():
     user_login = session.get('user')
     user_is_registered = False
+    room_id = session.get('room_id')
     if user_login and not user_login.startswith('ghost'):
         user = base.get_user_by_login(user_login)
         if user:
             user_is_registered = True
-    return render_template('home.html', user_is_registered=user_is_registered)
+    return render_template('home.html', user_is_registered=user_is_registered, room_id=room_id)
 
 @app.route('/board/<int:game_id>/<user_login>')
 @csrf.exempt
@@ -215,11 +240,11 @@ def logout():
     return resp
 
 @app.errorhandler(404)
-def page_not_found(e=None):
+def page_not_found():
     return render_template('404.html'), 404
 
 @app.errorhandler(403)
-def forbidden(e=None):
+def forbidden():
     return render_template('403.html'), 403
 
 @app.route('/trigger_error')
@@ -997,7 +1022,7 @@ def respond_game_invite():
     if not user_login:
         return jsonify({"error": "Пользователь не авторизован"}), 403
     from_user = data.get("from_user")
-    room_id = data.get("room_id")    # <-- переименовали, чтобы было понятно
+    room_id = data.get("room_id")
     response_ = data.get("response")
     if not from_user or not room_id or not response_:
         return jsonify({"error": "Отсутствуют необходимые данные"}), 400
@@ -1110,6 +1135,10 @@ def new_room():
     if not user_login:
         flash("Пользователь не авторизован", "error")
         return redirect(url_for('login'))
+    if session.get("room_id"):
+        flash("Вы уже находитесь в комнате", "info")
+        return redirect(url_for('home'))
+
     import random
     room_id_candidate = random.randint(1, 99999999)
     db_session = base.SessionLocal()
@@ -1122,6 +1151,8 @@ def new_room():
     if not created_room:
         flash('Не удалось создать комнату', 'error')
         return redirect(url_for('home'))
+
+    session['room_id'] = room_id_candidate
     return redirect(url_for('show_room', room_id=room_id_candidate))
 
 @app.route("/room/<int:room_id>")
@@ -1136,6 +1167,9 @@ def show_room(room_id):
     if not room_obj:
         flash("Комната не найдена", "error")
         return redirect(url_for('home'))
+    if user_login != room_obj.room_creator and user_login != room_obj.occupant:
+        flash("Вы не приглашены в эту комнату", "error")
+        return redirect(url_for('home'))
     is_creator = (room_obj.room_creator == user_login)
     return render_template("create_room.html", room_id=room_id, user_login=user_login, is_creator=is_creator)
 
@@ -1145,6 +1179,35 @@ def get_current_user():
         return jsonify({"user": session['user']})
     return jsonify({"user": None})
 
+@app.route('/leave_room', methods=['POST'])
+@csrf.exempt
+def leave_room_route():
+    data = request.json
+    room_id = data.get('room_id')
+    user = session.get('user')
+    if not room_id or not user:
+        return jsonify({"error": "Нет идентификатора комнаты или пользователь не авторизован"}), 400
+    success = base.leave_room_db(room_id, user)
+    if success:
+        session.pop('room_id', None)
+        return jsonify({"message": "Вы покинули комнату"}), 200
+    else:
+        return jsonify({"error": "Не удалось покинуть комнату"}), 400
+
+@app.route('/delete_room', methods=['POST'])
+@csrf.exempt
+def delete_room_route():
+    data = request.json
+    room_id = data.get('room_id')
+    user = session.get('user')
+    if not room_id or not user:
+        return jsonify({"error": "Нет идентификатора комнаты или пользователь не авторизован"}), 400
+    room = base.get_room_by_room_id_db(room_id)
+    if not room or room.room_creator != user:
+        return jsonify({"error": "Нет прав для удаления комнаты"}), 403
+    base.delete_room_db(room_id)
+    session.pop('room_id', None)
+    return jsonify({"message": "Комната удалена"}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)

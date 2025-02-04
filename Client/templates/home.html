@@ -71,6 +71,47 @@
             z-index: 1;
             overflow: hidden;
         }
+        #roomModal a.button {
+            text-align: center;
+        }
+        #roomModal {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: var(--card-background);
+            border: 2px solid var(--button-background);
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        #roomModal .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        #roomModal.active {
+            display: block;
+        }
+        #roomModal p {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        #roomModal .button {
+            margin-top: 10px;
+            display: inline-block;
+            text-decoration: none;
+            background-color: var(--button-background);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        #roomModal .button:hover {
+            background-color: var(--button-hover);
+        }
         .container .button {
             display: block;
             margin: 15px auto;
@@ -1058,6 +1099,15 @@
             </div>
         </div>
     </nav>
+    {% if room_id %}
+  <div id="roomModal" class="active">
+    <p>Вы находитесь в комнате</p>
+    <div class="button-container">
+      <a href="{{ url_for('show_room', room_id=room_id) }}" class="button">Вернуться</a>
+      <button id="leaveRoomButton" class="button">Покинуть</button>
+    </div>
+  </div>
+{% endif %}
     <div class="overlay" id="overlay"></div>
     <div class="sidebar" id="sidebar">
         <div class="menu-content"></div>
