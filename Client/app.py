@@ -1018,10 +1018,10 @@ def get_top_players_route():
 def create_room():
     user_login = session.get("user")
     if not user_login:
-        return jsonify({"error": "Not authenticated"}), 403
+        return jsonify({"error": "Пользователь не авторизован"}), 403
     new_game_id = create_new_game_in_db(user_login)
     if not new_game_id:
-        return jsonify({"error": "Unable to create room"}), 500
+        return jsonify({"error": "Не удалось создать комнату"}), 500
     session["game_id"] = new_game_id
     session["color"] = "w"
     return jsonify({"game_id": new_game_id}), 200
@@ -1031,22 +1031,22 @@ def create_room():
 def invite_friend():
     user_login = session.get("user")
     if not user_login:
-        return jsonify({"error": "Not authenticated"}), 403
+        return jsonify({"error": "Пользователь не авторизован"}), 403
     data = request.get_json()
     friend_username = data.get("friend_username")
     game_id = data.get("game_id")
     if not friend_username or not game_id:
-        return jsonify({"error": "Missing friend username or game_id"}), 400
+        return jsonify({"error": "Отсутствует имя друга или game_id"}), 400
     status = base.send_game_invite_db(user_login, friend_username, game_id)
     if status == "self_invite":
-        return jsonify({"error": "Cannot invite yourself"}), 400
+        return jsonify({"error": "Нельзя пригласить самого себя"}), 400
     elif status == "already_sent":
-        return jsonify({"error": "Invitation already sent"}), 400
+        return jsonify({"error": "Приглашение уже отправлено"}), 400
     elif status == "reverse_already_sent":
-        return jsonify({"error": "User has already invited you"}), 400
+        return jsonify({"error": "Пользователь уже пригласил вас"}), 400
     elif status == "sent":
-        return jsonify({"message": "Invitation sent"}), 200
-    return jsonify({"error": "Unknown error"}), 500
+        return jsonify({"message": "Приглашение отправлено"}), 200
+    return jsonify({"error": "Неизвестная ошибка"}), 500
 
 @app.route("/respond_game_invite", methods=["POST"])
 @csrf.exempt
@@ -1054,17 +1054,17 @@ def respond_game_invite():
     data = request.get_json()
     user_login = session.get("user")
     if not user_login:
-        return jsonify({"error": "Not authenticated"}), 403
+        return jsonify({"error": "Пользователь не авторизован"}), 403
     from_user = data.get("from_user")
     game_id = data.get("game_id")
     response_ = data.get("response")
     if not from_user or not game_id or not response_:
-        return jsonify({"error": "Missing data"}), 400
+        return jsonify({"error": "Отсутствуют необходимые данные"}), 400
     if response_ not in ["accept", "decline"]:
-        return jsonify({"error": "Invalid response"}), 400
+        return jsonify({"error": "Некорректный ответ"}), 400
     updated = base.respond_game_invite_db(from_user, user_login, game_id, response_)
     if not updated:
-        return jsonify({"error": "Invitation not found"}), 400
+        return jsonify({"error": "Приглашение не найдено"}), 400
     if response_ == "accept":
         with all_games_lock:
             game_obj = all_games_dict.get(int(game_id))
@@ -1077,19 +1077,21 @@ def respond_game_invite():
                 session['color'] = 'w'
             else:
                 session['color'] = 'b'
-    return jsonify({"message": f"Invitation {response_}ed", "game_id": game_id}), 200
+        return jsonify({"message": "Приглашение принято", "game_id": game_id}), 200
+    else:
+        return jsonify({"message": "Приглашение отклонено", "game_id": game_id}), 200
 
 @app.route("/check_room_status", methods=["GET"])
 @csrf.exempt
 def check_room_status():
     game_id = request.args.get("game_id")
     if not game_id:
-        return jsonify({"error": "Missing game_id"}), 400
+        return jsonify({"error": "Отсутствует game_id"}), 400
     game_obj = all_games_dict.get(int(game_id))
     if not game_obj:
         game_obj = get_or_create_ephemeral_game(int(game_id))
     if not game_obj:
-        return jsonify({"error": "Room not found"}), 404
+        return jsonify({"error": "Комната не найдена"}), 404
     db_status = get_game_status_internally(int(game_id))
     return jsonify({
         "creator": game_obj.f_user,
@@ -1103,16 +1105,16 @@ def cancel_room():
     user_login = session.get("user")
     data = request.get_json()
     if not user_login:
-        return jsonify({"error": "Not authenticated"}), 403
+        return jsonify({"error": "Пользователь не авторизован"}), 403
     game_id = data.get("game_id")
     if not game_id:
-        return jsonify({"error": "Missing game_id"}), 400
+        return jsonify({"error": "Отсутствует game_id"}), 400
     game_obj = get_or_create_ephemeral_game(int(game_id))
     if not game_obj or game_obj.f_user != user_login:
-        return jsonify({"error": "Room not found or no permission"}), 400
+        return jsonify({"error": "Комната не найдена или нет прав доступа"}), 400
     remove_game_in_db(int(game_id))
     base.remove_game_invite_by_game_id(int(game_id))
-    return jsonify({"message": "Room canceled"}), 200
+    return jsonify({"message": "Комната отменена"}), 200
 
 @app.route("/start_room_game", methods=["POST"])
 @csrf.exempt
@@ -1120,12 +1122,12 @@ def start_room_game():
     data = request.get_json()
     game_id = data.get("game_id")
     if not game_id:
-        return jsonify({"error": "Missing game_id"}), 400
+        return jsonify({"error": "Отсутствует game_id"}), 400
     game_obj = get_or_create_ephemeral_game(int(game_id))
     if not game_obj:
-        return jsonify({"error": "Game not found"}), 404
+        return jsonify({"error": "Игра не найдена"}), 404
     if not (game_obj.f_user and game_obj.c_user):
-        return jsonify({"error": "Not enough players"}), 400
+        return jsonify({"error": "Недостаточно игроков"}), 400
     update_game_status_in_db(game_obj.game_id, "current")
     game_obj.status = "w1"
     if session.get("user") == game_obj.f_user:

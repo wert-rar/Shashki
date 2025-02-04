@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             notifItem.style.padding = "10px";
                             notifItem.style.borderBottom = "1px solid #444";
                             const notifText = document.createElement("p");
-                            notifText.textContent = `Приглашение в игру от ${inv.from_user}, ID: ${inv.game_id}`;
+                            notifText.textContent = `Приглашение в игру от ${inv.from_user}`;
                             notifItem.appendChild(notifText);
                             const btnContainer = document.createElement("div");
                             btnContainer.style.marginTop = "5px";
@@ -198,12 +198,10 @@ document.addEventListener('DOMContentLoaded', () => {
             createNotification("Ошибка при ответе на приглашение", "error");
         });
     }
-
-    function joinRoom(gameId) {
+    function joinRoom(gameId, isCreator) {
         currentRoomId = gameId;
         createRoomModal.style.display = "flex";
         overlay.classList.add("active");
-        loadFriendsToInvite();
         startPollingRoomStatus();
         const slots = document.querySelectorAll('.room-slots .slot');
         if (slots[0]) {
@@ -211,6 +209,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (slots[1]) {
             slots[1].innerHTML = `<p>Ожидание...</p>`;
+        }
+        if (isCreator) {
+            loadFriendsToInvite();
+            if (slots[0]) {
+                slots[0].innerHTML = `<p>${user_login}</p>`;
+            }
+            createRoomModal.querySelector('.friends-list').style.display = 'block';
+            createRoomModal.querySelector('#startGameButton').style.display = 'inline-block';
+        } else {
+            createRoomModal.querySelector('.friends-list').style.display = 'none';
+            createRoomModal.querySelector('#startGameButton').style.display = 'none';
         }
     }
     function fetchFriends() {
@@ -617,16 +626,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => res.json())
         .then(data => {
             if (data.game_id) {
-                currentRoomId = data.game_id;
-                createRoomModal.style.display = "flex";
-                overlay.classList.add("active");
-                loadFriendsToInvite();
-                startPollingRoomStatus();
-                const slots = document.querySelectorAll('.room-slots .slot');
-                if (slots[0]) {
-                    slots[0].innerHTML = `<p>${user_login}</p>`;
-                }
-                game_id = currentRoomId;
+                joinRoom(data.game_id, true);
+                game_id = data.game_id;
             } else {
                 createNotification(data.error || "Error creating room", "error");
             }
