@@ -271,6 +271,9 @@
             z-index: 10000;
         }
         .modal {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             background: #1a1a2e;
             padding: 20px;
             border-radius: 10px;
@@ -281,6 +284,7 @@
             margin-bottom: 15px;
         }
         .modal button {
+            width: 100%;
             margin: 5px;
             padding: 10px 15px;
             background-color: var(--primary-color);
@@ -354,8 +358,9 @@
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
             <h3 id="modalTitle"></h3>
-            <button id="kickBtn">Выгнать</button>
+            <button id="profileBtn">Профиль</button>
             <button id="transferBtn">Передать права</button>
+            <button id="kickBtn">Выгнать</button>
         </div>
     </div>
     <script>

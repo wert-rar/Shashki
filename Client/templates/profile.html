@@ -1787,13 +1787,13 @@
         const isOwnProfile = {{ 'true' if is_own_profile else 'false' }};
         let returnUrl = "";
 
-        if (origin === "friends" || origin === "top" || origin === "profile") {
+        if (origin === "room") {
+            returnUrl = "/room/" + "{{ room_id }}";
+        } else if (origin === "friends" || origin === "top" || origin === "profile") {
             returnUrl = "/profile/" + encodeURIComponent("{{ session['user'] if 'user' in session else '' }}");
-        }
-        else if (isOwnProfile) {
+        } else if (isOwnProfile) {
             returnUrl = "/";
-        }
-        else {
+        } else {
             returnUrl = null;
         }
 

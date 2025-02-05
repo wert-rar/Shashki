@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const startGameButton = document.getElementById('startGameButton');
     const menuBtn = document.getElementById('menuBtn');
     const dropdownMenu = document.getElementById('dropdownMenu');
+    let currentOccupant = "";
+
     menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
@@ -60,24 +62,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     startPollingRoomStatus();
     const modalTitle = document.getElementById('modalTitle');
+    const profileBtn = document.getElementById('profileBtn');
     const kickBtn = document.getElementById('kickBtn');
     const transferBtn = document.getElementById('transferBtn');
     function openModal(occupant) {
+        currentOccupant = occupant;
         modalTitle.textContent = `Действия с ${occupant}`;
         modalOverlay.style.display = 'flex';
     }
+    profileBtn.addEventListener('click', () => {
+        if (currentOccupant && currentOccupant !== "Ожидание...") {
+            window.location.href = '/profile/' + currentOccupant;
+        }
+        closeModal();
+    });
     function closeModal() {
         modalOverlay.style.display = 'none';
     }
     modalOverlay.addEventListener('click', (e) => {
         if(e.target === modalOverlay) closeModal();
     });
+    slot1.addEventListener('click', () => {
+        const occupant = slot1.querySelector('p').textContent.trim();
+        if (occupant && occupant !== "Ожидание...") {
+            window.location.href = '/profile/' + occupant + '?origin=room';
+        }
+    });
     slot2.addEventListener('click', () => {
-        if (is_creator) {
-            const occupantElem = slot2.querySelector('p');
-            const occupant = occupantElem.textContent.trim();
-            if(occupant === "Ожидание..." || occupant === "") return;
-            openModal(occupant);
+        const occupant = slot2.querySelector('p').textContent.trim();
+        if (occupant && occupant !== "Ожидание...") {
+            if (!is_creator) {
+                window.location.href = '/profile/' + occupant + '?origin=room';
+            }
+            else {
+                openModal(occupant);
+            }
         }
     });
     kickBtn.addEventListener('click', () => {

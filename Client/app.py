@@ -72,11 +72,19 @@ def home():
     user_login = session.get('user')
     user_is_registered = False
     room_id = session.get('room_id')
+    if room_id:
+        db_session = base.SessionLocal()
+        room_obj = base.get_room_by_room_id_db(room_id, session=db_session)
+        db_session.close()
+        if not room_obj:
+            session.pop('room_id', None)
+            room_id = None
     if user_login and not user_login.startswith('ghost'):
         user = base.get_user_by_login(user_login)
         if user:
             user_is_registered = True
     return render_template('home.html', user_is_registered=user_is_registered, room_id=room_id)
+
 
 @app.route('/board/<int:game_id>/<user_login>')
 @csrf.exempt
@@ -205,6 +213,7 @@ def profile(username):
         is_own_profile = (username == current_user)
         in_game = False
         game_id = None
+        room_id = session.get('room_id')
         if current_user and session.get('game_id'):
             try:
                 game_id_int = int(session.get('game_id'))
@@ -220,7 +229,20 @@ def profile(username):
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
         else:
             user_avatar_url = '/static/avatars/default_avatar.jpg'
-        return render_template('profile.html', profile_user_login=user['login'], rang=user['rang'], total_games=total_games, wins=wins, losses=losses, draws=draws, is_own_profile=is_own_profile, in_game=in_game, game_id=game_id, current_user_login=current_user, user_history=user_history, user_avatar_url=user_avatar_url)
+        return render_template('profile.html',
+                               profile_user_login=user['login'],
+                               rang=user['rang'],
+                               total_games=total_games,
+                               wins=wins,
+                               losses=losses,
+                               draws=draws,
+                               is_own_profile=is_own_profile,
+                               in_game=False,
+                               game_id=None,
+                               room_id=room_id,
+                               current_user_login=current_user,
+                               user_history=user_history,
+                               user_avatar_url=user_avatar_url)
     else:
         abort(404)
 
@@ -240,7 +262,7 @@ def logout():
     return resp
 
 @app.errorhandler(404)
-def page_not_found():
+def page_not_found(error):
     return render_template('404.html'), 404
 
 @app.errorhandler(403)
