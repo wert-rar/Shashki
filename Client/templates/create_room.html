@@ -110,6 +110,7 @@
             width: 150px;
             text-align: center;
             position: relative;
+            cursor: pointer;
         }
         .creator-slot {
             border-color: var(--gold-color);
@@ -257,6 +258,43 @@
         .dropdown-menu button:hover {
             background-color: var(--primary-hover);
         }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        .modal {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+        }
+        .modal h3 {
+            margin-bottom: 15px;
+        }
+        .modal button {
+            margin: 5px;
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .modal button:hover {
+            background-color: var(--primary-hover);
+        }
+        .modal .close-btn {
+            background-color: #757575;
+        }
     </style>
 </head>
 <body>
@@ -279,18 +317,33 @@
                 <div class="creator-slot-container">
                     <div class="creator-crown"><i class="fa-solid fa-crown"></i></div>
                     <div class="slot creator-slot" id="slot1">
-                        <p></p>
+                        <p>{{ creator }}</p>
                     </div>
                 </div>
                 <div class="slot" id="slot2">
-                    <p>Ожидание...</p>
+                    <p>{% if joined_user %}{{ joined_user }}{% else %}Ожидание...{% endif %}</p>
                 </div>
             </div>
             {% if is_creator %}
             <div class="friends-list">
                 <h3>Друзья</h3>
                 <div id="friendsToInvite">
-                    <p>Загрузка друзей...</p>
+                    {% if friends_list and friends_list|length > 0 %}
+                        {% for friend in friends_list %}
+                            <div class="friend-invite">
+                                <span>{{ friend }}</span>
+                                {% if joined_user and friend == joined_user %}
+                                    <button class="in-room-btn" disabled>В комнате</button>
+                                {% elif invited_friends and friend in invited_friends %}
+                                    <button class="waiting-btn" disabled>В ожидании</button>
+                                {% else %}
+                                    <button onclick="inviteFriend('{{ friend }}', this)">Пригласить</button>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>У вас пока нет друзей для приглашения.</p>
+                    {% endif %}
                 </div>
             </div>
             <button class="start-game-button" id="startGameButton">Начать</button>
@@ -298,6 +351,13 @@
         </div>
     </div>
     <div id="notification-container"></div>
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h3 id="modalTitle"></h3>
+            <button id="kickBtn">Выгнать</button>
+            <button id="transferBtn">Передать права</button>
+        </div>
+    </div>
     <script>
         var currentRoomId = {{ room_id }};
         var user_login = "{{ user_login }}";

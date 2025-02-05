@@ -941,6 +941,18 @@ def search_users():
     results = base.search_users(query, exclude_user=current_user, limit=10)
     return jsonify({"results": results})
 
+@app.route("/get_invited_friends", methods=["GET"])
+@csrf.exempt
+def get_invited_friends():
+    if 'user' not in session:
+        return jsonify({"error": "Не авторизован"}), 403
+    current_user = session.get("user")
+    room_id = session.get("room_id")
+    if not room_id:
+        return jsonify({"error": "Нет room_id"}), 400
+    invites = base.get_outgoing_game_invitations_db(current_user, room_id)
+    return jsonify({"invited": invites}), 200
+
 @app.before_request
 def load_user_from_remember_token():
     if 'user' not in session:
@@ -1000,10 +1012,10 @@ def invite_friend():
         return jsonify({"error": "Пользователь не авторизован"}), 403
     data = request.get_json()
     friend_username = data.get("friend_username")
-    room_id = data.get("game_id")
+    room_id = data.get("room_id")
     if not friend_username or not room_id:
         return jsonify({"error": "Отсутствует имя друга или room_id"}), 400
-    status = base.send_game_invite_db(user_login, friend_username, room_id)
+    status = base.send_game_invite_db(user_login, friend_username, int(room_id))
     if status == "self_invite":
         return jsonify({"error": "Нельзя пригласить самого себя"}), 400
     elif status == "already_sent":
@@ -1035,6 +1047,7 @@ def respond_game_invite():
         db_session = base.SessionLocal()
         base.update_room_occupant_db(int(room_id), user_login, session=db_session)
         db_session.close()
+        session['room_id'] = int(room_id)
         return jsonify({"message": "Приглашение принято", "room_id": room_id}), 200
     else:
         return jsonify({"message": "Приглашение отклонено", "room_id": room_id}), 200
@@ -1042,26 +1055,29 @@ def respond_game_invite():
 @app.route("/check_room_status", methods=["GET"])
 @csrf.exempt
 def check_room_status():
-    room_id = request.args.get("game_id")
+    room_id = request.args.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
     db_session = base.SessionLocal()
     room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
     if not room_obj:
         db_session.close()
-        return jsonify({"error": "Комната не найдена"}), 404
+        session.pop("room_id", None)
+        return jsonify({"status": "deleted", "redirect": "/"}), 200
+    user = session.get("user")
+    if user != room_obj.room_creator and user != room_obj.occupant:
+        db_session.close()
+        session.pop("room_id", None)
+        return jsonify({"status": "kicked", "redirect": "/"}), 200
     creator = room_obj.room_creator
     occupant = room_obj.occupant
-    game_id = room_obj.game_id
-
+    game_id_db = room_obj.game_id
     db_status = None
-    if game_id:
-        db_status = get_game_status_internally(game_id)
-
-        if occupant and creator and db_status == 'unstarted':
-            update_game_status_in_db(game_id, 'current')
+    if game_id_db:
+        db_status = get_game_status_internally(game_id_db)
+        if creator and occupant and db_status == 'unstarted':
+            update_game_status_in_db(game_id_db, 'current')
             db_status = 'current'
-
     db_session.close()
     return jsonify({
         "creator": creator,
@@ -1090,41 +1106,35 @@ def cancel_room():
 @csrf.exempt
 def start_room_game():
     data = request.get_json()
-    room_id = data.get("game_id")
+    room_id = data.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
-
     db_session = base.SessionLocal()
     room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
     if not room_obj:
         db_session.close()
         return jsonify({"error": "Комната не найдена"}), 404
-
     if not (room_obj.occupant and room_obj.room_creator):
         db_session.close()
         return jsonify({"error": "Недостаточно игроков"}), 400
-
-    new_game_id = create_new_game_in_db(room_obj.room_creator, forced_game_id=room_id)
+    new_game_id = create_new_game_in_db(room_obj.room_creator, forced_game_id=int(room_id))
     if not new_game_id:
         db_session.close()
         return jsonify({"error": "Не удалось создать игру"}), 500
-
     from models import Game as DBGame
     db_game = db_session.query(DBGame).filter(DBGame.game_id == new_game_id).first()
     if db_game and not db_game.c_user:
         db_game.c_user = room_obj.occupant
         db_session.commit()
-
-    base.update_room_game_db(room_id, new_game_id, session=db_session)
+    base.update_room_game_db(int(room_id), new_game_id, session=db_session)
     db_session.close()
-
     game_obj = get_or_create_ephemeral_game(new_game_id)
     if game_obj:
         with game_obj.lock:
             game_obj.status = "w1"
             if not game_obj.c_user:
                 game_obj.c_user = room_obj.occupant
-
+            game_obj.last_update_time = time.time()
     session["game_id"] = new_game_id
     session["color"] = "w"
     return jsonify({"game_id": new_game_id}), 200
@@ -1171,7 +1181,23 @@ def show_room(room_id):
         flash("Вы не приглашены в эту комнату", "error")
         return redirect(url_for('home'))
     is_creator = (room_obj.room_creator == user_login)
-    return render_template("create_room.html", room_id=room_id, user_login=user_login, is_creator=is_creator)
+
+    friends_list = base.get_friends_db(user_login)
+
+    invited_friends = []
+    if is_creator:
+        invited_friends = base.get_outgoing_game_invitations_db(user_login, room_id)
+
+    return render_template(
+        "create_room.html",
+        room_id=room_id,
+        user_login=user_login,
+        is_creator=is_creator,
+        joined_user=room_obj.occupant,
+        creator=room_obj.room_creator,
+        friends_list=friends_list,
+        invited_friends=invited_friends
+    )
 
 @app.route('/get_current_user')
 def get_current_user():
@@ -1208,6 +1234,50 @@ def delete_room_route():
     base.delete_room_db(room_id)
     session.pop('room_id', None)
     return jsonify({"message": "Комната удалена"}), 200
+
+@app.route("/kick_user", methods=["POST"])
+@csrf.exempt
+def kick_user():
+    data = request.json
+    room_id = data.get("room_id")
+    kicked_user = data.get("kicked_user")
+    user = session.get("user")
+    if not room_id or not kicked_user or not user:
+        return jsonify({"error": "Недостаточно данных"}), 400
+    db_room = base.get_room_by_room_id_db(room_id)
+    if not db_room:
+        return jsonify({"error": "Комната не найдена"}), 404
+    if db_room.room_creator != user:
+        return jsonify({"error": "Нет прав"}), 403
+    if kicked_user == user:
+        return jsonify({"error": "Нельзя кикнуть себя"}), 400
+    success = base.kick_user_from_room_db(room_id, kicked_user)
+    if success:
+        return jsonify({"message": "Пользователь кикнут"}), 200
+    return jsonify({"error": "Не удалось кикнуть пользователя"}), 400
+
+@app.route("/transfer_leader", methods=["POST"])
+@csrf.exempt
+def transfer_leader():
+    data = request.json
+    room_id = data.get("room_id")
+    new_leader = data.get("new_leader")
+    user = session.get("user")
+    if not room_id or not new_leader or not user:
+        return jsonify({"error": "Недостаточно данных"}), 400
+    db_room = base.get_room_by_room_id_db(room_id)
+    if not db_room:
+        return jsonify({"error": "Комната не найдена"}), 404
+    if db_room.room_creator != user:
+        return jsonify({"error": "Нет прав"}), 403
+    if new_leader == user:
+        return jsonify({"error": "Нельзя передать права самому себе"}), 400
+    if db_room.occupant != new_leader:
+        return jsonify({"error": "Пользователь не в комнате"}), 400
+    success = base.transfer_room_leadership_db(room_id, new_leader)
+    if success:
+        return jsonify({"message": "Права переданы"}), 200
+    return jsonify({"error": "Не удалось передать права"}), 400
 
 if __name__ == "__main__":
     app.run(debug=True)

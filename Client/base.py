@@ -385,3 +385,34 @@ def leave_room_db(room_id, user, session: Session | None = None):
         session.commit()
         return True
     return False
+
+@connect
+def kick_user_from_room_db(room_id, kicked_user, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return False
+    if room.room_creator == kicked_user:
+        return False
+    if room.occupant == kicked_user:
+        room.occupant = None
+        session.commit()
+        return True
+    return False
+
+@connect
+def transfer_room_leadership_db(room_id, new_leader, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return False
+    if room.occupant != new_leader:
+        return False
+    old_leader = room.room_creator
+    room.room_creator = new_leader
+    room.occupant = old_leader
+    session.commit()
+    return True
+
+@connect
+def get_outgoing_game_invitations_db(user: str, room_id: int, session: Session | None = None):
+    records = session.query(GameInvitation).filter_by(from_user=user, game_id=room_id, status="pending").all()
+    return [r.to_user for r in records]

@@ -1,13 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const modalOverlay = document.getElementById('modalOverlay');
+    modalOverlay.style.display = 'none';
     let pollInterval = null;
     const slot1 = document.getElementById('slot1');
     const slot2 = document.getElementById('slot2');
-    const friendsToInvite = document.getElementById('friendsToInvite');
     const startGameButton = document.getElementById('startGameButton');
-    const invitedFriends = {};
-    const slot1Text = document.querySelector('#slot1 p');
-    slot1Text.textContent = user_login;
-
     const menuBtn = document.getElementById('menuBtn');
     const dropdownMenu = document.getElementById('dropdownMenu');
     menuBtn.addEventListener('click', (e) => {
@@ -17,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => {
         dropdownMenu.style.display = 'none';
     });
-
     const leaveRoomBtn = document.getElementById('leaveRoomBtn');
     if (leaveRoomBtn) {
         leaveRoomBtn.addEventListener('click', () => {
@@ -62,13 +58,77 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
-    if (is_creator && friendsToInvite) {
-        loadFriendsToInvite();
-    }
-
     startPollingRoomStatus();
-
+    const modalTitle = document.getElementById('modalTitle');
+    const kickBtn = document.getElementById('kickBtn');
+    const transferBtn = document.getElementById('transferBtn');
+    function openModal(occupant) {
+        modalTitle.textContent = `Действия с ${occupant}`;
+        modalOverlay.style.display = 'flex';
+    }
+    function closeModal() {
+        modalOverlay.style.display = 'none';
+    }
+    modalOverlay.addEventListener('click', (e) => {
+        if(e.target === modalOverlay) closeModal();
+    });
+    slot2.addEventListener('click', () => {
+        if (is_creator) {
+            const occupantElem = slot2.querySelector('p');
+            const occupant = occupantElem.textContent.trim();
+            if(occupant === "Ожидание..." || occupant === "") return;
+            openModal(occupant);
+        }
+    });
+    kickBtn.addEventListener('click', () => {
+        const occupant = slot2.querySelector('p').textContent.trim();
+        fetch('/kick_user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: currentRoomId, kicked_user: occupant })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+                window.location.reload();
+            }
+            closeModal();
+        })
+        .catch(() => {
+            createNotification("Ошибка при выполнении запроса", "error");
+            closeModal();
+        });
+    });
+    transferBtn.addEventListener('click', () => {
+        const occupant = slot2.querySelector('p').textContent.trim();
+        fetch('/transfer_leader', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: currentRoomId, new_leader: occupant })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(data.message, "success");
+                slot1.querySelector('p').textContent = occupant;
+                slot2.querySelector('p').textContent = user_login;
+                is_creator = false;
+                const friendsListContainer = document.querySelector('.friends-list');
+                if(friendsListContainer) friendsListContainer.style.display = 'none';
+                if(startGameButton) startGameButton.style.display = 'none';
+            }
+            closeModal();
+        })
+        .catch(() => {
+            createNotification("Ошибка при выполнении запроса", "error");
+            closeModal();
+        });
+    });
     function createNotification(message, type) {
         const container = document.getElementById("notification-container");
         const notification = document.createElement("div");
@@ -81,28 +141,31 @@ document.addEventListener('DOMContentLoaded', () => {
         notification.addEventListener("click", () => {
             notification.style.opacity = "0";
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
+                if (notification.parentNode) notification.parentNode.removeChild(notification);
             }, 500);
         });
         setTimeout(() => {
             notification.style.opacity = "0";
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
+                if (notification.parentNode) notification.parentNode.removeChild(notification);
             }, 500);
         }, 2000);
     }
-
     function startPollingRoomStatus() {
         if (pollInterval) return;
         pollInterval = setInterval(() => {
             if (!currentRoomId) return;
-            fetch(`/check_room_status?game_id=${currentRoomId}`)
+            fetch(`/check_room_status?room_id=${currentRoomId}`)
             .then(res => res.json())
             .then(data => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                    return;
+                }
+                if(data.status === "kicked") {
+                    window.location.href = '/';
+                    return;
+                }
                 if (data.error) {
                     if (data.error === "Комната не найдена") {
                         setTimeout(() => {
@@ -117,98 +180,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.creator === user_login && !is_creator) {
                         is_creator = true;
                         window.location.reload();
+                    } else if (data.creator !== user_login) {
+                        is_creator = false;
+                    }
+                    const friendsListContainer = document.querySelector('.friends-list');
+                    if(is_creator && friendsListContainer) {
+                        friendsListContainer.style.display = 'block';
+                        if(startGameButton) startGameButton.style.display = 'block';
+                    } else if(friendsListContainer) {
+                        friendsListContainer.style.display = 'none';
+                        if(startGameButton) startGameButton.style.display = 'none';
                     }
                 }
                 if (data.joined_user) {
                     slot2.innerHTML = `<p>${data.joined_user}</p>`;
+                    const friendInvites = document.querySelectorAll('.friend-invite');
+                    friendInvites.forEach(invite => {
+                        const friendName = invite.querySelector('span').textContent.trim();
+                        const btn = invite.querySelector('button');
+                        if (friendName === data.joined_user) {
+                            btn.textContent = 'В комнате';
+                            btn.classList.remove('waiting-btn');
+                            btn.classList.add('in-room-btn');
+                        }
+                    });
                 } else {
                     slot2.innerHTML = `<p>Ожидание...</p>`;
+                    const friendInvites = document.querySelectorAll('.friend-invite');
+                    friendInvites.forEach(invite => {
+                        const btn = invite.querySelector('button');
+                        if (btn.classList.contains('in-room-btn')) {
+                            btn.textContent = 'Пригласить';
+                            btn.classList.remove('in-room-btn');
+                        }
+                    });
                 }
                 if (data.game_status === 'current' || data.game_status === 'active') {
                     window.location.href = `/board/${currentRoomId}/${user_login}`;
-                }
-                if (is_creator && friendsToInvite) {
-                    updateFriendsUI(data.joined_user);
                 }
             })
             .catch(() => {});
         }, 1000);
     }
-
-    function loadFriendsToInvite() {
-        fetch('/get_friends')
-        .then(response => response.json())
-        .then(data => {
-            friendsToInvite.innerHTML = '';
-            if (data.friends && data.friends.length > 0) {
-                data.friends.forEach(friend => {
-                    const friendInvite = document.createElement('div');
-                    friendInvite.classList.add('friend-invite');
-                    const friendName = document.createElement('span');
-                    friendName.textContent = friend;
-                    const inviteBtn = document.createElement('button');
-                    inviteBtn.textContent = 'Пригласить';
-                    inviteBtn.addEventListener('click', () => {
-                        inviteFriend(friend, inviteBtn);
-                    });
-                    friendInvite.appendChild(friendName);
-                    friendInvite.appendChild(inviteBtn);
-                    friendsToInvite.appendChild(friendInvite);
-                });
-            } else {
-                friendsToInvite.innerHTML = "<p>У вас пока нет друзей для приглашения.</p>";
-            }
-        })
-        .catch(() => {
-            friendsToInvite.innerHTML = "<p>Не удалось загрузить список друзей.</p>";
-        });
-    }
-
-    function inviteFriend(friendUsername, button) {
-        if (!currentRoomId) return;
-        fetch('/invite_friend', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ friend_username: friendUsername, game_id: currentRoomId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                createNotification("Приглашение отправлено", "success");
-                invitedFriends[friendUsername] = true;
-                button.textContent = 'В ожидании';
-                button.classList.add('waiting-btn');
-            }
-        })
-        .catch(() => {
-            createNotification("Ошибка при приглашении друга", "error");
-        });
-    }
-
-    function updateFriendsUI(occupant) {
-        const friendInvites = friendsToInvite.querySelectorAll('.friend-invite');
-        friendInvites.forEach(invite => {
-            const friendName = invite.querySelector('span').textContent;
-            const btn = invite.querySelector('button');
-            if (friendName === occupant) {
-                btn.textContent = 'В комнате';
-                btn.classList.remove('waiting-btn');
-                btn.classList.add('in-room-btn');
-            } else {
-                if (invitedFriends[friendName]) {
-                    btn.textContent = 'В ожидании';
-                    btn.classList.remove('in-room-btn');
-                    btn.classList.add('waiting-btn');
-                } else {
-                    btn.textContent = 'Пригласить';
-                    btn.classList.remove('waiting-btn', 'in-room-btn');
-                }
-            }
-        });
-    }
-
     if (is_creator && startGameButton) {
         startGameButton.addEventListener('click', () => {
             if (slot2.textContent.trim() === 'Ожидание...') {
@@ -218,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     function startGameInRoom() {
         if (!currentRoomId) {
             createNotification("Комната не найдена", "error");
@@ -227,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/start_room_game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ game_id: currentRoomId })
+            body: JSON.stringify({ room_id: currentRoomId })
         })
         .then(res => res.json())
         .then(data => {
@@ -239,6 +251,27 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(() => {
             createNotification("Ошибка при запуске игры", "error");
+        });
+    }
+    window.inviteFriend = function(friendUsername, button) {
+        if (!currentRoomId) return;
+        fetch('/invite_friend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_username: friendUsername, room_id: currentRoomId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification("Приглашение отправлено", "success");
+                button.textContent = 'В ожидании';
+                button.classList.add('waiting-btn');
+            }
+        })
+        .catch(() => {
+            createNotification("Ошибка при приглашении друга", "error");
         });
     }
 });
