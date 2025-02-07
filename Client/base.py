@@ -22,7 +22,7 @@ def connect(method):
 
             Returns:
             wrapper (callable): The decorated function. This function will handle the database session management.
-        """
+    """
     def wrapper(*args, **kwargs):
         with SessionLocal() as session:
             try:
@@ -349,28 +349,6 @@ def leave_room_db(room_id, user, session: Session | None = None):
     if not room:
         return False
     if room.room_creator == user:
-        return True
-    elif room.occupant == user:
-        room.occupant = None
-        session.commit()
-        return True
-    return False
-
-@connect
-def delete_room_db(room_id, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
-    if room:
-        session.delete(room)
-        session.commit()
-        return True
-    return False
-
-@connect
-def leave_room_db(room_id, user, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
-    if not room:
-        return False
-    if room.room_creator == user:
         if room.occupant:
             room.room_creator = room.occupant
             room.occupant = None
@@ -382,6 +360,15 @@ def leave_room_db(room_id, user, session: Session | None = None):
             return True
     elif room.occupant == user:
         room.occupant = None
+        session.commit()
+        return True
+    return False
+
+@connect
+def delete_room_db(room_id, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if room:
+        session.delete(room)
         session.commit()
         return True
     return False
@@ -416,3 +403,39 @@ def transfer_room_leadership_db(room_id, new_leader, session: Session | None = N
 def get_outgoing_game_invitations_db(user: str, room_id: int, session: Session | None = None):
     records = session.query(GameInvitation).filter_by(from_user=user, game_id=room_id, status="pending").all()
     return [r.to_user for r in records]
+
+@connect
+def toggle_room_color_choice(room_id: int, user: str, color: str, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+        return {"error": "Комната не найдена"}
+    if user not in [room.room_creator, room.occupant]:
+        return {"error": "Нет прав для выбора цвета"}
+    if color == "w":
+        if room.chosen_white == user:
+            room.chosen_white = None
+            session.commit()
+            return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
+        else:
+            if room.chosen_white is not None and room.chosen_white != user:
+                return {"error": "Белый цвет уже занят"}
+            if room.chosen_black == user:
+                room.chosen_black = None
+            room.chosen_white = user
+            session.commit()
+            return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
+    elif color == "b":
+        if room.chosen_black == user:
+            room.chosen_black = None
+            session.commit()
+            return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
+        else:
+            if room.chosen_black is not None and room.chosen_black != user:
+                return {"error": "Черный цвет уже занят"}
+            if room.chosen_white == user:
+                room.chosen_white = None
+            room.chosen_black = user
+            session.commit()
+            return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
+    else:
+        return {"error": "Неверный цвет"}

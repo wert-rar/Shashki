@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Комната</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -16,357 +17,454 @@
             --error-color: #ff0000;
             --success-color: #28a745;
             --gold-color: #FFD700;
+            --color-bg: #1a1a2e;
+            --color-selected-bg: #4caf50;
         }
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-        }
-        @keyframes custom-fade-right {
-            0% {
-                opacity: 0;
-                transform: translateX(-15px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        body {
-            background-color: #0e0e1a;
-            color: #e0e0e0;
-            font-family: 'Roboto', sans-serif;
-        }
-        .wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            height: 100%;
-            padding: 30px;
-        }
-        .CreatRoom {
-            background: #1a1a2e;
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            color: #e0e0e0;
-            max-width: 100%;
-            width: 750px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8),
-                        0 0 20px rgba(80, 70, 150, 0.6),
-                        0 0 40px rgba(100, 90, 200, 0.4);
-            position: relative;
-        }
-        .back-button {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            font-size: 24px;
-            color: var(--text-color);
-            background: none;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.2s ease, color 0.3s ease;
-            z-index: 2;
-            opacity: 0;
-            transform: translateX(-30px);
-            animation: custom-fade-right 1s forwards;
-        }
-        .back-button:hover {
-            transform: translateX(-27px) scale(1.2);
-            color: var(--primary-hover);
-        }
-        .CreatRoom h2 {
-            margin-bottom: 20px;
-        }
-        .room-slots {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-        }
-        .creator-slot-container {
-            position: relative;
-            display: inline-block;
-        }
-        .creator-crown {
-            position: absolute;
-            top: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 28px;
-            color: var(--gold-color);
-        }
-        .slot {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid #2a2a44;
-            border-radius: 10px;
-            padding: 20px;
-            width: 150px;
-            text-align: center;
-            position: relative;
-            cursor: pointer;
-        }
-        .creator-slot {
-            border-color: var(--gold-color);
-            box-shadow: 0 0 10px var(--gold-color);
-        }
-        .friends-list {
-            margin-top: 20px;
-            text-align: left;
-        }
-        .friends-list h3 {
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-        .friend-invite {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 0;
-            border-bottom: 1px solid #2a2a44;
-        }
-        .friend-invite:last-child {
-            border-bottom: none;
-        }
-        .friend-invite button {
-            background-color: var(--primary-color);
-            color: #fff;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            user-select: none;
-        }
-        .friend-invite button:hover {
-            background-color: var(--primary-hover);
-        }
-        .waiting-btn {
-            background-color: #757575;
-            color: #fff;
-            cursor: default;
-            pointer-events: none;
-            user-select: none;
-        }
-        .in-room-btn {
-            background-color: #4caf50;
-            color: #fff;
-            cursor: default;
-            pointer-events: none;
-            user-select: none;
-        }
-        .start-game-button {
-            width: 100%;
-            max-width: 550px;
-            margin: 20px auto 0;
-            display: block;
-            background-color: var(--primary-color);
-            color: #fff;
-            padding: 15px 20px;
-            border: none;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.3s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-        .start-game-button:hover {
-            background-color: var(--primary-hover);
-        }
-        #notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 300px;
-            max-width: 80%;
-            z-index: 9999;
-        }
-        .notification {
-            position: relative;
-            background: #333;
-            color: #fff;
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            overflow: hidden;
-            animation: fadeIn 0.5s;
-        }
-        .notification.success {
-            background-color: var(--success-color);
-        }
-        .notification.error {
-            background-color: var(--error-color);
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        .progress-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 3px;
-            background-color: #fff;
-            width: 100%;
-            animation: progress 2s linear forwards;
-        }
-        @keyframes progress {
-            0% { width: 100%; }
-            100% { width: 0; }
-        }
-        .menu-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 3;
-        }
-        .menu-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--text-color);
-            cursor: pointer;
-        }
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 35px;
-            right: 0;
-            background-color: var(--menu-bg);
-            border-radius: 5px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        .dropdown-menu button {
-            width: 100%;
-            background: none;
-            border: none;
-            color: var(--text-color);
-            padding: 10px 15px;
-            text-align: left;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        .dropdown-menu button:hover {
-            background-color: var(--primary-hover);
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.6);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-        }
-        .modal {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: #1a1a2e;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            width: 300px;
-        }
-        .modal h3 {
-            margin-bottom: 15px;
-        }
-        .modal button {
-            width: 100%;
-            margin: 5px;
-            padding: 10px 15px;
-            background-color: var(--primary-color);
-            border: none;
-            border-radius: 5px;
-            color: #fff;
-            cursor: pointer;
-        }
-        .modal button:hover {
-            background-color: var(--primary-hover);
-        }
-        .modal .close-btn {
-            background-color: #757575;
-        }
-    </style>
+		html, body {
+			margin: 0;
+			padding: 0;
+			min-height: 100vh;
+			overflow-x: auto;
+		}
+		@keyframes custom-fade-right {
+			0% {
+				opacity: 0;
+				transform: translateX(-15px);
+			}
+			100% {
+				opacity: 1;
+				transform: translateX(0);
+			}
+		}
+		body {
+			background-color: #0e0e1a;
+			color: #e0e0e0;
+			font-family: 'Roboto', sans-serif;
+		}
+		.wrapper {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding: 30px;
+			min-height: 100vh;
+		}
+		.CreatRoom {
+			background: #1a1a2e;
+			padding: 30px;
+			border-radius: 20px;
+			text-align: center;
+			color: #e0e0e0;
+			width: 750px;
+			display: flex;
+			flex-direction: column;
+			gap: 20px;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8),
+						0 0 20px rgba(80, 70, 150, 0.6),
+						0 0 40px rgba(100, 90, 200, 0.4);
+			position: relative;
+		}
+		.back-button {
+			position: absolute;
+			top: 15px;
+			left: 15px;
+			font-size: 24px;
+			color: var(--text-color);
+			background: none;
+			border: none;
+			cursor: pointer;
+			transition: transform 0.2s ease, color 0.3s ease;
+			z-index: 2;
+			opacity: 0;
+			transform: translateX(-30px);
+			animation: custom-fade-right 1s forwards;
+		}
+		.back-button:hover {
+			transform: translateX(-27px) scale(1.2);
+			color: var(--primary-hover);
+		}
+		.CreatRoom h2 {
+			margin-bottom: 20px;
+		}
+		.room-slots {
+			display: flex;
+			justify-content: center;
+			gap: clamp(20px, 4vw, 40px);
+			margin: 20px 0;
+		}
+		.creator-slot-container {
+			position: relative;
+			display: inline-block;
+		}
+		.creator-crown {
+			position: absolute;
+			top: -30px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 28px;
+			color: var(--gold-color);
+		}
+		.slot {
+			background: rgba(255, 255, 255, 0.1);
+			border: 2px solid #2a2a44;
+			border-radius: 10px;
+			padding: 20px;
+			width: 150px;
+			text-align: center;
+			position: relative;
+			cursor: pointer;
+		}
+		.creator-slot {
+			border-color: var(--gold-color);
+			box-shadow: 0 0 10px var(--gold-color);
+		}
+		.color-selection {
+			display: flex;
+			justify-content: center;
+			gap: clamp(5px, 2vw, 20px);
+			margin: 20px 0;
+		}
+		.color-option {
+			background: var(--color-bg);
+			border: 2px solid #2a2a44;
+			border-radius: 10px;
+			padding: 15px 20px;
+			cursor: pointer;
+			min-width: 120px;
+			text-align: center;
+			transition: background 0.3s;
+		}
+		.color-name {
+			margin-top: 10px;
+			font-size: 14px;
+			color: #fff;
+		}
+		.friends-list {
+			margin-top: 20px;
+			text-align: left;
+		}
+		.friends-list h3 {
+			margin-bottom: 10px;
+			font-size: 1.1rem;
+		}
+		.friend-invite {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 5px 0;
+			border-bottom: 1px solid #2a2a44;
+		}
+		.friend-invite:last-child {
+			border-bottom: none;
+		}
+		.friend-invite button {
+			background-color: var(--primary-color);
+			color: #fff;
+			padding: 5px 10px;
+			border: none;
+			border-radius: 5px;
+			font-size: 0.9rem;
+			cursor: pointer;
+			user-select: none;
+		}
+		.friend-invite button:hover {
+			background-color: var(--primary-hover);
+		}
+		.start-game-button {
+			width: 100%;
+			max-width: 550px;
+			margin: 20px auto 0;
+			display: block;
+			background-color: var(--primary-color);
+			color: #fff;
+			padding: 15px 20px;
+			border: none;
+			border-radius: 30px;
+			font-size: 16px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: background-color 0.3s, transform 0.3s;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+		}
+		.start-game-button:disabled {
+			background-color: #757575;
+			cursor: not-allowed;
+		}
+		.start-game-button:hover:not(:disabled) {
+			background-color: var(--primary-hover);
+		}
+		#notification-container {
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			width: 300px;
+			max-width: 80%;
+			z-index: 9999;
+		}
+		.notification {
+			position: relative;
+			background: #333;
+			color: #fff;
+			padding: 10px 15px;
+			margin-bottom: 10px;
+			border-radius: 5px;
+			cursor: pointer;
+			overflow: hidden;
+			animation: fadeIn 0.5s;
+		}
+		.notification.success {
+			background-color: var(--success-color);
+		}
+		.notification.error {
+			background-color: var(--error-color);
+		}
+		@keyframes fadeIn {
+			from { opacity: 0; transform: translateX(20px); }
+			to { opacity: 1; transform: translateX(0); }
+		}
+		.progress-bar {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			height: 3px;
+			background-color: #fff;
+			width: 100%;
+			animation: progress 2s linear forwards;
+		}
+		@keyframes progress {
+			0% { width: 100%; }
+			100% { width: 0; }
+		}
+		.menu-container {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			z-index: 3;
+		}
+		.menu-btn {
+			background: none;
+			border: none;
+			font-size: 24px;
+			color: var(--text-color);
+			cursor: pointer;
+		}
+		.dropdown-menu {
+			display: none;
+			position: absolute;
+			top: 35px;
+			right: 0;
+			background-color: var(--menu-bg);
+			border-radius: 5px;
+			box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+			overflow: hidden;
+		}
+		.dropdown-menu button {
+			width: 100%;
+			background: none;
+			border: none;
+			color: var(--text-color);
+			padding: 10px 15px;
+			text-align: left;
+			cursor: pointer;
+			transition: background 0.3s;
+		}
+		.dropdown-menu button:hover {
+			background-color: var(--primary-hover);
+		}
+		.modal-overlay {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100vw;
+			height: 100vh;
+			background: rgba(0,0,0,0.6);
+			display: none;
+			justify-content: center;
+			align-items: center;
+			z-index: 10000;
+		}
+		.modal {
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			background: #1a1a2e;
+			padding: 20px;
+			border-radius: 10px;
+			text-align: center;
+			width: 300px;
+		}
+		.modal h3 {
+			margin-bottom: 15px;
+		}
+		.modal button {
+			width: 100%;
+			margin: 5px;
+			padding: 10px 15px;
+			background-color: var(--primary-color);
+			border: none;
+			border-radius: 5px;
+			color: #fff;
+			cursor: pointer;
+		}
+		.modal button:hover {
+			background-color: var(--primary-hover);
+		}
+		.modal .close-btn {
+			background-color: #757575;
+		}
+		@media (max-width: 410px) {
+			.CreatRoom {
+				width: 100%;
+				padding: 15px;
+				gap: 10px;
+			}
+			.room-slots {
+				gap: 10px;
+			}
+			.slot {
+				width: 120px;
+				padding: 15px;
+			}
+			.color-selection {
+				gap: 10px;
+			}
+			.color-option {
+				min-width: 100px;
+				padding: 10px 15px;
+			}
+			.start-game-button {
+				padding: 10px 15px;
+				font-size: 14px;
+			}
+			.modal {
+				width: 90%;
+				padding: 15px;
+			}
+			.modal h3 {
+				font-size: 1.1rem;
+			}
+		}
+		@media (max-width: 350px) {
+			.slot {
+				width: 100px;
+				padding: 10px;
+				font-size: 14px;
+			}
+			.back-button {
+				font-size: 20px;
+			}
+			.menu-btn {
+				font-size: 20px;
+			}
+		}
+		@media (max-width: 315px) {
+			.slot {
+				width: 90px;
+				padding: 8px;
+				font-size: 12px;
+			}
+			.friend-invite span {
+				font-size: 12px;
+			}
+			.color-name {
+				font-size: 12px;
+			}
+			.in-room-btn {
+				font-size: 0.8rem;
+				padding: 4px 8px;
+			}
+			h2 {
+				font-size: 18px;
+			}
+			.color-option i {
+				font-size: 2.5rem;
+			}
+			.friend-invite button {
+				font-size: 0.8rem;
+				padding: 4px 8px;
+			}
+		}
+	</style>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="CreatRoom">
-            <button class="back-button" onclick="window.location.href='/'">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <div class="menu-container">
-                <button class="menu-btn" id="menuBtn"><i class="fa-solid fa-bars"></i></button>
-                <div class="dropdown-menu" id="dropdownMenu">
-                    <button id="leaveRoomBtn">Покинуть</button>
-                    {% if is_creator %}
-                    <button id="deleteRoomBtn">Удалить</button>
-                    {% endif %}
-                </div>
-            </div>
-            <h2>Комната</h2>
-            <div class="room-slots">
-                <div class="creator-slot-container">
-                    <div class="creator-crown"><i class="fa-solid fa-crown"></i></div>
-                    <div class="slot creator-slot" id="slot1">
-                        <p>{{ creator }}</p>
-                    </div>
-                </div>
-                <div class="slot" id="slot2">
-                    <p>{% if joined_user %}{{ joined_user }}{% else %}Ожидание...{% endif %}</p>
-                </div>
-            </div>
-            {% if is_creator %}
-            <div class="friends-list">
-                <h3>Друзья</h3>
-                <div id="friendsToInvite">
-                    {% if friends_list and friends_list|length > 0 %}
-                        {% for friend in friends_list %}
-                            <div class="friend-invite">
-                                <span>{{ friend }}</span>
-                                {% if joined_user and friend == joined_user %}
-                                    <button class="in-room-btn" disabled>В комнате</button>
-                                {% elif invited_friends and friend in invited_friends %}
-                                    <button class="waiting-btn" disabled>В ожидании</button>
-                                {% else %}
-                                    <button onclick="inviteFriend('{{ friend }}', this)">Пригласить</button>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <p>У вас пока нет друзей для приглашения.</p>
-                    {% endif %}
-                </div>
-            </div>
-            <button class="start-game-button" id="startGameButton">Начать</button>
-            {% endif %}
-        </div>
-    </div>
-    <div id="notification-container"></div>
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <h3 id="modalTitle"></h3>
-            <button id="profileBtn">Профиль</button>
-            <button id="transferBtn">Передать права</button>
-            <button id="kickBtn">Выгнать</button>
-        </div>
-    </div>
-    <script>
-        var currentRoomId = {{ room_id }};
-        var user_login = "{{ user_login }}";
-        var is_creator = {{ is_creator|tojson }};
+	<div class="wrapper">
+		<div class="CreatRoom">
+			<button class="back-button" onclick="window.location.href='/'">
+				<i class="fa-solid fa-arrow-left"></i>
+			</button>
+			<div class="menu-container">
+				<button class="menu-btn" id="menuBtn">
+					<i class="fa-solid fa-bars"></i>
+				</button>
+				<div class="dropdown-menu" id="dropdownMenu">
+					<button id="leaveRoomBtn">Покинуть</button>
+					{% if is_creator %}
+						<button id="deleteRoomBtn">Удалить</button>
+					{% endif %}
+				</div>
+			</div>
+			<h2>Комната</h2>
+			<div class="room-slots">
+				<div class="creator-slot-container">
+					<div class="creator-crown">
+						<i class="fa-solid fa-crown"></i>
+					</div>
+					<div class="slot creator-slot" id="slot1">
+						<p>{{ creator }}</p>
+					</div>
+				</div>
+				<div class="slot" id="slot2">
+					<p>{% if joined_user %}{{ joined_user }}{% else %}Ожидание...{% endif %}</p>
+				</div>
+			</div>
+			<div class="color-selection">
+				<div class="color-option {% if chosen_white %}selected{% endif %}" id="colorWhite" data-color="w">
+					<i class="fas fa-circle fa-3x" style="color: #ffffff;"></i>
+					<div class="color-name" id="whiteName">{{ chosen_white or '' }}</div>
+				</div>
+				<div class="color-option {% if chosen_black %}selected{% endif %}" id="colorBlack" data-color="b">
+					<i class="fas fa-circle fa-3x" style="color: #000000;"></i>
+					<div class="color-name" id="blackName">{{ chosen_black or '' }}</div>
+				</div>
+			</div>
+			{% if is_creator %}
+				<div class="friends-list">
+					<h3>Друзья</h3>
+					<div id="friendsToInvite">
+						{% if friends_list and friends_list|length > 0 %}
+							{% for friend in friends_list %}
+								<div class="friend-invite">
+									<span>{{ friend }}</span>
+									{% if joined_user and friend == joined_user %}
+										<button class="in-room-btn" disabled>В комнате</button>
+									{% elif invited_friends and friend in invited_friends %}
+										<button class="waiting-btn" disabled>В ожидании</button>
+									{% else %}
+										<button onclick="inviteFriend('{{ friend }}', this)">Пригласить</button>
+									{% endif %}
+								</div>
+							{% endfor %}
+						{% else %}
+							<p>У вас пока нет друзей для приглашения.</p>
+						{% endif %}
+					</div>
+				</div>
+				<button class="start-game-button" id="startGameButton" {% if not (chosen_white and chosen_black) %}disabled{% endif %}>Начать</button>
+			{% endif %}
+		</div>
+	</div>
+	<div id="notification-container"></div>
+	<div class="modal-overlay" id="modalOverlay">
+		<div class="modal">
+			<h3 id="modalTitle"></h3>
+			<button id="profileBtn">Профиль</button>
+			<button id="transferBtn">Передать права</button>
+			<button id="kickBtn">Выгнать</button>
+		</div>
+	</div>
+	<script>
+		var currentRoomId = {{ room_id }};
+		var user_login = "{{ user_login }}";
+		var is_creator = {{ is_creator|tojson }};
     </script>
     <script src="{{ url_for('static', filename='script_create_room.js') }}"></script>
 </body>

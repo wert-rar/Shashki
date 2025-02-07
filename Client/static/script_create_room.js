@@ -9,6 +9,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropdownMenu = document.getElementById('dropdownMenu');
     let currentOccupant = "";
 
+    const colorWhite = document.getElementById('colorWhite');
+    const colorBlack = document.getElementById('colorBlack');
+    const whiteName = document.getElementById('whiteName');
+    const blackName = document.getElementById('blackName');
+
+    window.inviteFriend = function(friendUsername, button) {
+        fetch('/invite_friend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ friend_username: friendUsername, room_id: currentRoomId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification("Приглашение отправлено", "success");
+                button.textContent = 'В ожидании';
+                button.disabled = true;
+            }
+        })
+        .catch(() => {
+            createNotification("Ошибка при приглашении друга", "error");
+        });
+    };
+
     menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
@@ -60,7 +86,84 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    colorWhite.addEventListener('click', () => {
+        toggleColorSelection('w');
+    });
+    colorBlack.addEventListener('click', () => {
+        toggleColorSelection('b');
+    });
+
+function toggleColorSelection(color) {
+    fetch('/select_color', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: currentRoomId, color: color })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Ответ от /select_color:", data);
+        if (data.error) {
+            createNotification(data.error, "error");
+        } else {
+            if (data.message) {
+                createNotification(data.message, "success");
+            }
+            updateColorDisplay(data);
+        }
+    })
+    .catch(() => {
+        createNotification("Ошибка при выборе цвета", "error");
+    });
+}
+
+    function updateColorDisplay(data) {
+        if(data.chosen_white) {
+            colorWhite.classList.add('selected');
+            whiteName.textContent = data.chosen_white;
+        } else {
+            colorWhite.classList.remove('selected');
+            whiteName.textContent = "";
+        }
+        if(data.chosen_black) {
+            colorBlack.classList.add('selected');
+            blackName.textContent = data.chosen_black;
+        } else {
+            colorBlack.classList.remove('selected');
+            blackName.textContent = "";
+        }
+        if(startGameButton) {
+            if(data.chosen_white && data.chosen_black) {
+                startGameButton.disabled = false;
+            } else {
+                startGameButton.disabled = true;
+            }
+        }
+    }
+
+    if(startGameButton) {
+        startGameButton.addEventListener('click', () => {
+            fetch('/start_room_game', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: currentRoomId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) {
+                    createNotification(data.error, "error");
+                } else {
+                    window.location.href = `/board/${data.game_id}/${user_login}`;
+                }
+            })
+            .catch(() => {
+                createNotification("Ошибка при запуске игры", "error");
+            });
+        });
+    }
+
     startPollingRoomStatus();
+
     const modalTitle = document.getElementById('modalTitle');
     const profileBtn = document.getElementById('profileBtn');
     const kickBtn = document.getElementById('kickBtn');
@@ -189,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.error === "Комната не найдена") {
                         setTimeout(() => {
                             window.location.href = '/?room_status=deleted';
-                        }, 1000);
+                        }, 500);
                     }
                     return;
                 }
@@ -234,63 +337,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 }
-                if (data.game_status === 'current' || data.game_status === 'active') {
-                    window.location.href = `/board/${currentRoomId}/${user_login}`;
+                if(data.chosen_white !== undefined && data.chosen_black !== undefined) {
+                    updateColorDisplay({chosen_white: data.chosen_white, chosen_black: data.chosen_black});
                 }
             })
             .catch(() => {});
         }, 1000);
-    }
-    if (is_creator && startGameButton) {
-        startGameButton.addEventListener('click', () => {
-            if (slot2.textContent.trim() === 'Ожидание...') {
-                createNotification("Нужен второй игрок для начала игры", "error");
-            } else {
-                startGameInRoom();
-            }
-        });
-    }
-    function startGameInRoom() {
-        if (!currentRoomId) {
-            createNotification("Комната не найдена", "error");
-            return;
-        }
-        fetch('/start_room_game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ room_id: currentRoomId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                createNotification("Игра запущена", "success");
-            }
-        })
-        .catch(() => {
-            createNotification("Ошибка при запуске игры", "error");
-        });
-    }
-    window.inviteFriend = function(friendUsername, button) {
-        if (!currentRoomId) return;
-        fetch('/invite_friend', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ friend_username: friendUsername, room_id: currentRoomId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                createNotification(data.error, "error");
-            } else {
-                createNotification("Приглашение отправлено", "success");
-                button.textContent = 'В ожидании';
-                button.classList.add('waiting-btn');
-            }
-        })
-        .catch(() => {
-            createNotification("Ошибка при приглашении друга", "error");
-        });
     }
 });

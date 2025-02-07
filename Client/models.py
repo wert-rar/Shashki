@@ -82,7 +82,7 @@ class RememberToken(Base):
 
 class Game(Base):
     __tablename__ = "games"
-    game_id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     f_user = Column(String, nullable=True)
     c_user = Column(String, nullable=True)
     status = Column(String, default="unstarted")
@@ -125,4 +125,5 @@ class Room(Base):
     game_id = Column(Integer, ForeignKey('games.game_id'), nullable=True)
     room_creator = Column(String, nullable=False)
     occupant = Column(String, nullable=True)
-
+    chosen_white = Column(String, nullable=True)
+    chosen_black = Column(String, nullable=True)

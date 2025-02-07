@@ -266,7 +266,7 @@ def page_not_found(error):
     return render_template('404.html'), 404
 
 @app.errorhandler(403)
-def forbidden():
+def forbidden(e):
     return render_template('403.html'), 403
 
 @app.route('/trigger_error')
@@ -1091,8 +1091,11 @@ def check_room_status():
         db_session.close()
         session.pop("room_id", None)
         return jsonify({"status": "kicked", "redirect": "/"}), 200
+
     creator = room_obj.room_creator
     occupant = room_obj.occupant
+    chosen_white = room_obj.chosen_white
+    chosen_black = room_obj.chosen_black
     game_id_db = room_obj.game_id
     db_status = None
     if game_id_db:
@@ -1101,11 +1104,19 @@ def check_room_status():
             update_game_status_in_db(game_id_db, 'current')
             db_status = 'current'
     db_session.close()
-    return jsonify({
+
+    response = {
         "creator": creator,
         "joined_user": occupant,
-        "game_status": db_status if db_status else "waiting"
-    }), 200
+        "game_status": db_status if db_status else "waiting",
+        "chosen_white": chosen_white,
+        "chosen_black": chosen_black,
+    }
+    if game_id_db:
+        response["game_id"] = game_id_db
+    if response["game_status"] in ["current", "active"] and game_id_db:
+        response["redirect"] = f"/board/{game_id_db}/{user}"
+    return jsonify(response), 200
 
 @app.route("/cancel_room", methods=["POST"])
 @csrf.exempt
@@ -1136,17 +1147,28 @@ def start_room_game():
     if not room_obj:
         db_session.close()
         return jsonify({"error": "Комната не найдена"}), 404
-    if not (room_obj.occupant and room_obj.room_creator):
+    if not (room_obj.occupant and room_obj.room_creator and room_obj.chosen_white and room_obj.chosen_black):
         db_session.close()
-        return jsonify({"error": "Недостаточно игроков"}), 400
-    new_game_id = create_new_game_in_db(room_obj.room_creator, forced_game_id=int(room_id))
+        return jsonify({"error": "Недостаточно игроков или не выбраны цвета"}), 400
+
+    if room_obj.chosen_white == room_obj.room_creator and room_obj.chosen_black == room_obj.occupant:
+        f_user = room_obj.room_creator
+        c_user = room_obj.occupant
+    elif room_obj.chosen_black == room_obj.room_creator and room_obj.chosen_white == room_obj.occupant:
+        f_user = room_obj.occupant
+        c_user = room_obj.room_creator
+    else:
+        db_session.close()
+        return jsonify({"error": "Неверный выбор цветов"}), 400
+
+    new_game_id = create_new_game_in_db(f_user)
     if not new_game_id:
         db_session.close()
         return jsonify({"error": "Не удалось создать игру"}), 500
     from models import Game as DBGame
     db_game = db_session.query(DBGame).filter(DBGame.game_id == new_game_id).first()
     if db_game and not db_game.c_user:
-        db_game.c_user = room_obj.occupant
+        db_game.c_user = c_user
         db_session.commit()
     base.update_room_game_db(int(room_id), new_game_id, session=db_session)
     db_session.close()
@@ -1155,10 +1177,13 @@ def start_room_game():
         with game_obj.lock:
             game_obj.status = "w1"
             if not game_obj.c_user:
-                game_obj.c_user = room_obj.occupant
+                game_obj.c_user = c_user
             game_obj.last_update_time = time.time()
     session["game_id"] = new_game_id
-    session["color"] = "w"
+    if session.get("user") == f_user:
+        session["color"] = "w"
+    else:
+        session["color"] = "b"
     return jsonify({"game_id": new_game_id}), 200
 
 @app.route("/room")
@@ -1218,7 +1243,9 @@ def show_room(room_id):
         joined_user=room_obj.occupant,
         creator=room_obj.room_creator,
         friends_list=friends_list,
-        invited_friends=invited_friends
+        invited_friends=invited_friends,
+        chosen_white=room_obj.chosen_white,
+        chosen_black=room_obj.chosen_black
     )
 
 @app.route('/get_current_user')
@@ -1300,6 +1327,30 @@ def transfer_leader():
     if success:
         return jsonify({"message": "Права переданы"}), 200
     return jsonify({"error": "Не удалось передать права"}), 400
+
+@app.route("/select_color", methods=["POST"])
+@csrf.exempt
+def select_color():
+    data = request.json
+    room_id = data.get("room_id")
+    color = data.get("color")
+    user_login = session.get("user")
+    if not room_id or not color or not user_login:
+        return jsonify({"error": "Недостаточно данных"}), 400
+    try:
+        room_id_int = int(room_id)
+    except Exception as e:
+        return jsonify({"error": "Некорректный room_id"}), 400
+    room = base.get_room_by_room_id_db(room_id_int)
+    if not room:
+        return jsonify({"error": "Комната не найдена"}), 404
+    if user_login not in [room.room_creator, room.occupant]:
+        return jsonify({"error": "Нет прав для выбора цвета"}), 403
+    result = base.toggle_room_color_choice(room_id_int, user_login, color)
+    if result.get("error"):
+        return jsonify(result), 400
+    return jsonify(result), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True)
