@@ -24,6 +24,7 @@
         </div>
     </div>
     <div class="board-container">
+        <div id="mobile-moves-history" class="mobile-moves-history"></div>
         <div id="board-wrapper">
             <div class="player-info-opponent">
                 <img src="{{ opponent_avatar_url }}" alt="Avatar">
@@ -102,9 +103,19 @@
         </div>
     </div>
     <div id="mobile-bar">
+    <div class="mobile-bar-item" id="mobile-settings">
         <div id="mobile-settings-icon">&#9776;</div>
         <div id="mobile-settings-text">Настройки</div>
     </div>
+    <div class="mobile-bar-item mobile-move-arrow" id="mobile-prev-move">
+        <div class="arrow-icon">&#9664;</div>
+        <div class="arrow-text">Назад</div>
+    </div>
+    <div class="mobile-bar-item mobile-move-arrow" id="mobile-next-move">
+        <div class="arrow-icon">&#9654;</div>
+        <div class="arrow-text">Вперед</div>
+    </div>
+</div>
     <div id="mobile-settings-modal" class="modal">
         <div class="modal-content">
             <h2>Настройки</h2>
@@ -124,6 +135,7 @@
         const opponent_rank = "{{ opponent_rank }}";
         console.log(`User: ${user_login}, Game ID: ${game_id}, Color: ${user_color}, Opponent: ${opponent_login}, Is Ghost: ${is_ghost}`);
     </script>
+
     <script src="/static/script.js"></script>
 </body>
 </html>

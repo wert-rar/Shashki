@@ -14,6 +14,7 @@ let gameFoundSoundPlayed = false;
 let victorySoundPlayed = false;
 let defeatSoundPlayed = false;
 let gameOverShown = false;
+let USE_INTERNAL_LABELS = false;
 let shownErrors = new Set();
 let status = {
     w1: "Ход белых",
@@ -539,13 +540,25 @@ function applyMove(boardState, move) {
     }
     return newState;
 }
+
 function addEventListeners() {
     CANVAS.addEventListener("click", onClick);
     window.addEventListener("resize", onResize);
-    let mobileBar = document.getElementById("mobile-bar");
-    if (mobileBar) {
-        mobileBar.addEventListener("click", openMobileSettingsModal);
+
+    let mobileSettingsIcon = document.getElementById("mobile-settings-icon");
+    if (mobileSettingsIcon) {
+        mobileSettingsIcon.addEventListener("click", openMobileSettingsModal);
     }
+
+    let mobilePrevMoveBtn = document.getElementById("mobile-prev-move");
+    if (mobilePrevMoveBtn) {
+        mobilePrevMoveBtn.addEventListener("click", mobilePrevMove);
+    }
+    let mobileNextMoveBtn = document.getElementById("mobile-next-move");
+    if (mobileNextMoveBtn) {
+        mobileNextMoveBtn.addEventListener("click", mobileNextMove);
+    }
+
     let modals = ["surrender-modal", "offer-draw-modal", "mobile-settings-modal"];
     modals.forEach(id => {
         let modal = document.getElementById(id);
@@ -556,6 +569,28 @@ function addEventListeners() {
         });
     });
 }
+
+function mobilePrevMove() {
+    if (boardStates.length <= 1) return;
+    let viewIndex = (currentView === null ? boardStates.length - 1 : currentView);
+    if (viewIndex > 0) {
+        viewBoardState(viewIndex - 1);
+    }
+}
+
+function mobileNextMove() {
+    if (boardStates.length <= 1) return;
+    let viewIndex = (currentView === null ? boardStates.length - 1 : currentView);
+    if (viewIndex < boardStates.length - 1) {
+        let nextIndex = viewIndex + 1;
+        if (nextIndex === boardStates.length - 1) {
+            returnToCurrentView();
+        } else {
+            viewBoardState(nextIndex);
+        }
+    }
+}
+
 function onClick(evt) {
     if (currentView !== null) return;
     evt.preventDefault();
@@ -598,16 +633,25 @@ function adjustScreen() {
     let size;
     if (screenWidth <= 1000) {
         size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
-        LABEL_PADDING = 36;
+        if (screenWidth <= 800) {
+            LABEL_PADDING = 0;
+            USE_INTERNAL_LABELS = true;
+        } else {
+            LABEL_PADDING = 36;
+            USE_INTERNAL_LABELS = false;
+        }
     } else if (screenWidth <= 1140) {
         size = Math.min(screenWidth * 0.55, screenHeight * 0.55);
         LABEL_PADDING = 30;
+        USE_INTERNAL_LABELS = false;
     } else if (screenWidth <= 1400) {
         size = Math.min(screenWidth * 0.60, screenHeight * 0.60);
         LABEL_PADDING = 30;
+        USE_INTERNAL_LABELS = false;
     } else {
         size = Math.min(screenWidth * 0.75, screenHeight * 0.75);
         LABEL_PADDING = 36;
+        USE_INTERNAL_LABELS = false;
     }
     size = Math.max(300, Math.min(size, 800));
     const dpr = window.devicePixelRatio || 1;
@@ -623,6 +667,7 @@ function adjustScreen() {
     BOARD_OFFSET_Y = LABEL_PADDING;
     CTX.clearRect(0, 0, CANVAS.width / dpr, CANVAS.height / dpr);
 }
+
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
     CTX.beginPath();
     CTX.arc(x, y, r, 0, 2 * Math.PI, false);
@@ -705,34 +750,61 @@ function render_Board() {
     drawLabels();
 }
 function drawLabels() {
-    CTX.fillStyle = "#f0f0f0";
-    let fontSize = CELL_SIZE / 3;
-    fontSize = Math.max(12, Math.min(fontSize, 24));
-    CTX.font = fontSize + "px Arial";
-    CTX.textAlign = "center";
-    CTX.textBaseline = "middle";
-    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
-        const y = BOARD_OFFSET_Y - LABEL_PADDING / 2;
-        CTX.fillText(letters[i], x, y);
-    }
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
-        const y = BOARD_OFFSET_Y + CELL_SIZE * 8 + LABEL_PADDING / 2;
-        CTX.fillText(letters[i], x, y);
-    }
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X - LABEL_PADDING / 2;
-        const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
-        CTX.fillText((i + 1).toString(), x, y);
-    }
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X + CELL_SIZE * 8 + LABEL_PADDING / 2;
-        const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
-        CTX.fillText((i + 1).toString(), x, y);
+    if (!USE_INTERNAL_LABELS) {
+        CTX.fillStyle = "#f0f0f0";
+        let fontSize = CELL_SIZE / 3;
+        fontSize = Math.max(12, Math.min(fontSize, 24));
+        CTX.font = fontSize + "px Arial";
+        CTX.textAlign = "center";
+        CTX.textBaseline = "middle";
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
+            const y = BOARD_OFFSET_Y - LABEL_PADDING / 2;
+            CTX.fillText(letters[i], x, y);
+        }
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
+            const y = BOARD_OFFSET_Y + CELL_SIZE * 8 + LABEL_PADDING / 2;
+            CTX.fillText(letters[i], x, y);
+        }
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X - LABEL_PADDING / 2;
+            const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
+            CTX.fillText((i + 1).toString(), x, y);
+        }
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X + CELL_SIZE * 8 + LABEL_PADDING / 2;
+            const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
+            CTX.fillText((i + 1).toString(), x, y);
+        }
+    } else {
+        CTX.fillStyle = "#f0f0f0";
+        let numberFontSize = Math.max(8, CELL_SIZE / 6);
+        CTX.font = numberFontSize + "px Arial";
+        CTX.textAlign = "left";
+        CTX.textBaseline = "top";
+        for (let i = 0; i < 8; i++) {
+            let x = BOARD_OFFSET_X + 3;
+            let y = BOARD_OFFSET_Y + CELL_SIZE * i + 3;
+            let number = (8 - i).toString();
+            CTX.fillText(number, x, y);
+        }
+
+        let letterFontSize = Math.max(6, CELL_SIZE / 7);
+        CTX.font = letterFontSize + "px Arial";
+        CTX.textAlign = "right";
+        CTX.textBaseline = "bottom";
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        for (let j = 0; j < 8; j++) {
+            let x = BOARD_OFFSET_X + CELL_SIZE * (j + 1) - 3;
+            let y = BOARD_OFFSET_Y + CELL_SIZE * 8 - 3;
+            let letter = letters[j];
+            CTX.fillText(letter, x, y);
+        }
     }
 }
+
 function render_Pieces() {
     for (let i = 0; i < pieces.length; i++) {
         draw_piece(pieces[i], user_color);
@@ -764,6 +836,7 @@ function convertCoordinatesToNotation(x, y) {
         return file + rank;
     }
 }
+
 function updateMovesList(moveHistory) {
     const movesList = document.querySelector('.moves-list');
     const movesContainer = document.querySelector('.moves-container');
@@ -780,12 +853,7 @@ function updateMovesList(moveHistory) {
             crown = ' <span class="crown" title="Лучший игрок">👑</span>';
         }
         let avatarUrl = isPlayerMove ? user_avatar_url : opponent_avatar_url;
-        let player = `
-      <img class="move-avatar" src="${avatarUrl}" alt="avatar">
-      <span class="player-name ${playerClass} ${playerNameClass}" data-username="${playerName}">
-        ${playerName}${crown}
-      </span>
-    `;
+        let player = `<img class="move-avatar" src="${avatarUrl}" alt="avatar"><span class="player-name ${playerClass} ${playerNameClass}" data-username="${playerName}">${playerName}${crown}</span>`;
         let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
         let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
         let moveText = fromPos + (move.captured ? ' x ' : ' - ') + toPos;
@@ -831,7 +899,61 @@ function updateMovesList(moveHistory) {
         movesContainer.scrollTop = movesContainer.scrollHeight;
     }
     addProfileClickListeners();
+    if (window.innerWidth <= 1000) {
+        let mobileHistoryElem = document.getElementById("mobile-moves-history");
+        if (mobileHistoryElem) {
+            mobileHistoryElem.innerHTML = "";
+            let groups = [];
+            let currentGroup = null;
+            for (let i = 0; i < moveHistory.length; i++) {
+                let m = moveHistory[i];
+                if (!currentGroup || m.player !== currentGroup.player) {
+                    if (currentGroup) groups.push(currentGroup);
+                    currentGroup = { player: m.player, moves: [m] };
+                } else {
+                    currentGroup.moves.push(m);
+                }
+            }
+            if (currentGroup) groups.push(currentGroup);
+            let roundCounter = 1;
+            let cumulativeIndex = 0;
+            for (let i = 0; i < groups.length; i++) {
+                let grp = groups[i];
+                let moveStr = "";
+                if (grp.moves.length > 0) {
+                    moveStr = convertCoordinatesToNotation(grp.moves[0].to.x, grp.moves[0].to.y);
+                    if (grp.moves.length > 1) {
+                        let extra = "";
+                        for (let j = 1; j < grp.moves.length; j++) {
+                            extra += convertCoordinatesToNotation(grp.moves[j].to.x, grp.moves[j].to.y) + " ";
+                        }
+                        extra = extra.trim();
+                        moveStr += " (" + extra + ")";
+                    }
+                }
+                let span = document.createElement('span');
+                span.classList.add('mobile-move');
+                if (i % 2 === 0) {
+                    span.textContent = roundCounter + ".      " + moveStr + "      ";
+                    roundCounter++;
+                } else {
+                    span.textContent = moveStr + "            ";
+                }
+                let groupMoveCount = grp.moves.length;
+                let indexForView = cumulativeIndex + groupMoveCount;
+                span.addEventListener('click', () => {
+                    let allMobileMoves = mobileHistoryElem.querySelectorAll('.mobile-move');
+                    allMobileMoves.forEach(m => m.classList.remove('selected'));
+                    span.classList.add('selected');
+                    viewBoardState(indexForView);
+                });
+                cumulativeIndex += groupMoveCount;
+                mobileHistoryElem.appendChild(span);
+            }
+        }
+    }
 }
+
 function viewBoardState(moveIndex) {
     if (moveIndex < 0 || moveIndex > boardStates.length - 1) return;
     pieces = boardStates[moveIndex].map(piece => ({ ...piece }));
@@ -848,9 +970,10 @@ function returnToCurrentView() {
     document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'));
 }
 function showHistoryViewIndicator() {
-    let indicator = document.getElementById('history-view-indicator');
-    if (!indicator) return;
-    indicator.style.display = 'block';
+  if (window.innerWidth <= 1000) return;
+  let indicator = document.getElementById('history-view-indicator');
+  if (!indicator) return;
+  indicator.style.display = 'block';
 }
 function addProfileClickListeners() {
     const playerNames = document.querySelectorAll('.player-name');
