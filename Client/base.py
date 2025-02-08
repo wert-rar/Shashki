@@ -183,8 +183,13 @@ def send_game_invite_db(sender: str, receiver: str, game_id: int, session: Sessi
     if sender == receiver:
         return "self_invite"
     existing = session.query(GameInvitation).filter_by(from_user=sender, to_user=receiver, game_id=game_id).first()
-    if existing and existing.status == "pending":
-        return "already_sent"
+    if existing:
+        if existing.status == "pending":
+            return "already_sent"
+        elif existing.status == "declined":
+            existing.status = "pending"
+            session.commit()
+            return "sent_again"
     reverse_existing = session.query(GameInvitation).filter_by(from_user=receiver, to_user=sender, game_id=game_id).first()
     if reverse_existing and reverse_existing.status == "pending":
         return "reverse_already_sent"
@@ -401,8 +406,12 @@ def transfer_room_leadership_db(room_id, new_leader, session: Session | None = N
 
 @connect
 def get_outgoing_game_invitations_db(user: str, room_id: int, session: Session | None = None):
-    records = session.query(GameInvitation).filter_by(from_user=user, game_id=room_id, status="pending").all()
-    return [r.to_user for r in records]
+    records = session.query(GameInvitation).filter(
+        GameInvitation.from_user == user,
+        GameInvitation.game_id == room_id,
+        GameInvitation.status.in_(["pending", "declined"])
+    ).all()
+    return {r.to_user: r.status for r in records}
 
 @connect
 def toggle_room_color_choice(room_id: int, user: str, color: str, session: Session | None = None):

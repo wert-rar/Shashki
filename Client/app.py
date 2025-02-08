@@ -1044,7 +1044,7 @@ def invite_friend():
         return jsonify({"error": "Приглашение уже отправлено"}), 400
     elif status == "reverse_already_sent":
         return jsonify({"error": "Пользователь уже пригласил вас"}), 400
-    elif status == "sent":
+    elif status == "sent" or status == "sent_again":
         return jsonify({"message": "Приглашение отправлено"}), 200
     return jsonify({"error": "Неизвестная ошибка"}), 500
 
@@ -1114,6 +1114,8 @@ def check_room_status():
     }
     if game_id_db:
         response["game_id"] = game_id_db
+    if user == creator:
+        response["invited_friends"] = base.get_outgoing_game_invitations_db(user, int(room_id))
     if response["game_status"] in ["current", "active"] and game_id_db:
         response["redirect"] = f"/board/{game_id_db}/{user}"
     return jsonify(response), 200

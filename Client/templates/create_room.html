@@ -437,7 +437,11 @@
 									{% if joined_user and friend == joined_user %}
 										<button class="in-room-btn" disabled>В комнате</button>
 									{% elif invited_friends and friend in invited_friends %}
-										<button class="waiting-btn" disabled>В ожидании</button>
+										{% if invited_friends[friend] == 'declined' %}
+											 <button class="declined-btn" onclick="inviteFriend('{{ friend }}', this)">Отклонено</button>
+										{% else %}
+											 <button class="waiting-btn" disabled>В ожидании</button>
+										{% endif %}
 									{% else %}
 										<button onclick="inviteFriend('{{ friend }}', this)">Пригласить</button>
 									{% endif %}

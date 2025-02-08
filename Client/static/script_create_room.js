@@ -340,6 +340,29 @@ function toggleColorSelection(color) {
                 if(data.chosen_white !== undefined && data.chosen_black !== undefined) {
                     updateColorDisplay({chosen_white: data.chosen_white, chosen_black: data.chosen_black});
                 }
+                if(data.invited_friends) {
+                    document.querySelectorAll('.friend-invite').forEach(invite => {
+                        const friendName = invite.querySelector('span').textContent.trim();
+                        const btn = invite.querySelector('button');
+                        if(data.invited_friends.hasOwnProperty(friendName)) {
+                            if(data.invited_friends[friendName] === "declined") {
+                                btn.textContent = "Отклонено";
+                                btn.disabled = false;
+                                btn.classList.remove("waiting-btn");
+                                btn.classList.add("declined-btn");
+                            } else {
+                                btn.textContent = "В ожидании";
+                                btn.disabled = true;
+                                btn.classList.remove("declined-btn");
+                                btn.classList.add("waiting-btn");
+                            }
+                        } else {
+                            btn.textContent = "Пригласить";
+                            btn.disabled = false;
+                            btn.classList.remove("waiting-btn", "declined-btn");
+                        }
+                    });
+                }
             })
             .catch(() => {});
         }, 1000);
