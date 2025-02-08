@@ -798,12 +798,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function pollAll() {
         checkForActiveGame();
-        fetchNotifications(false);
+        if (notificationModal.classList.contains('active')) {
+             fetchNotifications(true);
+        } else {
+             fetchNotifications(false);
+        }
+        if (friendsModal.classList.contains('active')) {
+             fetchFriends();
+        }
     }
+
 
     checkForActiveGame();
     fetchNotifications(false);
-    setInterval(pollAll, 5000);
+    setInterval(pollAll, 1000);
     createSnowflakes();
     window.addEventListener('pageshow', handlePageShow);
 

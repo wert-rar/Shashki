@@ -2528,6 +2528,8 @@
                             showNotification(data.message, "success");
                             requestsSent.add(user);
                             dropdown.style.display = "none";
+                            document.getElementById("friendSearchInput").value = "";
+                            loadFriendsList();
                         })
                         .catch(() => {
                             showNotification("Ошибка при отправке запроса", "error");

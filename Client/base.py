@@ -315,8 +315,13 @@ def get_game_moves_from_db(game_id, session: Session | None = None):
 def get_incoming_game_invitations_db(user: str, session: Session | None = None) -> list:
     records = session.query(GameInvitation).filter_by(to_user=user, status="pending").all()
     invites = []
-    for r in records:
-        invites.append({"from_user": r.from_user, "game_id": r.game_id})
+    for invite in records:
+        room = session.query(Room).filter_by(room_id=invite.game_id).first()
+        if room:
+            invites.append({"from_user": invite.from_user, "game_id": invite.game_id})
+        else:
+            session.delete(invite)
+            session.commit()
     return invites
 
 @connect
