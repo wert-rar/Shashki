@@ -94,28 +94,46 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleColorSelection('b');
     });
 
-function toggleColorSelection(color) {
-    fetch('/select_color', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ room_id: currentRoomId, color: color })
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log("Ответ от /select_color:", data);
-        if (data.error) {
-            createNotification(data.error, "error");
-        } else {
-            if (data.message) {
-                createNotification(data.message, "success");
-            }
-            updateColorDisplay(data);
+    function createSnowflakes() {
+        let snowContainer = document.getElementById("snowflakes-container");
+        let snowflakeCount = 50;
+        for (let i = 0; i < snowflakeCount; i++) {
+            let snowflake = document.createElement("div");
+            snowflake.classList.add("snowflake");
+            snowflake.textContent = "❄";
+            snowflake.style.left = Math.random() * 100 + "vw";
+            snowflake.style.fontSize = Math.random() * 10 + 10 + "px";
+            snowflake.style.opacity = Math.random();
+            snowflake.style.animationDuration = Math.random() * 5 + 5 + "s";
+            snowflake.style.animationDelay = Math.random() * 10 + "s";
+            snowContainer.appendChild(snowflake);
         }
-    })
-    .catch(() => {
-        createNotification("Ошибка при выборе цвета", "error");
-    });
-}
+    }
+
+    createSnowflakes();
+
+    function toggleColorSelection(color) {
+        fetch('/select_color', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: currentRoomId, color: color })
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("Ответ от /select_color:", data);
+            if (data.error) {
+                createNotification(data.error, "error");
+            } else {
+                if (data.message) {
+                    createNotification(data.message, "success");
+                }
+                updateColorDisplay(data);
+            }
+        })
+        .catch(() => {
+            createNotification("Ошибка при выборе цвета", "error");
+        });
+    }
 
     function updateColorDisplay(data) {
         if(data.chosen_white) {

@@ -27,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const multiplayerBtn = document.getElementById("multiplayer-button");
     const randomPlayerButton = document.getElementById("randomPlayerButton");
     let friendToRemove = null;
+    let roomModalWasActive = false;
+    let lastFriendsUpdate = 0;
+    let lastFriendsData = null;
+    let lastNotificationsData = null;
 
     if (closeNotificationModal) {
         closeNotificationModal.addEventListener('click', (e) => {
@@ -60,7 +64,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 let gameInvitations = data.game_invitations || [];
                 let totalNotifications = friendRequests.length + gameInvitations.length;
                 updateNotificationCount(totalNotifications);
+
+                let newNotificationsData = JSON.stringify({
+                    friendRequests: friendRequests,
+                    gameInvitations: gameInvitations
+                });
+
                 if (openedManually) {
+                    if (newNotificationsData === lastNotificationsData) {
+                        return;
+                    }
+                    lastNotificationsData = newNotificationsData;
+
                     notificationList.innerHTML = "";
                     if (totalNotifications > 0) {
                         friendRequests.forEach(sender => {
@@ -68,13 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             notifItem.classList.add("notification-item");
                             notifItem.style.padding = "10px";
                             notifItem.style.borderBottom = "1px solid #444";
+
                             const notifText = document.createElement("p");
                             notifText.textContent = `Запрос в друзья от ${sender}`;
                             notifItem.appendChild(notifText);
+
                             const btnContainer = document.createElement("div");
                             btnContainer.style.marginTop = "5px";
                             btnContainer.style.display = "flex";
                             btnContainer.style.gap = "10px";
+
                             const acceptBtn = document.createElement("button");
                             acceptBtn.textContent = "Принять";
                             acceptBtn.style.flex = "1";
@@ -88,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 e.stopPropagation();
                                 respondFriendRequest(sender, "accept", notifItem);
                             });
+
                             const declineBtn = document.createElement("button");
                             declineBtn.textContent = "Отклонить";
                             declineBtn.style.flex = "1";
@@ -101,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 e.stopPropagation();
                                 respondFriendRequest(sender, "decline", notifItem);
                             });
+
                             btnContainer.appendChild(acceptBtn);
                             btnContainer.appendChild(declineBtn);
                             notifItem.appendChild(btnContainer);
@@ -111,13 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             notifItem.classList.add("notification-item");
                             notifItem.style.padding = "10px";
                             notifItem.style.borderBottom = "1px solid #444";
+
                             const notifText = document.createElement("p");
                             notifText.textContent = `Приглашение в игру от ${inv.from_user}`;
                             notifItem.appendChild(notifText);
+
                             const btnContainer = document.createElement("div");
                             btnContainer.style.marginTop = "5px";
                             btnContainer.style.display = "flex";
                             btnContainer.style.gap = "10px";
+
                             const acceptBtn = document.createElement("button");
                             acceptBtn.textContent = "Принять";
                             acceptBtn.style.flex = "1";
@@ -131,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 e.stopPropagation();
                                 respondGameInvite(inv.from_user, inv.game_id, "accept", notifItem);
                             });
+
                             const declineBtn = document.createElement("button");
                             declineBtn.textContent = "Отклонить";
                             declineBtn.style.flex = "1";
@@ -144,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 e.stopPropagation();
                                 respondGameInvite(inv.from_user, inv.game_id, "decline", notifItem);
                             });
+
                             btnContainer.appendChild(acceptBtn);
                             btnContainer.appendChild(declineBtn);
                             notifItem.appendChild(btnContainer);
@@ -283,31 +308,45 @@ document.addEventListener('DOMContentLoaded', () => {
         fetch('/get_friends')
             .then(response => response.json())
             .then(data => {
+                const newFriendsData = JSON.stringify(data.friends || []);
+                if (newFriendsData === lastFriendsData) {
+                    return;
+                }
+                lastFriendsData = newFriendsData;
+
                 friendsList.innerHTML = '';
                 if (data.friends && data.friends.length > 0) {
                     data.friends.forEach(friend => {
                         const friendItem = document.createElement('div');
                         friendItem.classList.add('friend-item');
+
                         const profileLink = document.createElement('a');
                         profileLink.href = `/profile/${friend}`;
                         profileLink.textContent = friend;
                         friendItem.appendChild(profileLink);
+
                         const friendActions = document.createElement('div');
                         friendActions.classList.add('friend-actions');
+
                         const menuButton = document.createElement('button');
                         menuButton.classList.add('friend-actions-menu-button');
                         menuButton.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+
                         const menu = document.createElement('div');
                         menu.classList.add('friend-actions-menu', 'hide');
+
                         const removeButton = document.createElement('button');
                         removeButton.classList.add('remove-friend-button');
                         removeButton.setAttribute('data-friend', friend);
                         removeButton.textContent = 'Удалить из друзей';
+
                         menu.appendChild(removeButton);
-                        friendActions.appendChild(menuButton);
                         friendActions.appendChild(menu);
+                        friendActions.appendChild(menuButton);
                         friendItem.appendChild(friendActions);
+
                         friendsList.appendChild(friendItem);
+
                         menuButton.addEventListener('click', (e) => {
                             e.stopPropagation();
                             document.querySelectorAll('.friend-actions-menu.show').forEach((otherMenu) => {
@@ -317,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                             menu.classList.toggle('show');
                         });
+
                         removeButton.addEventListener('click', () => {
                             friendToRemove = removeButton.getAttribute('data-friend');
                             removeFriendName.textContent = friendToRemove;
@@ -708,11 +748,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openSidebar() {
+        const roomModal = document.getElementById("roomModal");
+        if (roomModal && roomModal.classList.contains("active")) {
+            roomModalWasActive = true;
+            roomModal.classList.remove("active");
+        }
+
         sidebar.classList.add("active");
         sidebar.style.transition = 'transform 0.3s ease-out';
         sidebar.style.transform = 'translateX(0)';
         overlay.classList.add("active");
         hamburger.classList.add("open");
+
         if (window.innerWidth <= 1280) {
             if (friendsMobile) {
                 friendsMobile.style.display = 'none';
@@ -723,11 +770,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     function closeSidebar() {
         sidebar.style.transition = 'transform 0.5s ease-out';
         sidebar.style.transform = 'translateX(300px)';
         overlay.classList.remove("active");
         hamburger.classList.remove("open");
+
         if (window.innerWidth <= 1280) {
             if (friendsMobile) {
                 friendsMobile.style.display = 'block';
@@ -736,6 +785,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 bellMobile.style.display = 'block';
             }
         }
+
+        const roomModal = document.getElementById("roomModal");
+        if (roomModalWasActive && roomModal) {
+            roomModal.classList.add("active");
+            roomModalWasActive = false;
+        }
+
         sidebar.addEventListener('transitionend', function handler() {
             sidebar.classList.remove("active");
             sidebar.removeEventListener('transitionend', handler);
@@ -752,6 +808,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     hamburger.addEventListener("click", (event) => {
         event.stopPropagation();
+        notificationModal.classList.remove('active');
+        bellDesktop.classList.remove('active');
+        bellMobile.classList.remove('active');
+        friendsModal.classList.remove('active');
+        friendsDesktop.classList.remove('active');
+        friendsMobile.classList.remove('active');
+
         if (sidebar.classList.contains("active")) {
             closeSidebar();
         } else {
@@ -797,16 +860,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function pollAll() {
-        checkForActiveGame();
-        if (notificationModal.classList.contains('active')) {
-             fetchNotifications(true);
-        } else {
-             fetchNotifications(false);
-        }
-        if (friendsModal.classList.contains('active')) {
-             fetchFriends();
-        }
+    checkForActiveGame();
+
+    if (notificationModal.classList.contains('active')) {
+         fetchNotifications(true);
+    } else {
+         fetchNotifications(false);
     }
+
+    let now = Date.now();
+    if (friendsModal.classList.contains('active') && now - lastFriendsUpdate > 1000) {
+         fetchFriends();
+         lastFriendsUpdate = now;
+    }
+}
 
 
     checkForActiveGame();
@@ -846,14 +913,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }, 2000);
     });
-});
-
-document.addEventListener('DOMContentLoaded', function(){
-    var roomModal = document.getElementById('roomModal');
-    if(roomModal) {
-        roomModal.classList.add('active');
-        document.getElementById('closeRoomModal').addEventListener('click', function(){
-            roomModal.classList.remove('active');
-        });
-    }
 });

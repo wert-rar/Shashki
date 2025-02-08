@@ -2484,16 +2484,15 @@
             const heading = document.getElementById("friendsModalHeading");
             heading.textContent = "Найденные пользователи";
             container.innerHTML = "";
-            if (results.length === 0) {
+            const currentUser = "{{ session['user'] if 'user' in session else '' }}";
+            const filteredResults = results.filter(user => user !== currentUser);
+            if (filteredResults.length === 0) {
                 container.innerHTML = "<p style='color:#ccc; text-align:center;'>Пользователи не найдены</p>";
                 return;
             }
-            const currentUser = "{{ session['user'] if 'user' in session else '' }}";
-
-            results.forEach(user => {
+            filteredResults.forEach(user => {
                 const userDiv = document.createElement("div");
                 userDiv.className = "search-user-item dropdown-container";
-
 
                 const link = document.createElement("a");
                 link.href = "/profile/" + encodeURIComponent(user) + "?origin=search";

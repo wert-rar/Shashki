@@ -76,15 +76,18 @@
         }
         #roomModal {
             position: fixed;
-            top: 80px;
-            right: 20px;
+            top: 20px;
+            left: 20px;
             background: var(--card-background);
             border: 2px solid var(--button-background);
             border-radius: 10px;
             padding: 15px;
             z-index: 1000;
-            display: none;
+            opacity: 0;
+            visibility: hidden;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
         }
         #roomModal .button-container {
             display: flex;
@@ -92,7 +95,8 @@
             justify-content: center;
         }
         #roomModal.active {
-            display: block;
+            opacity: 1;
+            visibility: visible;
         }
         #roomModal p {
             margin: 0 0 10px 0;
@@ -965,6 +969,44 @@
                 border-color: transparent;
             }
         }
+        @media (max-width: 655px) {
+             #roomModal {
+                width: 90%;
+                max-width: 250px;
+                padding: 10px;
+                top: 10px;
+                left: 10px;
+             }
+             #roomModal .button-container .button {
+                width: calc(50% - 5px);
+                padding: 8px 10px;
+                font-size: 14px;
+             }
+        }
+        @media (max-width: 425px) {
+            .container > h1 {
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+            }
+            #singleplayer-button,
+            #multiplayer-button {
+                font-size: 14px;
+                padding: 12px 15px;
+            }
+            #notificationModal,
+            #friendsModal {
+                z-index: 1100;
+            }
+        }
+        @media (max-width: 420px) {
+            #roomModal {
+                top: 70px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                max-width: 250px;
+            }
+        }
     </style>
     <style>
         {% if not ('user' in session and user_is_registered) %}
@@ -1189,7 +1231,7 @@
     <script>
         let user_login = "{{ session['user'] if 'user' in session else '' }}";
         let game_id = null;
-        var currentRoomId = {{ room_id|default('null') }};
+        var currentRoomId = {{ room_id|tojson }};
     </script>
     <div id="removeFriendModal" class="modal">
         <div class="RemoveFriend">
