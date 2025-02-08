@@ -361,6 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(data.invited_friends) {
                     document.querySelectorAll('.friend-invite').forEach(invite => {
                         const friendName = invite.querySelector('span').textContent.trim();
+                        if (data.joined_user && friendName === data.joined_user) return;
+
                         const btn = invite.querySelector('button');
                         if(data.invited_friends.hasOwnProperty(friendName)) {
                             if(data.invited_friends[friendName] === "declined") {

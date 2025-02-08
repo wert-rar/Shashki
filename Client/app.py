@@ -1031,22 +1031,32 @@ def get_top_players_route():
 def invite_friend():
     user_login = session.get("user")
     if not user_login:
-        return jsonify({"error": "Пользователь не авторизован"}), 403
+        return jsonify({"error": "Пользователь не авторизован"}), 200
+
     data = request.get_json()
     friend_username = data.get("friend_username")
     room_id = data.get("room_id")
     if not friend_username or not room_id:
-        return jsonify({"error": "Отсутствует имя друга или room_id"}), 400
+        return jsonify({"error": "Отсутствует имя друга или room_id"}), 200
+
+    friend_room = base.get_room_by_user(friend_username)
+    if friend_room:
+        if friend_room.room_id == int(room_id):
+            return jsonify({"error": "Пользователь уже в комнате"}), 200
+        else:
+            return jsonify({"error": "Пользователь уже находится в другой комнате"}), 200
+
     status = base.send_game_invite_db(user_login, friend_username, int(room_id))
     if status == "self_invite":
-        return jsonify({"error": "Нельзя пригласить самого себя"}), 400
+        return jsonify({"error": "Нельзя пригласить самого себя"}), 200
     elif status == "already_sent":
-        return jsonify({"error": "Приглашение уже отправлено"}), 400
+        return jsonify({"error": "Приглашение уже отправлено"}), 200
     elif status == "reverse_already_sent":
-        return jsonify({"error": "Пользователь уже пригласил вас"}), 400
-    elif status == "sent" or status == "sent_again":
+        return jsonify({"error": "Пользователь уже пригласил вас"}), 200
+    elif status in ("sent", "sent_again"):
         return jsonify({"message": "Приглашение отправлено"}), 200
-    return jsonify({"error": "Неизвестная ошибка"}), 500
+
+    return jsonify({"error": "Неизвестная ошибка"}), 200
 
 @app.route("/respond_game_invite", methods=["POST"])
 @csrf.exempt

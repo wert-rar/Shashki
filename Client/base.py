@@ -453,3 +453,18 @@ def toggle_room_color_choice(room_id: int, user: str, color: str, session: Sessi
             return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
     else:
         return {"error": "Неверный цвет"}
+
+@connect
+def get_room_by_user(username, session=None):
+    close_session = False
+    if session is None:
+        session = SessionLocal()
+        close_session = True
+
+    room_obj = session.query(Room).filter(
+        (Room.room_creator == username) | (Room.occupant == username)
+    ).first()
+
+    if close_session:
+        session.close()
+    return room_obj

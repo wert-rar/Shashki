@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationModal.classList.remove('active');
             bellDesktop.classList.remove('active');
             bellMobile.classList.remove('active');
+            lastNotificationsData = '';
         });
     }
     if (closeFriendsModal) {
@@ -71,11 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (openedManually) {
-                    if (newNotificationsData === lastNotificationsData) {
-                        return;
-                    }
                     lastNotificationsData = newNotificationsData;
-
                     notificationList.innerHTML = "";
                     if (totalNotifications > 0) {
                         friendRequests.forEach(sender => {
