@@ -1060,3 +1060,11 @@ canvas#board {
         margin: auto;
     }
 }
+
+@media (max-width: 800px) {
+  canvas#board {
+    border: 4px solid gray;
+    border-radius: 5px;
+    box-shadow: none;
+  }
+}

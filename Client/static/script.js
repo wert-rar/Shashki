@@ -643,15 +643,19 @@ function adjustScreen() {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
     let size;
-    if (screenWidth <= 1000) {
-        size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
-        if (screenWidth <= 800) {
-            LABEL_PADDING = 0;
-            USE_INTERNAL_LABELS = true;
-        } else {
+    if (screenWidth <= 800) {
+        LABEL_PADDING = 0;
+        USE_INTERNAL_LABELS = true;
+        const mobileHistoryHeight = document.getElementById('mobile-moves-history')?.clientHeight || 0;
+        const mobileBarHeight = document.getElementById('mobile-bar')?.clientHeight || 0;
+        const reservedSpace = 150;
+        const availableHeight = screenHeight - mobileHistoryHeight - mobileBarHeight - reservedSpace;
+        size = Math.min(screenWidth, availableHeight);
+    } else {
+        if (screenWidth <= 1000) {
+            size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
             LABEL_PADDING = 36;
             USE_INTERNAL_LABELS = false;
-        }
     } else if (screenWidth <= 1140) {
         size = Math.min(screenWidth * 0.55, screenHeight * 0.55);
         LABEL_PADDING = 30;
@@ -666,6 +670,7 @@ function adjustScreen() {
         USE_INTERNAL_LABELS = false;
     }
     size = Math.max(300, Math.min(size, 800));
+    }
     const dpr = window.devicePixelRatio || 1;
     size = Math.floor(size);
     CTX.setTransform(1, 0, 0, 1, 0, 0);
@@ -849,6 +854,33 @@ function convertCoordinatesToNotation(x, y) {
     }
 }
 
+function addMobileProfileNavigation() {
+    if (window.innerWidth > 1000) return;
+    const opponentElem = document.querySelector('.player-info-opponent span');
+    const selfElem = document.querySelector('.player-info-self span');
+    if (opponentElem) {
+        const opponentText = opponentElem.textContent.trim();
+        const opponentUsername = opponentText.split(' ')[0];
+        if (!opponentUsername.toLowerCase().startsWith('ghost')) {
+            opponentElem.style.cursor = 'pointer';
+            opponentElem.addEventListener('click', function() {
+                window.location.href = '/profile/' + opponentUsername;
+            });
+        }
+    }
+    if (selfElem) {
+        const selfText = selfElem.textContent.trim();
+        const selfUsername = selfText.split(' ')[0];
+        if (!selfUsername.toLowerCase().startsWith('ghost')) {
+            selfElem.style.cursor = 'pointer';
+            selfElem.addEventListener('click', function() {
+                window.location.href = '/profile/' + selfUsername;
+            });
+        }
+    }
+}
+
+
 function updateMovesList(moveHistory) {
     const movesList = document.querySelector('.moves-list');
     const movesContainer = document.querySelector('.moves-container');
@@ -874,7 +906,7 @@ function updateMovesList(moveHistory) {
         let moveText = fromPos + (move.captured ? ' x ' : ' - ') + toPos;
         let isPromotion = move.promotion;
         if (isPromotion) {
-            moveText = '👑 ' + moveText;
+            moveText = '<i class="fa-solid fa-crown"></i> ' + moveText;
         }
 
         let li = document.createElement('li');
@@ -886,7 +918,7 @@ function updateMovesList(moveHistory) {
         playerLabel.innerHTML = player;
         let moveDescription = document.createElement('span');
         moveDescription.classList.add('move-description');
-        moveDescription.textContent = moveText;
+        moveDescription.innerHTML = moveText;
         if (isPromotion) {
             moveDescription.style.fontWeight = 'bold';
         }
@@ -922,11 +954,10 @@ function updateMovesList(moveHistory) {
         movesContainer.scrollTop = movesContainer.scrollHeight;
     }
     addProfileClickListeners();
-    if (window.innerWidth <= 1000) {
+        if (window.innerWidth <= 1000 && hasNewMoves) {
         let mobileHistoryElem = document.getElementById("mobile-moves-history");
         const scrollTolerance = 5;
         let wasAtEnd = mobileHistoryElem.scrollLeft + mobileHistoryElem.clientWidth >= mobileHistoryElem.scrollWidth - scrollTolerance;
-
         mobileHistoryElem.innerHTML = "";
         let groups = [];
         let currentGroup = null;
@@ -963,10 +994,10 @@ function updateMovesList(moveHistory) {
                     movePart.classList.add('move-part', 'move-text');
                     let moveTextMobile = convertCoordinatesToNotation(grp.moves[j].to.x, grp.moves[j].to.y);
                     if (grp.moves[j].promotion) {
-                        moveTextMobile = '👑 ' + moveTextMobile;
+                        moveTextMobile = '<i class="fa-solid fa-crown"></i> ' + moveTextMobile;
                         movePart.style.fontWeight = 'bold';
                     }
-                    movePart.textContent = moveTextMobile;
+                    movePart.innerHTML = moveTextMobile;
                     if (grp.moves[j].captured) {
                         movePart.style.fontWeight = 'bold';
                     }
@@ -986,7 +1017,6 @@ function updateMovesList(moveHistory) {
                     let openParen = document.createElement('span');
                     openParen.textContent = "(";
                     container.appendChild(openParen);
-
                     let capturePart = document.createElement('span');
                     capturePart.classList.add('move-part', 'move-text');
                     let moveTextMobile = convertCoordinatesToNotation(grp.moves[j].to.x, grp.moves[j].to.y);
@@ -1010,7 +1040,6 @@ function updateMovesList(moveHistory) {
                         }
                     });
                     container.appendChild(capturePart);
-
                     let closeParen = document.createElement('span');
                     closeParen.textContent = ")";
                     container.appendChild(closeParen);
@@ -1022,7 +1051,6 @@ function updateMovesList(moveHistory) {
             }
             let gapText = document.createTextNode(gap);
             container.appendChild(gapText);
-
             mobileHistoryElem.appendChild(container);
             mobileContainers.push(container);
             cumulativeIndex += grp.moves.length;
@@ -1041,8 +1069,8 @@ function updateMovesList(moveHistory) {
                 });
             });
         }
+        let arrow = document.getElementById("mobile-scroll-arrow");
         if (hasNewMoves) {
-            let arrow = document.getElementById("mobile-scroll-arrow");
             if (!wasAtEnd && arrow) {
                 arrow.style.display = "block";
             } else if (arrow) {
@@ -1276,6 +1304,7 @@ function onLoad() {
             disableProfileFeatures();
         }
         notify_player_loaded();
+        addMobileProfileNavigation();
     });
 }
 function disableProfileFeatures() {

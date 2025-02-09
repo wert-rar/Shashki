@@ -1012,7 +1012,7 @@
         {% if not ('user' in session and user_is_registered) %}
             .friends-button,
             .bell-button {
-                display: none;
+                display: none !important;
             }
         {% endif %}
     </style>

@@ -184,3 +184,7 @@ Client/__pycache__/game.cpython-312.pyc
 *.pyc
 *.db
 Client/static/avatars/
+
+node_modules/
+package.json
+package-lock.json
