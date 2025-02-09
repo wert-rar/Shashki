@@ -568,6 +568,18 @@ function addEventListeners() {
             }
         });
     });
+    let mobileHistoryElem = document.getElementById("mobile-moves-history");
+    if (mobileHistoryElem) {
+        mobileHistoryElem.addEventListener('scroll', function() {
+            const scrollTolerance = 5;
+            let arrow = document.getElementById("mobile-scroll-arrow");
+            if (mobileHistoryElem.scrollLeft + mobileHistoryElem.clientWidth >= mobileHistoryElem.scrollWidth - scrollTolerance) {
+                if (arrow) arrow.style.display = "none";
+            } else {
+                if (arrow) arrow.style.display = "block";
+            }
+        });
+    }
 }
 
 function mobilePrevMove() {
@@ -853,10 +865,18 @@ function updateMovesList(moveHistory) {
             crown = ' <span class="crown" title="Лучший игрок">👑</span>';
         }
         let avatarUrl = isPlayerMove ? user_avatar_url : opponent_avatar_url;
-        let player = `<img class="move-avatar" src="${avatarUrl}" alt="avatar"><span class="player-name ${playerClass} ${playerNameClass}" data-username="${playerName}">${playerName}${crown}</span>`;
+        let player = `<img class="move-avatar" src="${avatarUrl}" alt="avatar">
+                      <span class="player-name ${playerClass} ${playerNameClass}" data-username="${playerName}">
+                          ${playerName}${crown}
+                      </span>`;
         let fromPos = convertCoordinatesToNotation(move.from.x, move.from.y);
         let toPos = convertCoordinatesToNotation(move.to.x, move.to.y);
         let moveText = fromPos + (move.captured ? ' x ' : ' - ') + toPos;
+        let isPromotion = move.promotion;
+        if (isPromotion) {
+            moveText = '👑 ' + moveText;
+        }
+
         let li = document.createElement('li');
         li.classList.add(isPlayerMove ? 'player-move' : 'opponent-move', 'new-move');
         let moveContent = document.createElement('div');
@@ -867,6 +887,9 @@ function updateMovesList(moveHistory) {
         let moveDescription = document.createElement('span');
         moveDescription.classList.add('move-description');
         moveDescription.textContent = moveText;
+        if (isPromotion) {
+            moveDescription.style.fontWeight = 'bold';
+        }
         moveContent.appendChild(playerLabel);
         moveContent.appendChild(moveDescription);
         li.appendChild(moveContent);
@@ -901,65 +924,179 @@ function updateMovesList(moveHistory) {
     addProfileClickListeners();
     if (window.innerWidth <= 1000) {
         let mobileHistoryElem = document.getElementById("mobile-moves-history");
-        if (mobileHistoryElem) {
-            mobileHistoryElem.innerHTML = "";
-            let groups = [];
-            let currentGroup = null;
-            for (let i = 0; i < moveHistory.length; i++) {
-                let m = moveHistory[i];
-                if (!currentGroup || m.player !== currentGroup.player) {
-                    if (currentGroup) groups.push(currentGroup);
-                    currentGroup = { player: m.player, moves: [m] };
+        const scrollTolerance = 5;
+        let wasAtEnd = mobileHistoryElem.scrollLeft + mobileHistoryElem.clientWidth >= mobileHistoryElem.scrollWidth - scrollTolerance;
+
+        mobileHistoryElem.innerHTML = "";
+        let groups = [];
+        let currentGroup = null;
+        for (let i = 0; i < moveHistory.length; i++) {
+            let m = moveHistory[i];
+            if (!currentGroup || m.player !== currentGroup.player) {
+                if (currentGroup) groups.push(currentGroup);
+                currentGroup = { player: m.player, moves: [m] };
+            } else {
+                currentGroup.moves.push(m);
+            }
+        }
+        if (currentGroup) groups.push(currentGroup);
+        let roundCounter = 1;
+        let cumulativeIndex = 0;
+        let mobileContainers = [];
+        for (let i = 0; i < groups.length; i++) {
+            let grp = groups[i];
+            let container = document.createElement('span');
+            container.classList.add('mobile-move');
+            let groupEndIndex = cumulativeIndex + grp.moves.length;
+            container.setAttribute('data-index', groupEndIndex);
+            if (i % 2 === 0) {
+                let roundLabel = document.createElement('span');
+                roundLabel.classList.add('round-label');
+                roundLabel.textContent = roundCounter + ".   ";
+                roundCounter++;
+                container.appendChild(roundLabel);
+            }
+            for (let j = 0; j < grp.moves.length; j++) {
+                let boardStateIndex = cumulativeIndex + j + 1;
+                if (j === 0) {
+                    let movePart = document.createElement('span');
+                    movePart.classList.add('move-part', 'move-text');
+                    let moveTextMobile = convertCoordinatesToNotation(grp.moves[j].to.x, grp.moves[j].to.y);
+                    if (grp.moves[j].promotion) {
+                        moveTextMobile = '👑 ' + moveTextMobile;
+                        movePart.style.fontWeight = 'bold';
+                    }
+                    movePart.textContent = moveTextMobile;
+                    if (grp.moves[j].captured) {
+                        movePart.style.fontWeight = 'bold';
+                    }
+                    movePart.setAttribute('data-index', boardStateIndex);
+                    movePart.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        if (boardStateIndex === boardStates.length - 1) {
+                            returnToCurrentView();
+                        } else {
+                            mobileHistoryElem.querySelectorAll('.move-part').forEach(el => el.classList.remove('selected'));
+                            movePart.classList.add('selected');
+                            viewBoardState(boardStateIndex);
+                        }
+                    });
+                    container.appendChild(movePart);
                 } else {
-                    currentGroup.moves.push(m);
+                    let openParen = document.createElement('span');
+                    openParen.textContent = "(";
+                    container.appendChild(openParen);
+
+                    let capturePart = document.createElement('span');
+                    capturePart.classList.add('move-part', 'move-text');
+                    let moveTextMobile = convertCoordinatesToNotation(grp.moves[j].to.x, grp.moves[j].to.y);
+                    if (grp.moves[j].promotion) {
+                        moveTextMobile = '👑 ' + moveTextMobile;
+                        capturePart.style.fontWeight = 'bold';
+                    }
+                    capturePart.textContent = moveTextMobile;
+                    if (grp.moves[j].captured) {
+                        capturePart.style.fontWeight = 'bold';
+                    }
+                    capturePart.setAttribute('data-index', boardStateIndex);
+                    capturePart.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        if (boardStateIndex === boardStates.length - 1) {
+                            returnToCurrentView();
+                        } else {
+                            mobileHistoryElem.querySelectorAll('.move-part').forEach(el => el.classList.remove('selected'));
+                            capturePart.classList.add('selected');
+                            viewBoardState(boardStateIndex);
+                        }
+                    });
+                    container.appendChild(capturePart);
+
+                    let closeParen = document.createElement('span');
+                    closeParen.textContent = ")";
+                    container.appendChild(closeParen);
                 }
             }
-            if (currentGroup) groups.push(currentGroup);
-            let roundCounter = 1;
-            let cumulativeIndex = 0;
-            for (let i = 0; i < groups.length; i++) {
-                let grp = groups[i];
-                let moveStr = "";
-                if (grp.moves.length > 0) {
-                    moveStr = convertCoordinatesToNotation(grp.moves[0].to.x, grp.moves[0].to.y);
-                    if (grp.moves.length > 1) {
-                        let extra = "";
-                        for (let j = 1; j < grp.moves.length; j++) {
-                            extra += convertCoordinatesToNotation(grp.moves[j].to.x, grp.moves[j].to.y) + " ";
-                        }
-                        extra = extra.trim();
-                        moveStr += " (" + extra + ")";
+            let gap = "";
+            if (i + 1 < groups.length) {
+                gap = (i % 2 === 0) ? "     " : "            ";
+            }
+            let gapText = document.createTextNode(gap);
+            container.appendChild(gapText);
+
+            mobileHistoryElem.appendChild(container);
+            mobileContainers.push(container);
+            cumulativeIndex += grp.moves.length;
+        }
+        if (currentView === null && wasAtEnd) {
+            setTimeout(() => {
+                mobileHistoryElem.scrollTo({ left: mobileHistoryElem.scrollWidth, behavior: 'smooth' });
+            }, 100);
+        } else {
+            mobileContainers.forEach(container => {
+                container.querySelectorAll('.move-part').forEach(part => {
+                    if (parseInt(part.getAttribute('data-index')) === currentView) {
+                        part.classList.add('selected');
+                        container.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                     }
-                }
-                let span = document.createElement('span');
-                span.classList.add('mobile-move');
-                if (i % 2 === 0) {
-                    span.textContent = roundCounter + ".      " + moveStr + "      ";
-                    roundCounter++;
-                } else {
-                    span.textContent = moveStr + "            ";
-                }
-                let groupMoveCount = grp.moves.length;
-                let indexForView = cumulativeIndex + groupMoveCount;
-                span.addEventListener('click', () => {
-                    let allMobileMoves = mobileHistoryElem.querySelectorAll('.mobile-move');
-                    allMobileMoves.forEach(m => m.classList.remove('selected'));
-                    span.classList.add('selected');
-                    viewBoardState(indexForView);
                 });
-                cumulativeIndex += groupMoveCount;
-                mobileHistoryElem.appendChild(span);
+            });
+        }
+        if (hasNewMoves) {
+            let arrow = document.getElementById("mobile-scroll-arrow");
+            if (!wasAtEnd && arrow) {
+                arrow.style.display = "block";
+            } else if (arrow) {
+                arrow.style.display = "none";
             }
         }
     }
 }
 
+
+function updateMobileReturnButtonVisibility() {
+    const btn = document.getElementById('mobile-return-button');
+    if (!btn) return;
+    if (currentView !== null) {
+         btn.classList.add('visible');
+    } else {
+         btn.classList.remove('visible');
+    }
+}
+
+function updateMobileHistorySelection() {
+    let mobileHistoryElem = document.getElementById("mobile-moves-history");
+    if (!mobileHistoryElem) return;
+    let containers = mobileHistoryElem.querySelectorAll('.mobile-move');
+    let containerRect = mobileHistoryElem.getBoundingClientRect();
+    containers.forEach(container => {
+        let parts = container.querySelectorAll('.move-part');
+        parts.forEach(part => {
+            if (parseInt(part.getAttribute('data-index')) === currentView) {
+                part.classList.add('selected');
+                let partRect = part.getBoundingClientRect();
+                if (partRect.left < containerRect.left || partRect.right > containerRect.right) {
+                    part.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }
+            } else {
+                part.classList.remove('selected');
+            }
+        });
+    });
+}
+
 function viewBoardState(moveIndex) {
     if (moveIndex < 0 || moveIndex > boardStates.length - 1) return;
+    if (moveIndex === boardStates.length - 1) {
+        returnToCurrentView();
+        return;
+    }
     pieces = boardStates[moveIndex].map(piece => ({ ...piece }));
     currentView = moveIndex;
     showHistoryViewIndicator();
+    updateMobileReturnButtonVisibility();
+    updateMobileHistorySelection();
 }
+
 function returnToCurrentView() {
     pieces = boardStates[boardStates.length - 1].map(piece => ({ ...piece }));
     currentView = null;
@@ -968,7 +1105,20 @@ function returnToCurrentView() {
         indicator.style.display = 'none';
     }
     document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'));
+    let mobileHistoryElem = document.getElementById("mobile-moves-history");
+    if (mobileHistoryElem) {
+        mobileHistoryElem.querySelectorAll('.move-part').forEach(part => {
+            part.classList.remove('selected');
+        });
+    }
+    updateMobileReturnButtonVisibility();
+    if (mobileHistoryElem) {
+        setTimeout(() => {
+            mobileHistoryElem.scrollTo({ left: mobileHistoryElem.scrollWidth, behavior: 'smooth' });
+        }, 100);
+    }
 }
+
 function showHistoryViewIndicator() {
   if (window.innerWidth <= 1000) return;
   let indicator = document.getElementById('history-view-indicator');

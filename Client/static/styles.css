@@ -753,6 +753,29 @@ canvas#board {
     padding: 15px 25px !important;
     font-size: 1.2em !important;
 }
+#mobile-return-button {
+    position: fixed;
+    top: calc(10px + 1em + 10px);
+    right: 10px;
+    z-index: 1100;
+    background-color: #00ADB5;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: #222831;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+#mobile-return-button.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
 @media (max-width: 1440px) {
     .modal-content button {
         padding: 15px 25px;
@@ -866,6 +889,7 @@ canvas#board {
         display: none;
     }
 }
+
 @media (max-width: 1000px) {
     .header,
     .status,
@@ -874,15 +898,28 @@ canvas#board {
     .timers {
         display: none;
     }
+    #mobile-return-button {
+        display: block;
+    }
+    .mobile-move.selected {
+        color: gold !important;
+        font-weight: bold;
+    }
+    .mobile-move .move-text.selected {
+        color: gold !important;
+        font-weight: bold;
+    }
     .mobile-moves-history {
         display: block;
         position: fixed;
         top: 0;
         left: 0;
+        right: 0;
         width: 100%;
         font-size: 1em;
         background-color: #1F1F1F;
-        padding: 10px 1px 10px 20px !important;
+        padding: 10px 20px 10px 20px !important;
+        margin: 0;
         text-align: left;
         color: #FFFFFF;
         z-index: 1000;
@@ -890,7 +927,9 @@ canvas#board {
         overflow-x: auto;
         scroll-behavior: smooth;
         -ms-overflow-style: none;
+        box-sizing: border-box;
     }
+
     .mobile-moves-history::-webkit-scrollbar {
         display: none;
     }

@@ -248,7 +248,8 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
                 'captured': captured,
                 'captured_pieces': captured_pieces,
                 'multiple_capture': True,
-                'next_capture_piece': moved_piece.copy()
+                'next_capture_piece': moved_piece.copy(),
+                'promotion': promotion_occurred
             }
     game.must_capture_piece = None
     return {
