@@ -459,9 +459,12 @@ def move():
         game.update_timers()
         game.move_history.append(move_record)
         base.add_move(game_id_int, move_record)
-        if game.status in ['w3', 'b3', 'n', 'ns1']:
+        game_engine.check_and_update_big_road(game, updated_pieces, current_player, result['captured'])
+        if game.status in ['w3', 'b3']:
             return finalize_and_respond(game, user_login, game_id_int)
+
         if result['move_result'] == 'continue_capture':
+            game.no_capture_moves = 0
             game.status = f"{current_player}4"
             game.must_capture_piece = result['next_capture_piece']
             return jsonify({
@@ -472,10 +475,27 @@ def move():
                 "white_countdown": int(game.white_countdown_remaining),
                 "black_countdown": int(game.black_countdown_remaining)
             })
+
         elif result['move_result'] == 'valid':
+            if result['captured']:
+                game.no_capture_moves = 0
+            else:
+                game.no_capture_moves += 1
+            if game.no_capture_moves >= 25:
+                game.status = "n"
+                return finalize_and_respond(game, user_login, game_id_int)
             game.moves_count += 1
             game.must_capture_piece = None
             game.switch_turn()
+            from game_engine import compute_position_signature
+            sig = compute_position_signature(updated_pieces, game.current_player)
+            if sig in game.position_history:
+                game.position_history[sig] += 1
+            else:
+                game.position_history[sig] = 1
+            if game.position_history[sig] >= 3:
+                game.status = "n"
+                return finalize_and_respond(game, user_login, game_id_int)
         else:
             return jsonify({"error": "Invalid move"}), 400
         p = get_db_pieces(game_id_int)

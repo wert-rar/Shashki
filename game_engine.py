@@ -73,13 +73,20 @@ def can_move(piece, pieces):
 
 def get_possible_moves(pieces, color, must_capture_piece=None):
     all_moves = {}
+    capture_exists = False
+    for piece in pieces:
+        if piece['color'] != color:
+            continue
+        if can_capture(piece, pieces):
+            capture_exists = True
+            break
     for piece in pieces:
         if piece['color'] != color:
             continue
         if must_capture_piece and (piece['x'], piece['y']) != (must_capture_piece['x'], must_capture_piece['y']):
             continue
         capture_moves = can_capture(piece, pieces)
-        if must_capture_piece:
+        if capture_exists:
             if capture_moves:
                 all_moves[(piece['x'], piece['y'])] = capture_moves
         else:
@@ -260,3 +267,60 @@ def validate_move(selected_piece, new_pos, current_player, pieces, game):
         'multiple_capture': False,
         'promotion': promotion_occurred
     }
+
+
+def check_and_update_big_road(game, pieces, current_player, captured):
+    """
+    Если в окончательной стадии партии один участник имеет не менее трёх дамок (при этом у него может быть ещё и простые шашки),
+    а у соперника всего одна шашка (которая является дамкой),
+    то считается, что установлен принцип "большой дороги".
+
+    Если с момента установления такого соотношения сил игрок (текущий ходящий)
+    не совершает взятие дамки соперника (captured == False) в течение 15 своих ходов,
+    то его позиция считается недостаточно «конвертированной» – игра завершается присуждением победы сопернику.
+
+    Для белых (current_player == 'w'):
+      - если количество дамок у белых (count_white) >= 3,
+      - а у чёрных всего одна шашка (total_black == 1, и эта шашка – дамка),
+    то если в ходе не произошло взятия, увеличивается счетчик big_road_counter_w.
+    При достижении 15, статус игры устанавливается как 'b3' (победа чёрных).
+
+    Аналогично для чёрных.
+    """
+    count_white = sum(1 for p in pieces if p['color'] == 0 and p.get('is_king', False))
+    total_white = sum(1 for p in pieces if p['color'] == 0)
+    count_black = sum(1 for p in pieces if p['color'] == 1 and p.get('is_king', False))
+    total_black = sum(1 for p in pieces if p['color'] == 1)
+
+    if current_player == 'w':
+        if count_white >= 3 and total_black == 1 and count_black == 1:
+            if not captured:
+                game.big_road_counter_w += 1
+            else:
+                game.big_road_counter_w = 0
+            if game.big_road_counter_w >= 15:
+                game.status = 'b3'
+        else:
+            game.big_road_counter_w = 0
+    elif current_player == 'b':
+        if count_black >= 3 and total_white == 1 and count_white == 1:
+            if not captured:
+                game.big_road_counter_b += 1
+            else:
+                game.big_road_counter_b = 0
+            if game.big_road_counter_b >= 15:
+                game.status = 'w3'
+        else:
+            game.big_road_counter_b = 0
+
+
+def compute_position_signature(pieces, current_player):
+    """
+    Вычисляет строковую сигнатуру для текущего положения:
+    — сортируем шашки по x, y и режиму (обычная или дамка),
+    — объединяем информацию о каждой шашке и добавляем сторону, которая ходит.
+    """
+    sorted_pieces = sorted(pieces, key=lambda p: (p['x'], p['y'], p.get('mode', 'p')))
+    rep = ",".join(f"{p['color']}-{p['x']}-{p['y']}-{p.get('mode','p')}" for p in sorted_pieces)
+    rep += f":{current_player}"
+    return rep

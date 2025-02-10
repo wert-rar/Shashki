@@ -520,6 +520,7 @@ function server_get_possible_moves(selected_piece, callback) {
             possibleMoves = [];
         });
 }
+
 function applyMove(boardState, move) {
     let newState = boardState.map(piece => ({ ...piece }));
     let movingPiece = newState.find(p => p.x === move.from.x && p.y === move.from.y);
@@ -789,6 +790,7 @@ function render_Board() {
     }
     drawLabels();
 }
+
 function drawLabels() {
     if (!USE_INTERNAL_LABELS) {
         CTX.fillStyle = "#f0f0f0";
@@ -851,6 +853,7 @@ function render_Pieces() {
         draw_possible_moves();
     }
 }
+
 function update() {
     CTX.clearRect(
         0,
@@ -862,6 +865,7 @@ function update() {
     render_Pieces();
     window.requestAnimationFrame(update);
 }
+
 function convertCoordinatesToNotation(x, y) {
     const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     if (user_color === 'w') {
@@ -1174,6 +1178,7 @@ function showHistoryViewIndicator() {
   if (!indicator) return;
   indicator.style.display = 'block';
 }
+
 function addProfileClickListeners() {
     const playerNames = document.querySelectorAll('.player-name');
     playerNames.forEach(name => {
@@ -1191,6 +1196,7 @@ function addProfileClickListeners() {
         }
     });
 }
+
 function showContextMenu(x, y, username) {
     const menu = document.getElementById('context-menu');
     if (!menu) return;
@@ -1208,6 +1214,7 @@ function showContextMenu(x, y, username) {
         menu.style.display = 'none';
     });
 }
+
 function createContextMenu() {
     let menu = document.createElement('div');
     menu.id = 'context-menu';
@@ -1243,6 +1250,7 @@ function fetchProfile(username) {
             showError('Произошла ошибка при загрузке профиля.');
         });
 }
+
 function displayProfileModal(profileData) {
     let modal = document.getElementById("profile-modal");
     if (!modal) {
@@ -1275,6 +1283,7 @@ function displayProfileModal(profileData) {
     document.getElementById('profile-losses').textContent = profileData.losses;
     modal.style.display = 'flex';
 }
+
 function checkGameStatus() {
     fetch('/check_game_status', {
         method: 'GET',
@@ -1289,6 +1298,7 @@ function checkGameStatus() {
         .catch(() => {});
 }
 let pollingInterval = 1000;
+
 function startPolling() {
     setInterval(() => {
         server_update_request()
@@ -1303,9 +1313,11 @@ function startPolling() {
         setInterval(checkGameStatus, 5000);
     }
 }
+
 function openMobileSettingsModal() {
     document.getElementById("mobile-settings-modal").style.display = "flex";
 }
+
 function onLoad() {
     CANVAS = document.getElementById("board");
     CTX = CANVAS.getContext("2d");
@@ -1328,6 +1340,7 @@ function onLoad() {
         addMobileProfileNavigation();
     });
 }
+
 function disableProfileFeatures() {
     const ghostPlayers = document.querySelectorAll('.player-name[data-username^="ghost"]');
     ghostPlayers.forEach(button => {
@@ -1336,6 +1349,7 @@ function disableProfileFeatures() {
         button.style.userSelect = 'none';
     });
 }
+
 function getCoordinates(loc) {
     let gridX = Math.floor((loc.x - BOARD_OFFSET_X) / CELL_SIZE);
     let gridY = Math.floor((loc.y - BOARD_OFFSET_Y) / CELL_SIZE);
@@ -1344,6 +1358,7 @@ function getCoordinates(loc) {
     }
     return { x: -1, y: -1 };
 }
+
 function playMoveSound() {
     const moveSound = document.getElementById('sound-move');
     if (moveSound) {

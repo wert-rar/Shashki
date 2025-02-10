@@ -75,6 +75,10 @@ class Game:
         self.black_in_countdown = False
         self.white_countdown_remaining = 0
         self.black_countdown_remaining = 0
+        self.big_road_counter_w = 0
+        self.big_road_counter_b = 0
+        self.no_capture_moves = 0
+        self.position_history = {}
 
     def update_timers(self):
         if self.last_update_time is None:
