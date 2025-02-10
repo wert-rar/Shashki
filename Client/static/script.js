@@ -628,9 +628,11 @@ function onClick(evt) {
         }
     }
 }
+
 function onResize() {
     adjustScreen();
 }
+
 function getPieceAt(x, y) {
     for (let piece of pieces) {
         if (piece.x === x && piece.y === y) {
@@ -639,6 +641,7 @@ function getPieceAt(x, y) {
     }
     return null;
 }
+
 function adjustScreen() {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
@@ -686,8 +689,10 @@ function adjustScreen() {
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
+    const centerX = Math.round(x);
+    const centerY = Math.round(y);
     CTX.beginPath();
-    CTX.arc(x, y, r, 0, 2 * Math.PI, false);
+    CTX.arc(centerX, centerY, r, 0, 2 * Math.PI, false);
     if (fillColor) {
         CTX.fillStyle = fillColor;
         CTX.fill();
@@ -699,22 +704,35 @@ function draw_circle(x, y, r, width, strokeColor, fillColor) {
     }
     CTX.closePath();
 }
+
 function draw_piece(piece, user_color) {
     let fillStyle = colors[piece.color];
     let strokeStyle = colors[piece.color ? 0 : 1];
-    const X = BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5);
-    const Y = BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5);
-    const radius = (CELL_SIZE / 2) * 0.8;
+    const X = Math.round(BOARD_OFFSET_X + CELL_SIZE * (piece.x + 0.5));
+    const Y = Math.round(BOARD_OFFSET_Y + CELL_SIZE * (piece.y + 0.5));
+
+    let pieceScale = 1;
+    if (window.innerWidth <= 400) {
+         pieceScale = 0.90;
+    }
+
+    const radius = (CELL_SIZE / 2) * 0.8 * pieceScale;
     const innerRadius = radius * 0.7;
     const crownRadius = radius * 0.5;
-    draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
-    draw_circle(X, Y, innerRadius, 3, strokeStyle, false);
+    const outerStroke = CELL_SIZE * 0.05 * pieceScale;
+    const innerStroke = CELL_SIZE * 0.05 * pieceScale;
+    const crownStroke = CELL_SIZE * 0.07 * pieceScale;
+    const selectionLineWidth = CELL_SIZE * 0.07 * pieceScale;
+    const selectionShadowBlur = CELL_SIZE * 0.3 * pieceScale;
+
+    draw_circle(X, Y, radius, outerStroke, strokeStyle, fillStyle);
+    draw_circle(X, Y, innerRadius, innerStroke, strokeStyle, null);
     if (piece.mode !== "p") {
         CTX.beginPath();
         CTX.arc(X, Y, crownRadius, 0, 2 * Math.PI, false);
         CTX.fillStyle = "rgba(255, 215, 0, 0.7)";
         CTX.fill();
-        CTX.lineWidth = 6;
+        CTX.lineWidth = crownStroke;
         CTX.strokeStyle = "gold";
         CTX.stroke();
         CTX.closePath();
@@ -722,29 +740,34 @@ function draw_piece(piece, user_color) {
     if (IS_SELECTED && SELECTED_PIECE === piece) {
         CTX.save();
         CTX.shadowColor = 'rgba(255, 255, 0, 1)';
-        CTX.shadowBlur = 20;
+        CTX.shadowBlur = selectionShadowBlur;
         CTX.beginPath();
         CTX.arc(X, Y, radius * 1.1, 0, 2 * Math.PI, false);
         CTX.strokeStyle = 'yellow';
-        CTX.lineWidth = 5;
+        CTX.lineWidth = selectionLineWidth;
         CTX.stroke();
         CTX.closePath();
         CTX.restore();
     }
 }
+
 function draw_possible_moves() {
     CTX.save();
-    CTX.lineWidth = 4;
+    const moveLineWidth = CELL_SIZE * 0.05;
+    const moveShadowBlur = CELL_SIZE * 0.15;
+    CTX.lineWidth = moveLineWidth;
     CTX.strokeStyle = 'rgba(0, 162, 255, 0.8)';
     CTX.shadowColor = 'rgba(0, 162, 255, 0.8)';
-    CTX.shadowBlur = 10;
+    CTX.shadowBlur = moveShadowBlur;
+
     for (let move of possibleMoves) {
-        const X = BOARD_OFFSET_X + CELL_SIZE * move.x;
-        const Y = BOARD_OFFSET_Y + CELL_SIZE * move.y;
+        const X = Math.round(BOARD_OFFSET_X + CELL_SIZE * move.x);
+        const Y = Math.round(BOARD_OFFSET_Y + CELL_SIZE * move.y);
         CTX.strokeRect(X, Y, CELL_SIZE, CELL_SIZE);
     }
     CTX.restore();
 }
+
 function render_Board() {
     CTX.fillStyle = "#121212";
     CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
@@ -769,15 +792,14 @@ function render_Board() {
 function drawLabels() {
     if (!USE_INTERNAL_LABELS) {
         CTX.fillStyle = "#f0f0f0";
-        let fontSize = CELL_SIZE / 3;
-        fontSize = Math.max(12, Math.min(fontSize, 24));
+        let fontSize = Math.max(12, Math.min(Math.round(CELL_SIZE / 3), 24));
         CTX.font = fontSize + "px Arial";
         CTX.textAlign = "center";
         CTX.textBaseline = "middle";
         const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
         for (let i = 0; i < 8; i++) {
-            const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
-            const y = BOARD_OFFSET_Y - LABEL_PADDING / 2;
+            let x = Math.round(BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2);
+            let y = Math.round(BOARD_OFFSET_Y - LABEL_PADDING / 2);
             CTX.fillText(letters[i], x, y);
         }
         for (let i = 0; i < 8; i++) {
@@ -797,8 +819,8 @@ function drawLabels() {
         }
     } else {
         CTX.fillStyle = "#f0f0f0";
-        let numberFontSize = Math.max(8, CELL_SIZE / 6);
-        CTX.font = numberFontSize + "px Arial";
+        let numberFontSize = Math.max(8, CELL_SIZE / 7);
+        CTX.font = "bold " + numberFontSize + "px Arial";
         CTX.textAlign = "left";
         CTX.textBaseline = "top";
         for (let i = 0; i < 8; i++) {
@@ -807,20 +829,19 @@ function drawLabels() {
             let number = (8 - i).toString();
             CTX.fillText(number, x, y);
         }
-
         let letterFontSize = Math.max(6, CELL_SIZE / 7);
-        CTX.font = letterFontSize + "px Arial";
+        CTX.font = "bold " + letterFontSize + "px Arial";
         CTX.textAlign = "right";
         CTX.textBaseline = "bottom";
         const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
         for (let j = 0; j < 8; j++) {
             let x = BOARD_OFFSET_X + CELL_SIZE * (j + 1) - 3;
             let y = BOARD_OFFSET_Y + CELL_SIZE * 8 - 3;
-            let letter = letters[j];
-            CTX.fillText(letter, x, y);
+            CTX.fillText(letters[j], x, y);
         }
     }
 }
+
 
 function render_Pieces() {
     for (let i = 0; i < pieces.length; i++) {

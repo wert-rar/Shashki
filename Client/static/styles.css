@@ -46,6 +46,10 @@ body {
 .mobile-moves-history {
     display: none;
 }
+canvas {
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+}
 .sidebar {
     position: fixed;
     top: 110px;
@@ -113,6 +117,12 @@ canvas#board {
     border: 5px solid #00ADB5;
     border-radius: 15px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+canvas#board {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 .player-info-opponent,
 .player-info-self {
@@ -753,29 +763,6 @@ canvas#board {
     padding: 15px 25px !important;
     font-size: 1.2em !important;
 }
-#mobile-return-button {
-    position: fixed;
-    top: calc(10px + 1em + 10px);
-    right: 10px;
-    z-index: 1100;
-    background-color: #00ADB5;
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    color: #222831;
-    font-size: 1.2em;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-#mobile-return-button.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
 @media (max-width: 1440px) {
     .modal-content button {
         padding: 15px 25px;
@@ -885,7 +872,8 @@ canvas#board {
 @media (min-width: 1001px) {
     .player-info-opponent,
     .player-info-self,
-    #mobile-bar {
+    #mobile-bar,
+    #mobile-return-button {
         display: none;
     }
 }
@@ -899,7 +887,27 @@ canvas#board {
         display: none;
     }
     #mobile-return-button {
+        position: fixed;
+        top: calc(10px + 1em + 10px);
+        right: 10px;
+        z-index: 1100;
+        background-color: #00ADB5;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        color: #222831;
+        font-size: 1.2em;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
         display: block;
+    }
+    #mobile-return-button.visible {
+        opacity: 1;
+        pointer-events: auto;
     }
     .mobile-move.selected {
         color: gold !important;
@@ -1062,9 +1070,133 @@ canvas#board {
 }
 
 @media (max-width: 800px) {
-  canvas#board {
-    border: 4px solid gray;
-    border-radius: 5px;
-    box-shadow: none;
-  }
+    canvas#board {
+        border: 4px solid gray;
+        border-radius: 5px;
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 500px) {
+    canvas#board {
+        border-width: 2px !important;
+        border-radius: 5px !important;
+    }
+}
+
+@media (max-height: 600px) {
+    #mobile-bar {
+        height: 50px;
+        padding: 2px;
+    }
+    .mobile-move-arrow .arrow-icon {
+        font-size: 1.2em;
+    }
+    .mobile-move-arrow .arrow-text {
+        font-size: 0.7em;
+        margin-top: 1px;
+    }
+    #mobile-settings-icon {
+        width: 18px;
+        height: 15px;
+    }
+    #mobile-settings-text {
+        font-size: 0.7em;
+    }
+}
+
+@media (max-width: 350px) {
+    .player-info-opponent,
+    .player-info-self {
+        padding: 4px 8px;
+        font-size: 0.85em;
+    }
+    .player-info-opponent img,
+    .player-info-self img {
+        width: 26px;
+        height: 26px;
+        margin-right: 8px;
+    }
+    .player-timer {
+        font-size: 0.8em;
+        padding: 2px 4px;
+    }
+    .player-info-opponent {
+        top: -34px;
+    }
+    .player-info-self {
+        bottom: -34px;
+    }
+}
+
+@media (max-width: 250px) {
+    .player-info-opponent,
+    .player-info-self {
+        padding: 2px 4px;
+        font-size: 0.75em;
+    }
+    .player-info-opponent img,
+    .player-info-self img {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+    }
+    .player-timer {
+        font-size: 0.7em;
+        padding: 1px 3px;
+    }
+    .player-info-opponent {
+        top: -24px;
+    }
+    .player-info-self {
+        bottom: -24px;
+    }
+}
+
+@media (max-width: 580px) {
+    .modal-content.guest {
+        width: 90%;
+        max-width: 90%;
+        padding: 15px;
+        font-size: 0.9em;
+    }
+    .modal-content.guest h2 {
+        font-size: 1.5em;
+    }
+    .modal-content.guest p {
+        font-size: 1em;
+    }
+    .modal-content .modal-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .modal-content .modal-buttons button {
+      width: 100%;
+      display: block;
+    }
+}
+
+@media (max-width: 390px) {
+    .modal-content {
+        width: 90%;
+        max-width: 90%;
+        padding: 10px;
+        font-size: 0.8em;
+    }
+    .modal-content h2 {
+        font-size: 1.3em;
+    }
+    .modal-content p {
+        font-size: 0.9em;
+    }
+    .modal-content button {
+        padding: 8px 16px;
+        font-size: 0.9em;
+    }
+    #surrender-modal .modal-content button {
+        padding: 8px 14px !important;
+        font-size: 0.9em !important;
+        margin: 2px !important;
+    }
 }
