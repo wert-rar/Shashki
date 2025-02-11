@@ -31,7 +31,8 @@ let selected_piece = null;
 let possibleMoves = [];
 let movesList = [];
 let game_over = false;
-
+let USE_INTERNAL_LABELS = false;
+let lastMoveCount = 0;
 let CANVAS, CTX;
 let CELL_SIZE, BOARD_OFFSET_X, BOARD_OFFSET_Y;
 let difficulty = 'easy';
@@ -46,16 +47,14 @@ let lastFrom = null, lastTo = null;
 let botFrom = null, botTo = null;
 let selected_pos = null;
 let LABEL_PADDING = 36;
-
 let historyViewMode = false;
 let currentPiecesSnapshot = null;
-
 let username = window.username || "ghost1";
 let is_ghost = window.is_ghost || false;
-
 let positionHistory = {};
-
 let userTurnTimer = null;
+let boardStates = [];
+let currentView = null;
 
 function initializePieces(userColor) {
     if (userColor === 'w') {
@@ -193,8 +192,16 @@ function restoreMovesHistory() {
         sp1.textContent = move.player === 'w' ? username : 'Бот Мастер Манго';
         let sp2 = document.createElement('span');
         sp2.classList.add('move-description');
-        sp2.textContent = `${convertPosToNotation(move.from)} -> ${convertPosToNotation(move.to)}`;
-        div.appendChild(sp1); div.appendChild(sp2);
+        let moveText = `${convertPosToNotation(move.from)} -> ${convertPosToNotation(move.to)}`;
+        sp2.textContent = moveText;
+        if (move.promoted) {
+            let crownIcon = document.createElement('i');
+            crownIcon.classList.add('fa-solid', 'fa-crown');
+            crownIcon.style.marginLeft = '5px';
+            sp2.appendChild(crownIcon);
+        }
+        div.appendChild(sp1);
+        div.appendChild(sp2);
         li.appendChild(div);
         movesContainer.appendChild(li);
         li.addEventListener('click', onMoveClick);
@@ -282,13 +289,13 @@ function can_move(piece, pcs) {
     return moves;
 }
 
-function get_possible_moves(pcs, color, must_capture = null) {
+function get_possible_moves(pcs, color, mustCapture = null) {
     let all_moves = {};
 
-    if (must_capture) {
-        let cap = can_capture(must_capture, pcs);
+    if (mustCapture) {
+        let cap = can_capture(mustCapture, pcs);
         if (cap.length > 0) {
-            all_moves[`${must_capture.x},${must_capture.y}`] = cap;
+            all_moves[`${mustCapture.x},${mustCapture.y}`] = cap;
         }
         return all_moves;
     }
@@ -342,22 +349,29 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
                 captured_pieces.push({x: pch.x, y: pch.y});
                 break;
             } else if (pch) break;
-            current_x += dx; current_y += dy;
+            current_x += dx;
+            current_y += dy;
         }
     }
+    let promoted = false;
     for (let p of new_pieces) {
         if (p.x === x && p.y === y) {
-            p.x = new_pos.x; p.y = new_pos.y;
+            p.x = new_pos.x;
+            p.y = new_pos.y;
             moved_piece = p;
+            let was_king = p.is_king;
             if (!p.is_king) {
                 if ((p.color === 0 && p.y === 0) || (p.color === 1 && p.y === 7)) {
-                    p.is_king = true; p.mode = 'k';
+                    p.is_king = true;
+                    p.mode = 'k';
                 }
+            }
+            if (!was_king && p.is_king) {
+                promoted = true;
             }
             break;
         }
     }
-
     let newMustCapture = null;
     if (captured) {
         let cap_moves = can_capture(moved_piece, new_pieces);
@@ -369,7 +383,8 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
                 captured: true,
                 captured_pieces,
                 multiple_capture: true,
-                newMustCapture
+                newMustCapture,
+                promoted
             };
         } else {
             newMustCapture = null;
@@ -377,14 +392,14 @@ function validate_move(selected_piece, new_pos, player, pcs, mustCapturePieceLoc
     } else {
         newMustCapture = null;
     }
-
     return {
         move_result: 'valid',
         new_pieces,
         captured,
         captured_pieces,
         multiple_capture: false,
-        newMustCapture
+        newMustCapture,
+        promoted
     };
 }
 
@@ -403,7 +418,6 @@ function isGameOver() {
         endGame('draw_kings');
         return true;
     }
-
     let currentBoard = serializeBoard(pieces);
     positionHistory[currentBoard] = (positionHistory[currentBoard] || 0) + 1;
     if (positionHistory[currentBoard] > 3) {
@@ -411,7 +425,6 @@ function isGameOver() {
         endGame('draw_repetition');
         return true;
     }
-
     let color_num = (current_player === 'w') ? 0 : 1;
     let moves = get_possible_moves(pieces, color_num, must_capture_piece);
     let canMove = false;
@@ -428,7 +441,6 @@ function isGameOver() {
         console.log('Игра окончена: у противника нет фигур.');
         return true;
     }
-
     return false;
 }
 
@@ -459,29 +471,25 @@ function endGame(forceStatus = null) {
             msg = 'Ничья!';
         }
     }
-
     document.getElementById('game-over-message').textContent = msg;
-    document.getElementById('game-over-modal').style.display = 'block';
+    document.getElementById('game-over-modal').style.display = 'flex';
     saveGameState();
 }
 
 function returnToMainMenu() {
     window.location.href = '/';
-    localStorage.clear()
-}
-window.addEventListener('beforeunload', () => {
     localStorage.clear();
-});
+}
+
 function newGame() {
     localStorage.clear()
     location.reload();
 }
-function give_up() {
-    document.getElementById('surrender-modal').style.display = 'block';
-}
+
 function closeModal(id) {
     document.getElementById(id).style.display = 'none';
 }
+
 function confirmSurrender() {
     closeModal('surrender-modal');
     if (current_player === 'w') { endGame('b3'); }
@@ -608,26 +616,10 @@ function addMoveToHistory(result, playerMove = true){
                 player: player,
                 from: lastFrom,
                 to: lastTo,
+                captured: result.captured || false,
+                promoted: result.promoted || false,
                 piecesSnapshot: copyPieces(pieces)
             });
-            let li = document.createElement('li');
-            li.classList.add(player === 'w' ? 'player-move' : 'opponent-move');
-            li.setAttribute('data-move-index', movesList.length - 1);
-            let div = document.createElement('div');
-            div.classList.add('move-content');
-            let sp1 = document.createElement('span');
-            sp1.classList.add('move-player');
-
-            sp1.textContent = username;
-
-            let sp2 = document.createElement('span');
-            sp2.classList.add('move-description');
-            sp2.textContent = `${convertPosToNotation(lastFrom)} -> ${convertPosToNotation(lastTo)}`;
-            div.appendChild(sp1);
-            div.appendChild(sp2);
-            li.appendChild(div);
-            document.querySelector('.moves-list').appendChild(li);
-            li.addEventListener('click', onMoveClick);
         }
     } else {
         player = bot_color;
@@ -636,32 +628,20 @@ function addMoveToHistory(result, playerMove = true){
                 player: player,
                 from: botFrom,
                 to: botTo,
+                captured: result.captured || false,
+                promoted: result.promoted || false,
                 piecesSnapshot: copyPieces(pieces)
             });
-            let li = document.createElement('li');
-            li.classList.add(player === 'w' ? 'player-move' : 'opponent-move');
-            li.setAttribute('data-move-index', movesList.length - 1);
-            let div = document.createElement('div');
-            div.classList.add('move-content');
-            let sp1 = document.createElement('span');
-            sp1.classList.add('move-player');
-
-            sp1.textContent = 'Бот Мастер Манго';
-
-            let sp2 = document.createElement('span');
-            sp2.classList.add('move-description');
-            sp2.textContent = `${convertPosToNotation(botFrom)} -> ${convertPosToNotation(botTo)}`;
-            div.appendChild(sp1);
-            div.appendChild(sp2);
-            li.appendChild(div);
-            document.querySelector('.moves-list').appendChild(li);
-            li.addEventListener('click', onMoveClick);
         }
     }
+
     let movesCont = document.querySelector('.moves-container');
     movesCont.scrollTop = movesCont.scrollHeight;
+
     saveGameState();
+    updateMovesList();
 }
+
 function convertPosToNotation(pos) {
     let letters = ['A','B','C','D','E','F','G','H'];
     let file = letters[pos.x];
@@ -677,7 +657,9 @@ function convertPosToNotation(pos) {
 }
 
 function onClick(evt) {
-    if (game_over || current_player === bot_color || historyViewMode) return;
+    if (game_over || current_player === bot_color || historyViewMode || (window.innerWidth <= 1000 && currentView !== null)) {
+        return;
+    }
     let loc = {x: evt.offsetX, y: evt.offsetY};
     let coords = getCoordinates(loc);
     if (coords.x === -1 || coords.y === -1) return;
@@ -749,26 +731,42 @@ function adjustScreen() {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
     let size;
-    if (screenWidth <= 1024) {
-        size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
-        LABEL_PADDING = 30;
+    if (screenWidth <= 800) {
+        LABEL_PADDING = 0;
+        USE_INTERNAL_LABELS = true;
+        const mobileHistoryHeight = document.getElementById('mobile-moves-history')?.clientHeight || 0;
+        const mobileBarHeight = document.getElementById('mobile-bar')?.clientHeight || 0;
+        const reservedSpace = 150;
+        const availableHeight = screenHeight - mobileHistoryHeight - mobileBarHeight - reservedSpace;
+        size = Math.min(screenWidth, availableHeight);
+    } else {
+        USE_INTERNAL_LABELS = false;
+        if (screenWidth <= 1000) {
+            size = Math.min(screenWidth * 0.65, screenHeight * 0.65);
+            LABEL_PADDING = 36;
+            USE_INTERNAL_LABELS = false;
+        } else if (screenWidth <= 1200) {
+            size = Math.min(screenWidth * 0.50, screenHeight * 0.50);
+            LABEL_PADDING = 30;
+            USE_INTERNAL_LABELS = false;
+        } else if (screenWidth <= 1400) {
+            size = Math.min(screenWidth * 0.60, screenHeight * 0.60);
+            LABEL_PADDING = 30;
+            USE_INTERNAL_LABELS = false;
+        } else {
+            size = Math.min(screenWidth * 0.75, screenHeight * 0.75);
+            LABEL_PADDING = 36;
+            USE_INTERNAL_LABELS = false;
+        }
+        size = Math.max(300, Math.min(size, 800));
     }
-    else if (screenWidth <= 1440) {
-        size = Math.min(screenWidth * 0.75, screenHeight * 0.75);
-        LABEL_PADDING = 36;
-    }
-    else {
-        size = Math.min(screenWidth * 0.75, screenHeight * 0.75);
-        LABEL_PADDING = 36;
-    }
-    size = Math.max(300, Math.min(size, 800));
     const dpr = window.devicePixelRatio || 1;
     size = Math.floor(size);
     CTX.setTransform(1, 0, 0, 1, 0, 0);
     CANVAS.width = (size + LABEL_PADDING * 2) * dpr;
     CANVAS.height = (size + LABEL_PADDING * 2) * dpr;
-    CANVAS.style.width = `${size + LABEL_PADDING * 2}px`;
-    CANVAS.style.height = `${size + LABEL_PADDING * 2}px`;
+    CANVAS.style.width = (size + LABEL_PADDING * 2) + 'px';
+    CANVAS.style.height = (size + LABEL_PADDING * 2) + 'px';
     CTX.scale(dpr, dpr);
     CELL_SIZE = size / 8;
     BOARD_OFFSET_X = LABEL_PADDING;
@@ -777,44 +775,61 @@ function adjustScreen() {
 }
 
 function draw_circle(x, y, r, width, strokeColor, fillColor) {
+    const centerX = Math.round(x);
+    const centerY = Math.round(y);
     CTX.beginPath();
-    CTX.arc(x, y, r, 0, 2 * Math.PI, false);
-    if (fillColor) { CTX.fillStyle = fillColor; CTX.fill(); }
-    if (strokeColor) { CTX.strokeStyle = strokeColor; CTX.lineWidth = width; CTX.stroke(); }
+    CTX.arc(centerX, centerY, r, 0, 2 * Math.PI, false);
+    if (fillColor) {
+        CTX.fillStyle = fillColor;
+        CTX.fill();
+    }
+    if (strokeColor) {
+        CTX.strokeStyle = strokeColor;
+        CTX.lineWidth = width;
+        CTX.stroke();
+    }
     CTX.closePath();
 }
 
-function draw_piece(piece, user_color_param) {
+function draw_piece(piece, user_color) {
     let fillStyle = colors[piece.color];
     let strokeStyle = colors[piece.color ? 0 : 1];
     let displayX = piece.x;
-    let displayY = user_color_param === "b" ? 7 - piece.y : piece.y;
-
-    const X = BOARD_OFFSET_X + CELL_SIZE * (displayX + 0.5);
-    const Y = BOARD_OFFSET_Y + CELL_SIZE * (displayY + 0.5);
-    const radius = (CELL_SIZE / 2) * 0.8;
+    let displayY = (user_color === 'b') ? 7 - piece.y : piece.y;
+    const X = Math.round(BOARD_OFFSET_X + CELL_SIZE * (displayX + 0.5));
+    const Y = Math.round(BOARD_OFFSET_Y + CELL_SIZE * (displayY + 0.5));
+    let pieceScale = 1;
+    if (window.innerWidth <= 400) {
+        pieceScale = 0.90;
+    }
+    const radius = (CELL_SIZE / 2) * 0.8 * pieceScale;
     const innerRadius = radius * 0.7;
     const crownRadius = radius * 0.5;
-    draw_circle(X, Y, radius, 3, strokeStyle, fillStyle);
-    draw_circle(X, Y, innerRadius, 3, strokeStyle, false);
+    const outerStroke = CELL_SIZE * 0.05 * pieceScale;
+    const innerStroke = CELL_SIZE * 0.05 * pieceScale;
+    const crownStroke = CELL_SIZE * 0.07 * pieceScale;
+    const selectionLineWidth = CELL_SIZE * 0.07 * pieceScale;
+    const selectionShadowBlur = CELL_SIZE * 0.3 * pieceScale;
+    draw_circle(X, Y, radius, outerStroke, strokeStyle, fillStyle);
+    draw_circle(X, Y, innerRadius, innerStroke, strokeStyle, null);
     if (piece.is_king) {
         CTX.beginPath();
         CTX.arc(X, Y, crownRadius, 0, 2 * Math.PI, false);
-        CTX.fillStyle = "rgba(255,215,0,0.7)";
+        CTX.fillStyle = "rgba(255, 215, 0, 0.7)";
         CTX.fill();
-        CTX.lineWidth = 6;
+        CTX.lineWidth = crownStroke;
         CTX.strokeStyle = "gold";
         CTX.stroke();
         CTX.closePath();
     }
     if (IS_SELECTED && selected_piece === piece) {
         CTX.save();
-        CTX.shadowColor = 'rgba(255,255,0,1)';
-        CTX.shadowBlur = 20;
+        CTX.shadowColor = 'rgba(255, 255, 0, 1)';
+        CTX.shadowBlur = selectionShadowBlur;
         CTX.beginPath();
         CTX.arc(X, Y, radius * 1.1, 0, 2 * Math.PI, false);
         CTX.strokeStyle = 'yellow';
-        CTX.lineWidth = 5;
+        CTX.lineWidth = selectionLineWidth;
         CTX.stroke();
         CTX.closePath();
         CTX.restore();
@@ -822,61 +837,92 @@ function draw_piece(piece, user_color_param) {
 }
 
 function draw_possible_moves() {
+    if (historyViewMode || (window.innerWidth <= 1000 && currentView !== null)) return;
     CTX.save();
-    CTX.lineWidth = 4;
-    CTX.strokeStyle = 'rgba(0,162,255,0.8)';
-    CTX.shadowColor = 'rgba(0,162,255,0.8)';
-    CTX.shadowBlur = 10;
-    for (let move of possibleMoves) {
-        let displayY = (user_color === "b") ? 7 - move.y : move.y;
+    const moveLineWidth = CELL_SIZE * 0.05;
+    const moveShadowBlur = CELL_SIZE * 0.15;
+    CTX.lineWidth = moveLineWidth;
+    CTX.strokeStyle = 'rgba(0, 162, 255, 0.8)';
+    CTX.shadowColor = 'rgba(0, 162, 255, 0.8)';
+    CTX.shadowBlur = moveShadowBlur;
 
-        const X = BOARD_OFFSET_X + CELL_SIZE * move.x;
-        const Y = BOARD_OFFSET_Y + CELL_SIZE * displayY;
+    for (let move of possibleMoves) {
+        let displayX = move.x;
+        let displayY = (user_color === 'b') ? 7 - move.y : move.y;
+        const X = Math.round(BOARD_OFFSET_X + CELL_SIZE * displayX);
+        const Y = Math.round(BOARD_OFFSET_Y + CELL_SIZE * displayY);
         CTX.strokeRect(X, Y, CELL_SIZE, CELL_SIZE);
     }
     CTX.restore();
 }
 
 function drawLabels() {
-    CTX.fillStyle = "#f0f0f0";
-    let fontSize = CELL_SIZE / 3;
-    fontSize = Math.max(12, Math.min(fontSize, 24));
-    CTX.font = `${fontSize}px Arial`;
-    CTX.textAlign = "center";
-    CTX.textBaseline = "middle";
-    const letters = ['A','B','C','D','E','F','G','H'];
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
-        const y = BOARD_OFFSET_Y - LABEL_PADDING / 2;
-        CTX.fillText(letters[i], x, y);
-    }
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
-        const y = BOARD_OFFSET_Y + CELL_SIZE * 8 + LABEL_PADDING / 2;
-        CTX.fillText(letters[i], x, y);
-    }
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X - LABEL_PADDING / 2;
-        const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
-        CTX.fillText(i + 1, x, y);
-    }
-    for (let i = 0; i < 8; i++) {
-        const x = BOARD_OFFSET_X + CELL_SIZE * 8 + LABEL_PADDING / 2;
-        const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
-        CTX.fillText(i + 1, x, y);
+    if (!USE_INTERNAL_LABELS) {
+        CTX.fillStyle = "#f0f0f0";
+        let fontSize = Math.max(12, Math.min(Math.round(CELL_SIZE / 3), 24));
+        CTX.font = fontSize + "px Arial";
+        CTX.textAlign = "center";
+        CTX.textBaseline = "middle";
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        for (let i = 0; i < 8; i++) {
+            let x = Math.round(BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2);
+            let y = Math.round(BOARD_OFFSET_Y - LABEL_PADDING / 2);
+            CTX.fillText(letters[i], x, y);
+        }
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X + CELL_SIZE * i + CELL_SIZE / 2;
+            const y = BOARD_OFFSET_Y + CELL_SIZE * 8 + LABEL_PADDING / 2;
+            CTX.fillText(letters[i], x, y);
+        }
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X - LABEL_PADDING / 2;
+            const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
+            CTX.fillText((i + 1).toString(), x, y);
+        }
+        for (let i = 0; i < 8; i++) {
+            const x = BOARD_OFFSET_X + CELL_SIZE * 8 + LABEL_PADDING / 2;
+            const y = BOARD_OFFSET_Y + CELL_SIZE * (7 - i) + CELL_SIZE / 2;
+            CTX.fillText((i + 1).toString(), x, y);
+        }
+    } else {
+        CTX.fillStyle = "#f0f0f0";
+        let numberFontSize = Math.max(8, CELL_SIZE / 7);
+        CTX.font = "bold " + numberFontSize + "px Arial";
+        CTX.textAlign = "left";
+        CTX.textBaseline = "top";
+        for (let i = 0; i < 8; i++) {
+            let x = BOARD_OFFSET_X + 3;
+            let y = BOARD_OFFSET_Y + CELL_SIZE * i + 3;
+            let number = (8 - i).toString();
+            CTX.fillText(number, x, y);
+        }
+        let letterFontSize = Math.max(6, CELL_SIZE / 7);
+        CTX.font = "bold " + letterFontSize + "px Arial";
+        CTX.textAlign = "right";
+        CTX.textBaseline = "bottom";
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        for (let j = 0; j < 8; j++) {
+            let x = BOARD_OFFSET_X + CELL_SIZE * (j + 1) - 3;
+            let y = BOARD_OFFSET_Y + CELL_SIZE * 8 - 3;
+            CTX.fillText(letters[j], x, y);
+        }
     }
 }
 
 function render_Board() {
     CTX.fillStyle = "#121212";
     CTX.fillRect(0, 0, CANVAS.width / (window.devicePixelRatio || 1), CANVAS.height / (window.devicePixelRatio || 1));
-    let step = 0;
+    let step = user_color === "b" ? 1 : 0;
     for (let i = 0; i < 8; i++) {
         for (let j = 0; j < 8; j++) {
-            let row = (user_color === "b") ? 7 - i : i;
-            if ((j + row) % 2 === 1) {
+            if ((i + j) % 2 === 1) {
                 CTX.fillStyle = b_colors[step % 2];
-                CTX.fillRect(BOARD_OFFSET_X + CELL_SIZE * j, BOARD_OFFSET_Y + CELL_SIZE * i, CELL_SIZE, CELL_SIZE);
+                CTX.fillRect(
+                    BOARD_OFFSET_X + CELL_SIZE * j,
+                    BOARD_OFFSET_Y + CELL_SIZE * i,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
             }
             step++;
         }
@@ -946,6 +992,7 @@ window.onload = function() {
     if (!game_over && current_player === user_color) {
         updateTurnTimer();
     }
+    addEventListeners();
 };
 
 function onMoveClick(evt) {
@@ -982,6 +1029,7 @@ function showHistoryState(index) {
 
 function returnToCurrentState() {
     if (!currentPiecesSnapshot) return;
+    document.querySelectorAll('.moves-list li.selected').forEach(li => li.classList.remove('selected'));
     historyViewMode = false;
     pieces = copyPieces(currentPiecesSnapshot);
     currentPiecesSnapshot = null;
@@ -1025,4 +1073,356 @@ function updateTurnTimer() {
             }
         }, 120000);
     }
+}
+
+function openMobileSettingsModal() {
+    let modal = document.getElementById("mobile-settings-modal");
+    if (modal) {
+        modal.style.display = "flex";
+    }
+}
+
+function showHistoryViewIndicator() {
+    if (window.innerWidth <= 1000) return;
+    let indicator = document.getElementById('history-view-indicator');
+    if (!indicator) return;
+    indicator.style.display = 'block';
+}
+
+function returnToCurrentView() {
+    pieces = copyPieces(boardStates[boardStates.length - 1]);
+    currentView = null;
+    let indicator = document.getElementById('history-view-indicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+    document.querySelectorAll('.moves-list li').forEach(moveLi => moveLi.classList.remove('selected'));
+    let mobileHistoryElem = document.getElementById("mobile-moves-history");
+    if (mobileHistoryElem) {
+        mobileHistoryElem.querySelectorAll('.move-part').forEach(part => {
+            part.classList.remove('selected');
+        });
+    }
+    updateMobileReturnButtonVisibility();
+    let mh = document.getElementById("mobile-moves-history");
+    if (mh) {
+        setTimeout(() => {
+            mh.scrollTo({ left: mh.scrollWidth, behavior: 'smooth' });
+        }, 100);
+    }
+}
+
+function viewBoardState(moveIndex) {
+    if (moveIndex < 0 || moveIndex > boardStates.length - 1) return;
+    if (moveIndex === boardStates.length - 1) {
+        returnToCurrentView();
+        return;
+    }
+    pieces = copyPieces(boardStates[moveIndex]);
+    currentView = moveIndex;
+    showHistoryViewIndicator();
+    updateMobileReturnButtonVisibility();
+    updateMobileHistorySelection();
+}
+
+function updateMobileHistorySelection() {
+    let mobileHistoryElem = document.getElementById("mobile-moves-history");
+    if (!mobileHistoryElem) return;
+    let containers = mobileHistoryElem.querySelectorAll('.mobile-move');
+    let containerRect = mobileHistoryElem.getBoundingClientRect();
+    containers.forEach(container => {
+        let parts = container.querySelectorAll('.move-part');
+        parts.forEach(part => {
+            if (parseInt(part.getAttribute('data-index')) === currentView) {
+                part.classList.add('selected');
+                let partRect = part.getBoundingClientRect();
+                if (partRect.left < containerRect.left || partRect.right > containerRect.right) {
+                    part.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }
+            } else {
+                part.classList.remove('selected');
+            }
+        });
+    });
+}
+
+function updateMobileReturnButtonVisibility() {
+    const btn = document.getElementById('mobile-return-button');
+    if (!btn) return;
+    if (currentView !== null) {
+        btn.classList.add('visible');
+    } else {
+        btn.classList.remove('visible');
+    }
+}
+
+function updateMovesList() {
+    const movesContainer = document.querySelector('.moves-list');
+    let hasNewMoves = movesList.length > lastMoveCount;
+    for (let i = lastMoveCount; i < movesList.length; i++) {
+        let move = movesList[i];
+        let li = document.createElement('li');
+        li.classList.add(move.player === 'w' ? 'player-move' : 'opponent-move', 'new-move');
+        let moveContent = document.createElement('div');
+        moveContent.classList.add('move-content');
+        let playerLabel = document.createElement('span');
+        playerLabel.classList.add('move-player');
+        playerLabel.textContent = (move.player === 'w') ? username : 'Бот Мастер Манго';
+        let moveDescription = document.createElement('span');
+        moveDescription.classList.add('move-description');
+        let notationText = convertPosToNotation(move.from) + ' -> ' + convertPosToNotation(move.to);
+        moveDescription.textContent = '';
+        if (move.promoted) {
+            let crownIcon = document.createElement('i');
+            crownIcon.classList.add('fa-solid', 'fa-crown');
+            crownIcon.style.marginRight = '5px';
+            moveDescription.appendChild(crownIcon);
+        }
+        moveDescription.appendChild(document.createTextNode(notationText));
+
+        moveContent.appendChild(playerLabel);
+        moveContent.appendChild(moveDescription);
+        li.appendChild(moveContent);
+        li.setAttribute('data-move-index', i);
+        li.addEventListener('click', () => {
+            document.querySelectorAll('.moves-list li').forEach(el => el.classList.remove('selected'));
+            li.classList.add('selected');
+            if (window.innerWidth > 1000) {
+                showHistoryState(i);
+            } else {
+                viewBoardState(i);
+            }
+        });
+
+        li.addEventListener('animationend', () => {
+            li.classList.remove('new-move');
+        });
+        movesContainer.appendChild(li);
+        boardStates.push(copyPieces(move.piecesSnapshot));
+    }
+    lastMoveCount = movesList.length;
+    let containerBlock = document.querySelector('.moves-container');
+    if (hasNewMoves && containerBlock) {
+        containerBlock.scrollTop = containerBlock.scrollHeight;
+    }
+    if (window.innerWidth <= 1000 && hasNewMoves) {
+        let mobileHistoryElem = document.getElementById('mobile-moves-history');
+        if (!mobileHistoryElem) return;
+        const scrollTolerance = 5;
+        let wasAtEnd = (
+            mobileHistoryElem.scrollLeft + mobileHistoryElem.clientWidth >=
+            mobileHistoryElem.scrollWidth - scrollTolerance
+        );
+        let oldScrollLeft = mobileHistoryElem.scrollLeft;
+        mobileHistoryElem.innerHTML = "";
+        let groups = [];
+        let currentGroup = null;
+        for (let i = 0; i < movesList.length; i++) {
+            let m = movesList[i];
+            if (!currentGroup || m.player !== currentGroup.player) {
+                if (currentGroup) groups.push(currentGroup);
+                currentGroup = { player: m.player, moves: [m] };
+            } else {
+                currentGroup.moves.push(m);
+            }
+        }
+        if (currentGroup) groups.push(currentGroup);
+
+        let roundCounter = 1;
+        let cumulativeIndex = 0;
+        let mobileContainers = [];
+
+        for (let i = 0; i < groups.length; i++) {
+            let grp = groups[i];
+
+            let container = document.createElement('span');
+            container.classList.add('mobile-move');
+            if (i % 2 === 0) {
+                let roundLabel = document.createElement('span');
+                roundLabel.classList.add('round-label');
+                roundLabel.textContent = roundCounter + ".   ";
+                roundCounter++;
+                container.appendChild(roundLabel);
+            }
+
+            for (let j = 0; j < grp.moves.length; j++) {
+                let boardStateIndex = cumulativeIndex + j;
+
+                if (j === 0) {
+                    let movePart = document.createElement('span');
+                    movePart.classList.add('move-part', 'move-text');
+                    let textMobile = convertPosToNotation(grp.moves[j].to);
+                    movePart.textContent = "";
+                    if (grp.moves[j].captured) {
+                        movePart.style.fontWeight = 'bold';
+                    }
+                    if (grp.moves[j].promoted) {
+                        let crownIcon = document.createElement('i');
+                        crownIcon.classList.add('fa-solid', 'fa-crown');
+                        crownIcon.style.marginRight = '3px';
+                        movePart.appendChild(crownIcon);
+                    }
+                    movePart.appendChild(document.createTextNode(textMobile));
+
+                    movePart.setAttribute('data-index', boardStateIndex);
+                    movePart.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        if (boardStateIndex === boardStates.length - 1) {
+                            returnToCurrentView();
+                        } else {
+                            mobileHistoryElem.querySelectorAll('.move-part').forEach(el => el.classList.remove('selected'));
+                            movePart.classList.add('selected');
+                            viewBoardState(boardStateIndex);
+                        }
+                    });
+                    container.appendChild(movePart);
+
+                } else {
+                    let openParen = document.createElement('span');
+                    openParen.textContent = "(";
+                    container.appendChild(openParen);
+
+                    let movePart = document.createElement('span');
+                    movePart.classList.add('move-part', 'move-text');
+                    let textMobile = convertPosToNotation(grp.moves[j].to);
+
+                    movePart.textContent = "";
+                    if (grp.moves[j].captured) {
+                        movePart.style.fontWeight = 'bold';
+                    }
+                    if (grp.moves[j].promoted) {
+                        let crownIcon = document.createElement('i');
+                        crownIcon.classList.add('fa-solid', 'fa-crown');
+                        crownIcon.style.marginRight = '3px';
+                        movePart.appendChild(crownIcon);
+                    }
+                    movePart.appendChild(document.createTextNode(textMobile));
+
+                    movePart.setAttribute('data-index', boardStateIndex);
+                    movePart.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        if (boardStateIndex === boardStates.length - 1) {
+                            returnToCurrentView();
+                        } else {
+                            mobileHistoryElem.querySelectorAll('.move-part').forEach(el => el.classList.remove('selected'));
+                            movePart.classList.add('selected');
+                            viewBoardState(boardStateIndex);
+                        }
+                    });
+                    container.appendChild(movePart);
+
+                    let closeParen = document.createElement('span');
+                    closeParen.textContent = ")";
+                    container.appendChild(closeParen);
+                }
+            }
+            let gap = "";
+            if (i + 1 < groups.length) {
+                gap = (i % 2 === 0) ? "     " : "            ";
+            }
+            let gapText = document.createTextNode(gap);
+            container.appendChild(gapText);
+
+            mobileHistoryElem.appendChild(container);
+            mobileContainers.push(container);
+
+            cumulativeIndex += grp.moves.length;
+        }
+        mobileHistoryElem.scrollLeft = oldScrollLeft;
+        if (currentView === null && wasAtEnd) {
+            setTimeout(() => {
+                mobileHistoryElem.scrollTo({ left: mobileHistoryElem.scrollWidth, behavior: 'smooth' });
+            }, 100);
+        } else {
+            mobileContainers.forEach(container => {
+                container.querySelectorAll('.move-part').forEach(part => {
+                    if (parseInt(part.getAttribute('data-index')) === currentView) {
+                        part.classList.add('selected');
+                        container.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                });
+            });
+        }
+
+        let arrow = document.getElementById("mobile-scroll-arrow");
+        if (hasNewMoves) {
+            if (!wasAtEnd && arrow) {
+                arrow.style.display = "block";
+            } else if (arrow) {
+                arrow.style.display = "none";
+            }
+        }
+    }
+}
+
+
+function mobilePrevMove() {
+    if (boardStates.length <= 1) return;
+    let viewIndex = (currentView === null ? boardStates.length - 1 : currentView);
+    if (viewIndex > 0) {
+        viewBoardState(viewIndex - 1);
+    }
+}
+
+function mobileNextMove() {
+    if (boardStates.length <= 1) return;
+    let viewIndex = (currentView === null ? boardStates.length - 1 : currentView);
+    if (viewIndex < boardStates.length - 1) {
+        let nextIndex = viewIndex + 1;
+        if (nextIndex === boardStates.length - 1) {
+            returnToCurrentView();
+        } else {
+            viewBoardState(nextIndex);
+        }
+    }
+}
+
+function addEventListeners() {
+    CANVAS.addEventListener("click", onClick);
+    window.addEventListener("resize", () => adjustScreen());
+    let mobileSettingsIcon = document.getElementById("mobile-settings-icon");
+    if (mobileSettingsIcon) {
+        mobileSettingsIcon.addEventListener("click", openMobileSettingsModal);
+    }
+    let mobilePrevMoveBtn = document.getElementById("mobile-prev-move");
+    if (mobilePrevMoveBtn) {
+        mobilePrevMoveBtn.addEventListener("click", mobilePrevMove);
+    }
+    let mobileNextMoveBtn = document.getElementById("mobile-next-move");
+    if (mobileNextMoveBtn) {
+        mobileNextMoveBtn.addEventListener("click", mobileNextMove);
+    }
+    let modals = ["surrender-modal", "mobile-settings-modal"];
+    for (let id of modals) {
+        let modal = document.getElementById(id);
+        if (modal) {
+            modal.addEventListener("click", function(event) {
+                if (event.target === modal) {
+                    closeModal(id);
+                }
+            });
+        }
+    }
+    let mobileHistoryElem = document.getElementById("mobile-moves-history");
+    if (mobileHistoryElem) {
+        mobileHistoryElem.addEventListener('scroll', function() {
+            const scrollTolerance = 5;
+            let arrow = document.getElementById("mobile-scroll-arrow");
+            if (arrow) {
+                if (mobileHistoryElem.scrollLeft + mobileHistoryElem.clientWidth >= mobileHistoryElem.scrollWidth - scrollTolerance) {
+                    arrow.style.display = "none";
+                } else {
+                    arrow.style.display = "block";
+                }
+            }
+        });
+    }
+}
+
+function give_up(){
+    const settingsModal = document.getElementById('mobile-settings-modal');
+    if (settingsModal) {
+        settingsModal.style.display = "none";
+    }
+    document.getElementById('surrender-modal').style.display = "flex";
 }

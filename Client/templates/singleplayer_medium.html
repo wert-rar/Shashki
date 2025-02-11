@@ -7,6 +7,8 @@
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="/static/styles_singleplayer.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 </head>
 <body>
     <div class="header">
@@ -18,6 +20,8 @@
     </div>
 
     <div class="board-container">
+        <div id="mobile-moves-history" class="mobile-moves-history"></div>
+        <button id="mobile-return-button" onclick="returnToCurrentView()">&#8634;</button>
         <canvas id="board"></canvas>
     </div>
 
@@ -42,12 +46,35 @@
         </div>
     </div>
 
+    <div id="mobile-bar">
+        <div class="mobile-bar-item" id="mobile-settings">
+            <div id="mobile-settings-icon">&#9776;</div>
+            <div id="mobile-settings-text">Настройки</div>
+        </div>
+        <div class="mobile-bar-item mobile-move-arrow" id="mobile-prev-move">
+            <div class="arrow-icon">&#9664;</div>
+            <div class="arrow-text">Назад</div>
+        </div>
+        <div class="mobile-bar-item mobile-move-arrow" id="mobile-next-move">
+            <div class="arrow-icon">&#9654;</div>
+            <div class="arrow-text">Вперед</div>
+        </div>
+    </div>
+    <div id="mobile-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Настройки</h2>
+            <button class="mobile-btn" onclick="give_up()">Сдаться</button>
+        </div>
+    </div>
+
     <div id="game-over-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
             <p id="game-over-message"></p>
-            <button onclick="returnToMainMenu()">Главное меню</button>
-            <button onclick="newGame()">Новая игра</button>
+               <div class="modal-buttons">
+                  <button onclick="returnToMainMenu()">Главное меню</button>
+                  <button onclick="newGame()">Новая игра</button>
+               </div>
         </div>
     </div>
     <script>
