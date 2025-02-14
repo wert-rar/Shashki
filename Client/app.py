@@ -51,6 +51,7 @@ app.config.update(
 )
 pending_rematch_requests = {}
 rematch_redirect = {}
+rematch_responses = {}
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 limiter.init_app(app)
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'avatars')
@@ -526,12 +527,17 @@ def move():
 @app.route("/update_board", methods=["POST"])
 @csrf.exempt
 def update_board():
-    global rematch_redirect
+    global rematch_redirect, rematch_responses, pending_rematch_requests
     if not request.is_json:
         return jsonify({"error": "Request data must be in JSON format"}), 400
     data = request.get_json()
-    game_id = data.get("game_id")
     user_login = session.get('user')
+    if user_login in rematch_redirect:
+        new_game_id = rematch_redirect[user_login]
+        session['game_id'] = new_game_id
+        session.modified = True
+        data["game_id"] = new_game_id
+    game_id = data.get("game_id")
     if game_id is None:
         return jsonify({"error": "Game ID is required"}), 400
     try:
@@ -564,16 +570,19 @@ def update_board():
         response_data['result'] = result_move
     for (req_from, req_to) in pending_rematch_requests.keys():
         if req_to == user_login:
-            response_data["rematch_request"] = {
-                "from_user": req_from
-            }
+            response_data["rematch_request"] = {"from_user": req_from}
             break
     if user_login in rematch_redirect:
         new_game_id = rematch_redirect[user_login]
         del rematch_redirect[user_login]
         response_data["redirect_new_game"] = new_game_id
+    if user_login in rematch_responses:
+        if rematch_responses[user_login] == "decline":
+            response_data["rematch_response"] = "decline"
+        del rematch_responses[user_login]
 
     return jsonify(response_data)
+
 
 @app.route("/give_up", methods=["POST"])
 @csrf.exempt
@@ -1419,13 +1428,12 @@ def respond_rematch():
     from_user = data.get("from_user")
     to_user = data.get("to_user")
     answer = data.get("answer")
-    global rematch_redirect
+    global rematch_redirect, rematch_responses
     if not from_user or not to_user or not answer:
         return jsonify({"error": "Недостаточно данных"}), 400
-    if (from_user, to_user) in pending_rematch_requests:
-        del pending_rematch_requests[(from_user, to_user)]
-    else:
+    if (from_user, to_user) not in pending_rematch_requests:
         return jsonify({"error": "Нет запроса на реванш"}), 400
+    del pending_rematch_requests[(from_user, to_user)]
     if answer == "accept":
         new_game_id = create_new_game_in_db(from_user)
         if not new_game_id:
@@ -1434,6 +1442,11 @@ def respond_rematch():
             update_game_with_user_in_db(new_game_id, to_user, 'b')
         except Exception as e:
             return jsonify({"error": f"Ошибка при добавлении второго игрока: {str(e)}"}), 500
+        current_user = session.get('user')
+        if current_user in [from_user, to_user]:
+            session['game_id'] = new_game_id
+            session['color'] = 'w' if current_user == from_user else 'b'
+            session.modified = True
         rematch_redirect[from_user] = new_game_id
         rematch_redirect[to_user] = new_game_id
 
@@ -1442,6 +1455,7 @@ def respond_rematch():
             "game_id": new_game_id
         }), 200
     else:
+        rematch_responses[from_user] = "decline"
         return jsonify({
             "message": "Реванш отклонён",
             "redirect": "/"

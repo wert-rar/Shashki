@@ -340,6 +340,9 @@ function returnToMainMenu() {
     };
     xhr.send(JSON.stringify({}));
 }
+function Home() {
+    window.location.href = "/";
+}
 function give_up() {
     closeModal("mobile-settings-modal");
     document.getElementById('surrender-modal').style.display = "flex";
@@ -524,7 +527,10 @@ function server_update_request() {
             }
             if (data.redirect_new_game) {
                 window.location.href = `/board/${data.redirect_new_game}/${user_login}`;
-                return Promise.resolve();
+                return;
+            }
+            if (data.rematch_response === "decline") {
+                showNotification("Противник отклонил ваш запрос на реванш", "error");
             }
             return Promise.resolve();
         }

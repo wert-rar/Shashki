@@ -1963,26 +1963,26 @@
         }
 
         function checkForActiveGame() {
-            fetch("/check_game_status")
+            fetch('/check_game_status')
                 .then(response => {
                     if (response.status === 200) {
                         return response.json();
                     } else {
-                        throw new Error("Нет активной игры.");
+                        throw new Error('Нет активной игры.');
                     }
                 })
                 .then(data => {
-                    if (data.status === "active") {
+                    if (data.status === 'active' || data.status === 'waiting') {
                         if (data.game_id) {
                             game_id = data.game_id;
                         }
-                        document.getElementById("return-to-game").style.display = "block";
+                        document.getElementById('return-to-game').style.display = 'block';
                     } else {
-                        document.getElementById("return-to-game").style.display = "none";
+                        document.getElementById('return-to-game').style.display = 'none';
                     }
                 })
                 .catch(() => {
-                    document.getElementById("return-to-game").style.display = "none";
+                    document.getElementById('return-to-game').style.display = 'none';
                 });
         }
 

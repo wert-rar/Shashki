@@ -730,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .then(data => {
-                if (data.status === 'active') {
+                if (data.status === 'active' || data.status === 'waiting') {
                     if (data.game_id) {
                         game_id = data.game_id;
                     }

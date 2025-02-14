@@ -48,7 +48,7 @@
     <audio id="sound-defeat" src="{{ url_for('static', filename='sounds/defeat.mp3') }}" preload="auto"></audio>
     <div class="sidebar">
         <h2>Меню</h2>
-        <button id="main-menu-button" onclick="returnToMainMenu()">Главное меню</button>
+        <button id="main-menu-button" onclick="Home()">Главное меню</button>
         <button id="give-up-button" onclick="give_up()">Сдаться</button>
         <button id="give-draw-button" onclick="give_draw()">Ничья</button>
     </div>
@@ -134,7 +134,7 @@
     <div id="mobile-settings-modal" class="modal">
         <div class="modal-content">
             <h2>Настройки</h2>
-            <button class="mobile-btn" onclick="returnToMainMenu()">Главное меню</button>
+            <button class="mobile-btn" onclick="Home()">Главное меню</button>
             <button class="mobile-btn" onclick="give_up()">Сдаться</button>
             <button class="mobile-btn" onclick="give_draw()">Ничья</button>
         </div>
