@@ -85,9 +85,11 @@ class Game:
             return
         now = time.time()
         elapsed = now - self.last_update_time
-        self.last_update_time = now
-        if self.status == 'unstarted':
+        if self.status in ['w3', 'b3', 'n', 'ns1']:
+            self.last_update_time = now
             return
+        self.last_update_time = now
+
         if not self.game_started:
             if self.current_player == 'w':
                 self.white_time_remaining -= elapsed
@@ -100,6 +102,7 @@ class Game:
                     self.black_time_remaining = 0
                     self.status = 'ns1'
             return
+
         if self.current_player == 'w':
             self.white_time_remaining -= elapsed
             if self.white_time_remaining <= 0:
@@ -110,8 +113,6 @@ class Game:
                 if self.white_idle_time >= 50:
                     self.white_in_countdown = True
                     self.white_countdown_remaining = 120
-                else:
-                    pass
             else:
                 self.white_countdown_remaining -= elapsed
                 if self.white_countdown_remaining <= 0:
@@ -127,8 +128,6 @@ class Game:
                 if self.black_idle_time >= 50:
                     self.black_in_countdown = True
                     self.black_countdown_remaining = 120
-                else:
-                    pass
             else:
                 self.black_countdown_remaining -= elapsed
                 if self.black_countdown_remaining <= 0:

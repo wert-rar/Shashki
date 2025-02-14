@@ -26,7 +26,12 @@
         </div>
     </div>
     <div class="board-container">
-        <div id="mobile-moves-history" class="mobile-moves-history"></div>
+        <div id="mobile-title-bar" class="mobile-title-bar">
+            <a href="/" class="back-arrow"><i class="fa-solid fa-arrow-left"></i></a>
+        <div class="title-text">Thecheckers</div>
+    </div>
+
+    <div id="mobile-moves-history" class="mobile-moves-history"></div>
         <button id="mobile-return-button" onclick="returnToCurrentView()">&#8634;</button>
         <div id="board-wrapper">
             <div class="player-info-opponent">
@@ -134,7 +139,6 @@
     <div id="mobile-settings-modal" class="modal">
         <div class="modal-content">
             <h2>Настройки</h2>
-            <button class="mobile-btn" onclick="Home()">Главное меню</button>
             <button class="mobile-btn" onclick="give_up()">Сдаться</button>
             <button class="mobile-btn" onclick="give_draw()">Ничья</button>
         </div>

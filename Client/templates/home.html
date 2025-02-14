@@ -320,15 +320,13 @@
             width: 250px;
             font-size: 18px;
             padding: 15px 20px;
+            text-align: center;
         }
         #return-to-game .button.leave-button {
             background-color: var(--error-color);
         }
         #return-to-game .button.leave-button:hover {
             background-color: var(--error-color-hover);
-        }
-        #return-to-game .button + .button {
-            margin-left: 15px;
         }
         #leave-game-modal,
         #game-over-modal,
@@ -562,15 +560,17 @@
         }
         @media (max-width: 420px) {
             #return-to-game .button {
+                display: inline-block;
                 width: 150px;
                 padding: 10px 15px;
                 font-size: 14px;
+                text-align: center;
+                margin: 10px auto;
             }
-            .return-full {
-                display: none;
-            }
-            .return-short {
-                display: inline;
+             #return-to-game .button {
+                display: block;
+                width: 80%;
+                margin: 15px auto;
             }
         }
         @media (max-width: 360px) {
@@ -1194,11 +1194,10 @@
     <div id="return-to-game">
         <h2>У вас есть активная игра</h2>
         <p>Вы можете вернуться к вашей текущей игре.</p>
-        <button class="button" onclick="returnToGame()">
-            <span class="return-full">Вернуться в игру</span>
-            <span class="return-short">Вернуться</span>
-        </button>
-        <button class="button leave-button" onclick="showLeaveGameModal()">Покинуть игру</button>
+        <div class="button-group">
+            <button class="button return-game" onclick="returnToGame()">Вернуться</button>
+            <button class="button leave-button" onclick="showLeaveGameModal()">Покинуть</button>
+        </div>
     </div>
     <div id="leave-game-modal">
         <div class="LeaveGame">

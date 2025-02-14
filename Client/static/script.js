@@ -766,7 +766,7 @@ function adjustScreen() {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
     let size;
-    if (screenWidth <= 800) {
+    if (screenWidth <= 1000) {
         LABEL_PADDING = 0;
         USE_INTERNAL_LABELS = true;
         const mobileHistoryHeight = document.getElementById('mobile-moves-history')?.clientHeight || 0;
