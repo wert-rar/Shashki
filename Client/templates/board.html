@@ -48,6 +48,7 @@
     <audio id="sound-defeat" src="{{ url_for('static', filename='sounds/defeat.mp3') }}" preload="auto"></audio>
     <div class="sidebar">
         <h2>Меню</h2>
+        <button id="main-menu-button" onclick="returnToMainMenu()">Главное меню</button>
         <button id="give-up-button" onclick="give_up()">Сдаться</button>
         <button id="give-draw-button" onclick="give_draw()">Ничья</button>
     </div>
@@ -88,15 +89,26 @@
         </div>
     </div>
     <div id="game-over-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content registered" id="game-over-modal-content">
             <h2 id="game-over-title">Игра окончена</h2>
             <p id="game-over-message"></p>
             <div class="modal-buttons">
                 <button id="main-menu-button" onclick="returnToMainMenu()">Главное меню</button>
                 <button id="register-button" onclick="window.location.href='/register'" style="display: none;">Зарегистрироваться</button>
+                <button id="rematch-button" onclick="requestRematch()" style="display: none;">Реванш</button>
             </div>
         </div>
     </div>
+
+    <div id="rematch-offer-modal" class="modal">
+        <div class="modal-content" id="rematch-offer-modal-content">
+            <h2>Предложение реванша</h2>
+            <p id="rematch-offer-text"></p>
+            <button onclick="respondRematch('accept')">Принять</button>
+            <button onclick="respondRematch('decline')">Отклонить</button>
+        </div>
+    </div>
+
     <div id="draw-offer-modal" class="modal">
         <div class="modal-content">
             <h2>Предложение ничьей</h2>
@@ -122,6 +134,7 @@
     <div id="mobile-settings-modal" class="modal">
         <div class="modal-content">
             <h2>Настройки</h2>
+            <button class="mobile-btn" onclick="returnToMainMenu()">Главное меню</button>
             <button class="mobile-btn" onclick="give_up()">Сдаться</button>
             <button class="mobile-btn" onclick="give_draw()">Ничья</button>
         </div>

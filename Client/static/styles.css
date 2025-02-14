@@ -15,6 +15,18 @@ body {
 *::after {
     box-sizing: inherit;
 }
+.sidebar #main-menu-button {
+    background-color: #393E46;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 10px;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.sidebar #main-menu-button:hover {
+    background-color: #00ADB5;
+    transform: translateY(-3px);
+}
 .header {
     width: 100%;
     background: #1F1F1F;
@@ -623,6 +635,21 @@ canvas#board {
     position: absolute;
     left: 25%;
     bottom: -10px;
+}
+#mobile-settings-modal .modal-content #mobile-btn {
+    background-color: #00ADB5 !important;
+    color: #222831 !important;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 0.9em;
+    transition: background 0.3s, transform 0.2s;
+}
+
+#mobile-settings-modal .modal-content #mobile-btn:hover {
+    background-color: #393E46 !important;
+    color: #FFFFFF !important;
+    transform: translateY(-2px);
 }
 .sidebar button {
     width: 100%;

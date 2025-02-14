@@ -39,6 +39,7 @@ let b_colors = {
 };
 let pieces = [];
 let possibleMoves = [];
+
 function translate(pieces_data) {
     return pieces_data.map(piece => ({
         color: piece.color,
@@ -48,6 +49,7 @@ function translate(pieces_data) {
         is_king: piece.is_king
     }));
 }
+
 function update_data(data) {
     if (data.error) {
         if (data.error === "Game over") {
@@ -123,7 +125,12 @@ function update_data(data) {
     if (data.move_history) {
         updateMovesList(data.move_history);
     }
+    if (data.redirect_new_game) {
+        window.location.href = `/board/${data.redirect_new_game}/${user_login}`;
+        return;
+    }
 }
+
 function updateTimersDisplay(whiteSeconds, blackSeconds) {
     function formatTime(s) {
         let m = Math.floor(s / 60);
@@ -144,6 +151,7 @@ function updateTimersDisplay(whiteSeconds, blackSeconds) {
         document.getElementById('opponent-timer').textContent = whiteDisplay;
     }
 }
+
 function updateCountdownDisplay(wCountdown, bCountdown) {
     const whiteTimerElem = document.getElementById('white-timer');
     const blackTimerElem = document.getElementById('black-timer');
@@ -198,6 +206,7 @@ function updateCountdownDisplay(wCountdown, bCountdown) {
         opponentTimerElem.style.color = whiteTimerElem.style.color;
     }
 }
+
 function displayGameOverMessage(data) {
     if (gameOverShown) return;
     gameOverShown = true;
@@ -264,6 +273,13 @@ function displayGameOverMessage(data) {
         modalContent.classList.add('registered');
     }
     modal.style.display = "flex";
+    const rematchButton = document.getElementById("rematch-button");
+    if (!is_ghost && !opponent_login.startsWith('ghost')) {
+        rematchButton.style.display = "inline-block";
+    } else {
+        rematchButton.style.display = "none";
+    }
+    modal.style.display = "flex";
     if (isVictory && !victorySoundPlayed) {
         playVictorySound();
         victorySoundPlayed = true;
@@ -272,6 +288,47 @@ function displayGameOverMessage(data) {
         defeatSoundPlayed = true;
     }
 }
+
+function requestRematch() {
+    document.getElementById("game-over-modal").style.display = "none";
+    fetch('/request_rematch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            from_user: user_login,
+            to_user: opponent_login,
+            game_id: game_id
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+        } else {
+            showNotification("Запрос на реванш отправлен!");
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showError("Ошибка при отправке запроса на реванш");
+    });
+}
+
+function setupModalOutsideClick() {
+    const gameOverModal = document.getElementById("game-over-modal");
+    const gameOverContent = document.getElementById("game-over-modal-content");
+    window.addEventListener("click", function(event) {
+        if (event.target === gameOverModal) {
+            gameOverModal.style.display = "none";
+        }
+    });
+}
+document.getElementById("game-over-modal").addEventListener("click", function(e) {
+    if (e.target === this) {
+        this.style.display = "none";
+    }
+});
+
 function returnToMainMenu() {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/leave_game", true);
@@ -429,7 +486,6 @@ function server_move_request(selected_piece, new_pos) {
 }
 let isUpdating = false;
 function server_update_request() {
-    if (gameOverShown) return Promise.resolve();
     if (isUpdating) return Promise.resolve();
     if (!game_id) {
         console.error("game_id не определён.");
@@ -442,42 +498,99 @@ function server_update_request() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     })
-        .then(response => {
-            if (!response.ok) {
-                if (response.status === 404) {
-                    return { error: "Game over" };
-                }
-                return response.json().then(errData => Promise.reject(errData));
+    .then(response => {
+        if (!response.ok) {
+            if (response.status === 404) {
+                return { error: "Game over" };
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                if (data.error === "Game over") {
-                    displayGameOverMessage(data);
-                    return Promise.resolve();
-                }
-                if (!gameOverShown) {
-                    showError(data.error);
-                }
-                return Promise.reject(data.error);
-            } else {
-                update_data(data);
+            return response.json().then(errData => Promise.reject(errData));
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            if (data.error === "Game over") {
+                displayGameOverMessage(data);
                 return Promise.resolve();
             }
-        })
-        .catch(error => {
-            if (typeof error === "string" && error === "Game over") {
-                displayGameOverMessage({ error: "Game over" });
+            if (!gameOverShown) {
+                showError(data.error);
+            }
+            return Promise.reject(data.error);
+        } else {
+            update_data(data);
+            if (data.rematch_request) {
+                showRematchOfferModal(data.rematch_request.from_user);
+            }
+            if (data.redirect_new_game) {
+                window.location.href = `/board/${data.redirect_new_game}/${user_login}`;
                 return Promise.resolve();
             }
-            console.error("Ошибка при обновлении доски:", error);
-            return Promise.reject(error);
-        })
-        .finally(() => {
-            isUpdating = false;
-        });
+            return Promise.resolve();
+        }
+    })
+    .catch(error => {
+        if (typeof error === "string" && error === "Game over") {
+            displayGameOverMessage({ error: "Game over" });
+            return Promise.resolve();
+        }
+        console.error("Ошибка при обновлении доски:", error);
+        return Promise.reject(error);
+    })
+    .finally(() => {
+        isUpdating = false;
+    });
 }
+
+function showRematchOfferModal(fromUser) {
+    const gameOver = document.getElementById('game-over-modal');
+    gameOver.style.display = 'none';
+
+    const textEl = document.getElementById('rematch-offer-text');
+    textEl.textContent = `Пользователь ${fromUser} предлагает вам реванш!`;
+
+    const rematchOfferModal = document.getElementById('rematch-offer-modal');
+    rematchOfferModal.style.display = 'flex';
+}
+
+function respondRematch(response) {
+    document.getElementById('rematch-offer-modal').style.display = 'none';
+    fetch('/respond_rematch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            from_user: opponent_login,
+            to_user: user_login,
+            answer: response
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.error);
+        } else {
+            if (response === 'accept') {
+                if (data.game_id) {
+                    window.location.href = `/board/${data.game_id}/${user_login}`;
+                } else {
+                    showNotification("Реванш принят, но нет game_id");
+                }
+            } else {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    showNotification("Реванш отклонён, но нет redirect");
+                }
+            }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showError("Ошибка при ответе на реванш");
+    });
+}
+
+
 function server_get_possible_moves(selected_piece, callback) {
     let data = {
         selected_piece: selected_piece,
@@ -1314,6 +1427,14 @@ function startPolling() {
     }
 }
 
+function pollUpdate() {
+    server_update_request()
+        .finally(() => {
+            setTimeout(pollUpdate, 1000);
+        });
+}
+
+
 function openMobileSettingsModal() {
     document.getElementById("mobile-settings-modal").style.display = "flex";
 }
@@ -1322,12 +1443,11 @@ function onLoad() {
     CANVAS = document.getElementById("board");
     CTX = CANVAS.getContext("2d");
     CTX.imageSmoothingEnabled = true;
-    let HEADER_HEIGHT = document.getElementsByClassName("header")[0].clientHeight;
     adjustScreen();
     server_update_request().then(() => {
         update();
         addEventListeners();
-        startPolling();
+        pollUpdate();
         let gameFoundSound = document.getElementById('sound-game-found');
         if (gameFoundSound) {
             gameFoundSound.volume = 0.35;
@@ -1338,8 +1458,10 @@ function onLoad() {
         }
         notify_player_loaded();
         addMobileProfileNavigation();
+        setupModalOutsideClick();
     });
 }
+
 
 function disableProfileFeatures() {
     const ghostPlayers = document.querySelectorAll('.player-name[data-username^="ghost"]');
@@ -1395,4 +1517,5 @@ function notify_player_loaded() {
         .then(() => {})
         .catch(() => {});
 }
+
 window.addEventListener('load', onLoad);
