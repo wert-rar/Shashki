@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => {
         dropdownMenu.style.display = 'none';
     });
+    
     const leaveRoomBtn = document.getElementById('leaveRoomBtn');
     if (leaveRoomBtn) {
         leaveRoomBtn.addEventListener('click', () => {
@@ -64,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
     const deleteRoomBtn = document.getElementById('deleteRoomBtn');
     if (deleteRoomBtn) {
         deleteRoomBtn.addEventListener('click', () => {
@@ -386,5 +388,72 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(() => {});
         }, 1000);
+    }
+});
+
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const deleteRoomToggle = document.getElementById('deleteRoomToggle');
+
+if (deleteRoomToggle) {
+    deleteRoomToggle.addEventListener('change', () => {
+        const deleteFlag = deleteRoomToggle.checked;
+        fetch('/update_room_delete_flag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: currentRoomId, delete_flag: deleteFlag })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.error) {
+                createNotification(data.error, "error");
+            } else {
+                createNotification(`Опция удаления комнаты ${deleteFlag ? 'включена' : 'выключена'}`, "success");
+            }
+        })
+        .catch(() => {
+            createNotification("Ошибка при обновлении опции удаления комнаты", "error");
+        });
+    });
+}
+
+if (settingsBtn) {
+    settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMenu.style.display = 'none';
+        settingsModal.style.display = 'flex';
+    });
+}
+
+if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener('click', () => {
+        settingsModal.style.display = 'none';
+    });
+}
+
+settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+        settingsModal.style.display = 'none';
+    }
+});
+
+const deleteRoomInfoIcon = document.getElementById('deleteRoomInfoIcon');
+const deleteRoomTooltip = document.getElementById('deleteRoomTooltip');
+
+if (deleteRoomInfoIcon) {
+    deleteRoomInfoIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (deleteRoomTooltip.style.display === 'block') {
+            deleteRoomTooltip.style.display = 'none';
+        } else {
+            deleteRoomTooltip.style.display = 'block';
+        }
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (!deleteRoomTooltip.contains(e.target) && e.target !== deleteRoomInfoIcon) {
+        deleteRoomTooltip.style.display = 'none';
     }
 });

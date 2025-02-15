@@ -188,3 +188,10 @@ Client/static/avatars/
 node_modules/
 package.json
 package-lock.json
+
+alembic.ini
+env.py
+alembic/script.py.mako
+/alembic/versions/
+/alembic
+/alembic/versions

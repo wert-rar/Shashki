@@ -18,6 +18,7 @@ class Player(Base):
     losses = Column(Integer, default=0)
     draws = Column(Integer, default=0)
     avatar_filename = Column(String)
+    default_delete_after_start = Column(Boolean, default=False)
 
     def __iter__(self):
         """
@@ -42,7 +43,8 @@ class Player(Base):
             "wins": self.wins,
             "losses": self.losses,
             "draws": self.draws,
-            "avatar_filename": self.avatar_filename
+            "avatar_filename": self.avatar_filename,
+            "default_delete_after_start": self.default_delete_after_start
         }
 
 
@@ -127,3 +129,4 @@ class Room(Base):
     occupant = Column(String, nullable=True)
     chosen_white = Column(String, nullable=True)
     chosen_black = Column(String, nullable=True)
+    delete_after_start = Column(Boolean, default=False)

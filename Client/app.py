@@ -854,14 +854,34 @@ def player_loaded():
     game = get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Game not found"}), 404
+
     if user_login == game.f_user:
         game.f_player_loaded = True
+        app.logger.debug(f"Пользователь {user_login} (f_user) загрузил доску")
     elif user_login == game.c_user:
         game.c_player_loaded = True
+        app.logger.debug(f"Пользователь {user_login} (c_user) загрузил доску")
     else:
         return jsonify({"error": "User not part of the game"}), 403
-    if game.f_player_loaded and game.c_player_loaded and game.last_update_time is None:
-        game.last_update_time = time.time()
+
+    if game.f_player_loaded and game.c_player_loaded:
+        room_id = session.get("room_id")
+        app.logger.debug(f"Оба игрока загрузили доску, room_id из сессии: {room_id}")
+        if room_id:
+            room = base.get_room_by_room_id_db(int(room_id))
+            if room:
+                app.logger.debug(f"Проверка delete_after_start для комнаты {room_id}: {room.delete_after_start}")
+                if room.delete_after_start:
+                    deleted = base.delete_room_if_flag_set(int(room_id))
+                    if deleted:
+                        session.pop("room_id", None)
+                        app.logger.debug(f"Комната {room_id} удалена после загрузки доски обоими игроками")
+                    else:
+                        app.logger.debug(f"Не удалось удалить комнату {room_id}")
+                else:
+                    app.logger.debug(f"Флаг delete_after_start выключен для комнаты {room_id}")
+            else:
+                app.logger.debug(f"Комната {room_id} не найдена в БД")
     return jsonify({"message": "Player loaded status updated"}), 200
 
 @app.route('/favicon.ico')
@@ -1241,6 +1261,7 @@ def start_room_game():
         session["color"] = "b"
     return jsonify({"game_id": new_game_id}), 200
 
+
 @app.route("/room")
 def new_room():
     user_login = session.get("user")
@@ -1258,12 +1279,13 @@ def new_room():
     while existing:
         room_id_candidate = random.randint(1, 99999999)
         existing = base.get_room_by_room_id_db(room_id_candidate, session=db_session)
-    created_room = base.create_room_db(room_id_candidate, user_login, session=db_session)
+    user = base.get_user_by_login(user_login)
+    default_flag = user.get("default_delete_after_start", False) if user else False
+    created_room = base.create_room_db(room_id_candidate, user_login, default_flag, session=db_session)
     db_session.close()
     if not created_room:
         flash('Не удалось создать комнату', 'error')
         return redirect(url_for('home'))
-
     session['room_id'] = room_id_candidate
     return redirect(url_for('show_room', room_id=room_id_candidate))
 
@@ -1300,7 +1322,8 @@ def show_room(room_id):
         friends_list=friends_list,
         invited_friends=invited_friends,
         chosen_white=room_obj.chosen_white,
-        chosen_black=room_obj.chosen_black
+        chosen_black=room_obj.chosen_black,
+        delete_after_start=room_obj.delete_after_start
     )
 
 @app.route('/get_current_user')
@@ -1461,6 +1484,22 @@ def respond_rematch():
             "redirect": "/"
         }), 200
 
+@app.route("/update_room_delete_flag", methods=["POST"])
+@csrf.exempt
+def update_room_delete_flag_route():
+    data = request.get_json()
+    room_id = data.get("room_id")
+    delete_flag = data.get("delete_flag")
+    if not room_id or delete_flag is None:
+         return jsonify({"error": "Необходимы room_id и delete_flag"}), 400
+    result = base.update_room_delete_flag(int(room_id), bool(delete_flag))
+    if result.get("error"):
+         return jsonify(result), 400
+    user_login = session.get("user")
+    room = base.get_room_by_room_id_db(int(room_id))
+    if room and room.room_creator == user_login:
+        base.update_user_default_delete_flag(user_login, bool(delete_flag))
+    return jsonify(result), 200
 
 if __name__ == "__main__":
     app.run(debug=True)

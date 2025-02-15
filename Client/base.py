@@ -325,8 +325,8 @@ def get_incoming_game_invitations_db(user: str, session: Session | None = None) 
     return invites
 
 @connect
-def create_room_db(room_id, creator, session: Session | None = None):
-    room = Room(room_id=room_id, room_creator=creator)
+def create_room_db(room_id, creator, delete_flag, session: Session | None = None):
+    room = Room(room_id=room_id, room_creator=creator, delete_after_start=delete_flag)
     session.add(room)
     session.commit()
     return room
@@ -468,3 +468,30 @@ def get_room_by_user(username, session=None):
     if close_session:
         session.close()
     return room_obj
+
+@connect
+def update_room_delete_flag(room_id: int, delete_flag: bool, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if not room:
+         return {"error": "Комната не найдена"}
+    room.delete_after_start = delete_flag
+    session.commit()
+    return {"delete_after_start": room.delete_after_start}
+
+@connect
+def delete_room_if_flag_set(room_id: int, session: Session | None = None):
+    room = session.query(Room).filter_by(room_id=room_id).first()
+    if room and room.delete_after_start:
+         session.delete(room)
+         session.commit()
+         return True
+    return False
+
+@connect
+def update_user_default_delete_flag(user_login, flag, session: Session | None = None):
+    session.execute(
+        update(Player)
+        .where(Player.login == user_login)
+        .values(default_delete_after_start=flag)
+    )
+    session.commit()
