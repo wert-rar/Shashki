@@ -1,5 +1,6 @@
 let CANVAS = null;
 let CTX = null;
+let moveHistoryGlobal = [];
 let SELECTED_PIECE = null;
 let IS_SELECTED = false;
 let CELL_SIZE = 0;
@@ -123,6 +124,7 @@ function update_data(data) {
         }
     }
     if (data.move_history) {
+        moveHistoryGlobal = data.move_history;
         updateMovesList(data.move_history);
     }
     if (data.redirect_new_game) {
@@ -751,6 +753,27 @@ function onClick(evt) {
 
 function onResize() {
     adjustScreen();
+    if (window.innerWidth > 1000) {
+        if (currentView !== null) {
+            document.getElementById('history-view-indicator').style.display = 'block';
+        } else {
+            document.getElementById('history-view-indicator').style.display = 'none';
+        }
+        const mobileReturn = document.getElementById('mobile-return-button');
+        if (mobileReturn) {
+            mobileReturn.style.display = 'none';
+        }
+    } else {
+        document.getElementById('history-view-indicator').style.display = 'none';
+        const mobileReturn = document.getElementById('mobile-return-button');
+        if (mobileReturn) {
+            mobileReturn.style.display = 'block';
+        }
+        updateMobileReturnButtonVisibility();
+        if (moveHistoryGlobal.length > 0) {
+            updateMovesList(moveHistoryGlobal, true);
+        }
+    }
 }
 
 function getPieceAt(x, y) {
@@ -1025,7 +1048,7 @@ function addMobileProfileNavigation() {
 }
 
 
-function updateMovesList(moveHistory) {
+function updateMovesList(moveHistory, forceMobileUpdate = false) {
     const movesList = document.querySelector('.moves-list');
     const movesContainer = document.querySelector('.moves-container');
     let hasNewMoves = moveHistory.length > lastMoveCount;
@@ -1098,7 +1121,7 @@ function updateMovesList(moveHistory) {
         movesContainer.scrollTop = movesContainer.scrollHeight;
     }
     addProfileClickListeners();
-        if (window.innerWidth <= 1000 && hasNewMoves) {
+        if (window.innerWidth <= 1000 && (hasNewMoves || forceMobileUpdate)) {
         let mobileHistoryElem = document.getElementById("mobile-moves-history");
         const scrollTolerance = 5;
         let wasAtEnd = mobileHistoryElem.scrollLeft + mobileHistoryElem.clientWidth >= mobileHistoryElem.scrollWidth - scrollTolerance;
@@ -1473,7 +1496,6 @@ function disableProfileFeatures() {
     const ghostPlayers = document.querySelectorAll('.player-name[data-username^="ghost"]');
     ghostPlayers.forEach(button => {
         button.style.cursor = 'default';
-        button.style.opacity = '0.6';
         button.style.userSelect = 'none';
     });
 }

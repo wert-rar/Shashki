@@ -431,28 +431,7 @@ canvas#board {
     z-index: 1;
     border: 2px solid rgba(0, 170, 255, 0.6);
     border-radius: 8px;
-    animation: pulse-border 1.5s infinite ease-in-out;
-    box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
     background-color: inherit;
-}
-
-@-webkit-keyframes pulse-border {
-    0%, 100% {
-        box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
-    }
-    50% {
-        box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
-    }
-}
-
-@keyframes pulse-border {
-    0%, 100% {
-        box-shadow: 0 0 10px rgba(0, 170, 255, 0.6);
-    }
-    50% {
-        box-shadow: 0 0 20px rgba(0, 170, 255, 0.8);
-    }
 }
 
 .moves-list li.selected:hover {
