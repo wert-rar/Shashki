@@ -296,6 +296,11 @@ def start_game():
         game = all_games_dict.get(game_id_int)
         if game and user_login in [game.f_user, game.c_user]:
             if game.status in ['w3', 'b3', 'n', 'ns1']:
+                if user_login in rematch_responses:
+                    del rematch_responses[user_login]
+                if user_login in rematch_redirect:
+                    del rematch_redirect[user_login]
+
                 session.pop('game_id', None)
                 session.pop('color', None)
                 new_game_id = create_new_game_in_db(user_login)
@@ -326,20 +331,23 @@ def start_game():
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
-
     game_id_new = create_new_game_in_db(user_login)
     if not game_id_new:
         flash('Не удалось создать игру.', 'error')
         return redirect(url_for('home'))
-
     session['game_id'] = game_id_new
     session['color'] = 'w'
     session['search_start_time'] = time.time()
+    if user_login in rematch_responses:
+        del rematch_responses[user_login]
+    if user_login in rematch_redirect:
+        del rematch_redirect[user_login]
     g_obj = get_or_create_ephemeral_game(session['game_id'])
     if g_obj and g_obj.f_user and g_obj.c_user:
         return redirect(url_for('get_board', game_id=session['game_id'], user_login=user_login))
     else:
         return render_template('waiting.html', game_id=session.get('game_id'), user_login=user_login)
+
 
 @app.route("/check_game_status", methods=["GET"])
 @csrf.exempt
@@ -532,16 +540,18 @@ def update_board():
         return jsonify({"error": "Request data must be in JSON format"}), 400
     data = request.get_json()
     user_login = session.get('user')
-    if user_login in rematch_redirect:
-        new_game_id = rematch_redirect[user_login]
+    current_game_id = session.get("game_id")
+    if user_login is None or current_game_id is None:
+        return jsonify({"error": "User or game ID not in session"}), 400
+    key_redirect = (user_login, current_game_id)
+    if key_redirect in rematch_redirect:
+        new_game_id = rematch_redirect[key_redirect]
         session['game_id'] = new_game_id
         session.modified = True
         data["game_id"] = new_game_id
-    game_id = data.get("game_id")
-    if game_id is None:
-        return jsonify({"error": "Game ID is required"}), 400
+
     try:
-        game_id_int = int(game_id)
+        game_id_int = int(data.get("game_id"))
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
     game = get_or_create_ephemeral_game(game_id_int)
@@ -572,14 +582,11 @@ def update_board():
         if req_to == user_login:
             response_data["rematch_request"] = {"from_user": req_from}
             break
-    if user_login in rematch_redirect:
-        new_game_id = rematch_redirect[user_login]
-        del rematch_redirect[user_login]
-        response_data["redirect_new_game"] = new_game_id
-    if user_login in rematch_responses:
-        if rematch_responses[user_login] == "decline":
+    key_response = (user_login, current_game_id)
+    if key_response in rematch_responses and "redirect_new_game" not in response_data:
+        if rematch_responses[key_response] == "decline":
             response_data["rematch_response"] = "decline"
-        del rematch_responses[user_login]
+        del rematch_responses[key_response]
 
     return jsonify(response_data)
 
@@ -640,6 +647,14 @@ def leave_game():
         game.c_user = None
     else:
         return jsonify({"error": "Пользователь не участвует в игре"}), 403
+    pending_to_remove = []
+    for (from_user, to_user) in pending_rematch_requests.keys():
+        if user_login in (from_user, to_user):
+            pending_to_remove.append((from_user, to_user))
+    for key in pending_to_remove:
+        rematch_responses[key[0]] = "decline"
+        del pending_rematch_requests[key]
+
     if game.status == 'unstarted':
         remove_game_in_db(game_id_int)
         session.pop('game_id', None)
@@ -647,6 +662,7 @@ def leave_game():
         session.pop('search_start_time', None)
         flash('Поиск игры отменен и игра удалена.', 'info')
         return jsonify({"message": "Покинул игру и игра была удалена"}), 200
+
     if (game.f_user is None) and (game.c_user is None):
         remove_game_in_db(game_id_int)
     session.pop('game_id', None)
@@ -1470,15 +1486,19 @@ def respond_rematch():
             session['game_id'] = new_game_id
             session['color'] = 'w' if current_user == from_user else 'b'
             session.modified = True
-        rematch_redirect[from_user] = new_game_id
-        rematch_redirect[to_user] = new_game_id
+        rematch_redirect[(from_user, new_game_id)] = new_game_id
+        rematch_redirect[(to_user, new_game_id)] = new_game_id
 
         return jsonify({
             "message": "Реванш принят",
             "game_id": new_game_id
         }), 200
     else:
-        rematch_responses[from_user] = "decline"
+        current_game_id = session.get("game_id")
+        if current_game_id:
+            rematch_responses[(from_user, current_game_id)] = "decline"
+        else:
+            rematch_responses[(from_user, "old")] = "decline"
         return jsonify({
             "message": "Реванш отклонён",
             "redirect": "/"
