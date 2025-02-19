@@ -641,6 +641,36 @@ canvas#board {
     padding: 15px 25px !important;
     font-size: 1.2em !important;
 }
+
+#mobile-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #1F1F1F;
+    padding: 10px 20px;
+    color: #FFFFFF;
+    font-size: 1.2em;
+    border-bottom: 2px solid #00ADB5;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1100;
+}
+
+#mobile-title-bar .back-arrow {
+    position: absolute;
+    left: 20px;
+    font-size: 1.2em;
+    text-decoration: none;
+    color: #ffffff;
+}
+
+#mobile-title-bar .title-text {
+    font-family: 'Pacifico', cursive;
+    font-size: 1.2em;
+}
+
 @media (max-width: 1440px) {
     .sidebar, .moves-sidebar {
         width: 220px;
@@ -709,7 +739,8 @@ canvas#board {
     .player-info-opponent,
     .player-info-self,
     #mobile-bar,
-    #mobile-return-button {
+    #mobile-return-button,
+    #mobile-title-bar{
         display: none;
     }
 }

@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Одиночная игра</title>
-    <link rel="preload" href="/static/favicon.ico" as="image">
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="/static/styles_singleplayer.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 </head>
 <body>
@@ -17,6 +17,12 @@
             <span class="history-view-label" style="display:none;" id="history-view-label">Просмотр истории ходов</span>
             <button id="history-view-button" class="history-view-button" style="display:none;" onclick="returnToCurrentState()">Вернуться к текущему состоянию</button>
         </div>
+    </div>
+
+    <div class="board-container">
+        <div id="mobile-title-bar" class="mobile-title-bar">
+            <a href="/" class="back-arrow"><i class="fa-solid fa-arrow-left"></i></a>
+        <div class="title-text">Thecheckers</div>
     </div>
 
     <div class="board-container">

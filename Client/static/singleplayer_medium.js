@@ -148,7 +148,7 @@ function saveGameState() {
 
 function loadGameState() {
     let stateStr = localStorage.getItem('checkers_game_state');
-    if(stateStr) {
+    if (stateStr) {
         let state = JSON.parse(stateStr);
         pieces = state.pieces;
         current_player = state.current_player;
@@ -162,22 +162,23 @@ function loadGameState() {
         user_color = state.user_color || 'w';
         movesList = state.movesList || [];
         moveRepetition = state.moveRepetition || { 'w': {}, 'b': {} };
-
+        positionHistory = state.positionHistory || {};
         user_color_num = (user_color === 'w') ? 0 : 1;
         bot_color_num = 1 - user_color_num;
         bot_color = (bot_color_num === 0) ? 'w' : 'b';
-
-
-        document.getElementById('status').textContent = (current_player === 'w' ? 'Ход белых' : 'Ход черных');
+        document.getElementById('status').textContent = current_player === 'w' ? 'Ход белых' : 'Ход черных';
         restoreMovesHistory();
-
+        lastMoveCount = movesList.length;
+        updateMovesList();
         if (!game_over && current_player === bot_color) {
             setTimeout(makeBotMove, 1000);
         }
     } else {
         movesList = [];
+        updateMovesList();
     }
 }
+
 
 function restoreMovesHistory() {
     const movesContainer = document.querySelector('.moves-list');
@@ -1038,7 +1039,38 @@ function update(){
 
 window.addEventListener('resize', () => {
     adjustScreen();
+    updateMovesList();
+    if (historyViewMode && currentView !== null) {
+        if (window.innerWidth <= 1000) {
+            let mobileHistoryElem = document.getElementById("mobile-moves-history");
+            if (mobileHistoryElem) {
+                mobileHistoryElem.querySelectorAll('.move-part')
+                    .forEach(el => el.classList.remove('selected'));
+                let part = mobileHistoryElem.querySelector(`.move-part[data-index="${currentView}"]`);
+                if (part) part.classList.add('selected');
+            }
+            hideReturnToCurrentButton();
+        } else {
+            updateDesktopHistorySelection(currentView);
+                let historyContainer = document.getElementById('history-view-container');
+                if (historyContainer) historyContainer.style.display = 'flex';
+                let historyLabel = document.getElementById('history-view-label');
+                if (historyLabel) historyLabel.style.display = 'inline';
+                showReturnToCurrentButton();
+            }
+        } else {
+            hideReturnToCurrentButton();
+        }
 });
+
+function updateDesktopHistorySelection(index) {
+    const movesListItems = document.querySelectorAll('.moves-list li');
+    movesListItems.forEach(li => li.classList.remove('selected'));
+    const target = document.querySelector(`.moves-list li[data-move-index="${index}"]`);
+    if (target) {
+        target.classList.add('selected');
+    }
+}
 
 window.onload = function(){
     CANVAS = document.getElementById("board");
@@ -1094,11 +1126,15 @@ function onMoveClick(evt){
 }
 
 function showHistoryState(index) {
+    if (index === movesList.length - 1) {
+        returnToCurrentState();
+        return;
+    }
     if (!historyViewMode) {
         currentPiecesSnapshot = copyPieces(pieces);
     }
     historyViewMode = true;
-
+    currentView = index;
     let snapshot = movesList[index].piecesSnapshot;
     pieces = copyPieces(snapshot);
     IS_SELECTED = false;
@@ -1107,20 +1143,40 @@ function showHistoryState(index) {
     must_capture_piece = null;
 
     let historyContainer = document.getElementById('history-view-container');
-    historyContainer.style.display = 'flex';
-
+    if (historyContainer) historyContainer.style.display = 'flex';
     let historyLabel = document.getElementById('history-view-label');
-    historyLabel.style.display = 'inline';
+    if (historyLabel) historyLabel.style.display = 'inline';
 
     showReturnToCurrentButton();
+    updateMobileReturnButtonVisibility();
 
+    let movesListItems = document.querySelectorAll('.moves-list li');
+    movesListItems.forEach(li => li.classList.remove('selected'));
+    let target = document.querySelector(`.moves-list li[data-move-index="${index}"]`);
+    if (target) {
+        target.classList.add('selected');
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (window.innerWidth > 1000) {
+        showHistoryViewIndicator();
+    } else {
+        let mobileIndicator = document.getElementById('history-view-indicator-mobile');
+        if (mobileIndicator) mobileIndicator.style.display = 'block';
+    }
     update();
 }
 
 function returnToCurrentState() {
-    if (!currentPiecesSnapshot) return;
-    document.querySelectorAll('.moves-list li.selected').forEach(li => li.classList.remove('selected'));
+    document.querySelectorAll('.moves-list li.selected')
+        .forEach(li => li.classList.remove('selected'));
+
+    if (!currentPiecesSnapshot) {
+        return;
+    }
+
     historyViewMode = false;
+    currentView = null;
+
     pieces = copyPieces(currentPiecesSnapshot);
     currentPiecesSnapshot = null;
     must_capture_piece = null;
@@ -1129,13 +1185,19 @@ function returnToCurrentState() {
     possibleMoves = [];
 
     let historyContainer = document.getElementById('history-view-container');
-    historyContainer.style.display = 'none';
+    if (historyContainer) historyContainer.style.display = 'none';
 
     let historyLabel = document.getElementById('history-view-label');
-    historyLabel.style.display = 'none';
+    if (historyLabel) historyLabel.style.display = 'none';
+
+    let indicator = document.getElementById('history-view-indicator');
+    if (indicator) indicator.style.display = 'none';
+
+    let mobileIndicator = document.getElementById('history-view-indicator-mobile');
+    if (mobileIndicator) mobileIndicator.style.display = 'none';
 
     hideReturnToCurrentButton();
-
+    updateMobileReturnButtonVisibility();
     updatePossibleMoves();
     update();
 }
@@ -1209,10 +1271,15 @@ function viewBoardState(moveIndex) {
         returnToCurrentView();
         return;
     }
-    pieces = copyPieces(boardStates[moveIndex]);
+    if (!historyViewMode) {
+        currentPiecesSnapshot = copyPieces(pieces);
+    }
+    historyViewMode = true;
     currentView = moveIndex;
+    pieces = copyPieces(boardStates[moveIndex]);
     showHistoryViewIndicator();
     updateMobileReturnButtonVisibility();
+    showReturnToCurrentButton();
     updateMobileHistorySelection();
 }
 
@@ -1258,7 +1325,7 @@ function updateMovesList() {
         moveContent.classList.add('move-content');
         let playerLabel = document.createElement('span');
         playerLabel.classList.add('move-player');
-        playerLabel.textContent = (move.player === 'w') ? username : 'Бот Мастер Манго';
+        playerLabel.textContent = move.player === 'w' ? username : 'Бот Мастер Манго';
         let moveDescription = document.createElement('span');
         moveDescription.classList.add('move-description');
         let notationText = convertPosToNotation(move.from) + ' -> ' + convertPosToNotation(move.to);
@@ -1270,7 +1337,6 @@ function updateMovesList() {
             moveDescription.appendChild(crownIcon);
         }
         moveDescription.appendChild(document.createTextNode(notationText));
-
         moveContent.appendChild(playerLabel);
         moveContent.appendChild(moveDescription);
         li.appendChild(moveContent);
@@ -1284,7 +1350,6 @@ function updateMovesList() {
                 viewBoardState(i);
             }
         });
-
         li.addEventListener('animationend', () => {
             li.classList.remove('new-move');
         });
@@ -1296,7 +1361,7 @@ function updateMovesList() {
     if (hasNewMoves && containerBlock) {
         containerBlock.scrollTop = containerBlock.scrollHeight;
     }
-    if (window.innerWidth <= 1000 && hasNewMoves) {
+    if (window.innerWidth <= 1000) {
         let mobileHistoryElem = document.getElementById('mobile-moves-history');
         if (!mobileHistoryElem) return;
         const scrollTolerance = 5;
@@ -1318,14 +1383,11 @@ function updateMovesList() {
             }
         }
         if (currentGroup) groups.push(currentGroup);
-
         let roundCounter = 1;
         let cumulativeIndex = 0;
         let mobileContainers = [];
-
         for (let i = 0; i < groups.length; i++) {
             let grp = groups[i];
-
             let container = document.createElement('span');
             container.classList.add('mobile-move');
             if (i % 2 === 0) {
@@ -1335,10 +1397,8 @@ function updateMovesList() {
                 roundCounter++;
                 container.appendChild(roundLabel);
             }
-
             for (let j = 0; j < grp.moves.length; j++) {
                 let boardStateIndex = cumulativeIndex + j;
-
                 if (j === 0) {
                     let movePart = document.createElement('span');
                     movePart.classList.add('move-part', 'move-text');
@@ -1354,7 +1414,6 @@ function updateMovesList() {
                         movePart.appendChild(crownIcon);
                     }
                     movePart.appendChild(document.createTextNode(textMobile));
-
                     movePart.setAttribute('data-index', boardStateIndex);
                     movePart.addEventListener('click', function(event) {
                         event.stopPropagation();
@@ -1367,16 +1426,13 @@ function updateMovesList() {
                         }
                     });
                     container.appendChild(movePart);
-
                 } else {
                     let openParen = document.createElement('span');
                     openParen.textContent = "(";
                     container.appendChild(openParen);
-
                     let movePart = document.createElement('span');
                     movePart.classList.add('move-part', 'move-text');
                     let textMobile = convertPosToNotation(grp.moves[j].to);
-
                     movePart.textContent = "";
                     if (grp.moves[j].captured) {
                         movePart.style.fontWeight = 'bold';
@@ -1388,7 +1444,6 @@ function updateMovesList() {
                         movePart.appendChild(crownIcon);
                     }
                     movePart.appendChild(document.createTextNode(textMobile));
-
                     movePart.setAttribute('data-index', boardStateIndex);
                     movePart.addEventListener('click', function(event) {
                         event.stopPropagation();
@@ -1401,7 +1456,6 @@ function updateMovesList() {
                         }
                     });
                     container.appendChild(movePart);
-
                     let closeParen = document.createElement('span');
                     closeParen.textContent = ")";
                     container.appendChild(closeParen);
@@ -1413,10 +1467,8 @@ function updateMovesList() {
             }
             let gapText = document.createTextNode(gap);
             container.appendChild(gapText);
-
             mobileHistoryElem.appendChild(container);
             mobileContainers.push(container);
-
             cumulativeIndex += grp.moves.length;
         }
         mobileHistoryElem.scrollLeft = oldScrollLeft;
@@ -1434,7 +1486,6 @@ function updateMovesList() {
                 });
             });
         }
-
         let arrow = document.getElementById("mobile-scroll-arrow");
         if (hasNewMoves) {
             if (!wasAtEnd && arrow) {
@@ -1444,7 +1495,11 @@ function updateMovesList() {
             }
         }
     }
+    if (historyViewMode && currentView !== null && window.innerWidth > 1000) {
+        updateDesktopHistorySelection(currentView);
+    }
 }
+
 
 
 function mobilePrevMove() {
@@ -1471,6 +1526,12 @@ function mobileNextMove() {
 function addEventListeners() {
     CANVAS.addEventListener("click", onClick);
     window.addEventListener("resize", () => adjustScreen());
+    let mobileReturnBtn = document.getElementById('mobile-return-button');
+    if (mobileReturnBtn) {
+        mobileReturnBtn.removeEventListener('click', returnToCurrentState);
+        mobileReturnBtn.addEventListener('click', returnToCurrentState);
+    }
+
     let mobileSettingsIcon = document.getElementById("mobile-settings-icon");
     if (mobileSettingsIcon) {
         mobileSettingsIcon.addEventListener("click", openMobileSettingsModal);
