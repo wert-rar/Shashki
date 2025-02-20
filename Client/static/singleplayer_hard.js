@@ -528,9 +528,12 @@ function endGame(forceStatus = null){
     saveGameState();
 }
 
+window.addEventListener('beforeunload', () => {
+    localStorage.removeItem('checkers_game_state');
+});
+
 function returnToMainMenu(){
     window.location.href = '/';
-    localStorage.clear()
 };
 
 function newGame(){
@@ -757,6 +760,11 @@ function iterativeDeepening(pcs, maxDepth, maximizingPlayer, mustCapturePieceLoc
 function makeBotMove() {
     if (current_player !== bot_color || game_over) return;
     let depth = 4;
+
+    if (historyViewMode) {
+        setTimeout(makeBotMove, 1000);
+        return;
+    }
 
     let maximizingPlayer = (bot_color_num === 1);
 

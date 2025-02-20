@@ -476,9 +476,12 @@ function endGame(forceStatus = null) {
     saveGameState();
 }
 
+window.addEventListener('beforeunload', () => {
+    localStorage.removeItem('checkers_game_state');
+});
+
 function returnToMainMenu() {
     window.location.href = '/';
-    localStorage.clear();
 }
 
 function newGame() {
@@ -555,6 +558,11 @@ function generateAllMoves(pcs, color, mustCapturePieceLoc = null) {
 function makeBotMove() {
     if (game_over) return;
     if (current_player !== bot_color) return;
+
+    if (historyViewMode) {
+        setTimeout(makeBotMove, 1000);
+        return;
+    }
 
     let color_num = bot_color_num;
     let color_player = bot_color;

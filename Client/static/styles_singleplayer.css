@@ -83,8 +83,8 @@ body {
     animation: pulse 2s infinite;
     position: absolute;
     top: 50%;
-    left: 10%;
-    transform: translate(-50%, -50%);
+    left: 5%;
+    transform: translateY(-50%);
     margin: 0;
 }
 
@@ -246,6 +246,32 @@ canvas#board {
     left: 25%;
     bottom: -10px;
 }
+
+#game-over-modal .modal-content #game-over-title {
+    font-size: 1.5em;
+}
+#game-over-modal .modal-content #game-over-message {
+    font-size: 1em;
+}
+
+#game-over-modal .modal-content .modal-buttons button {
+    padding: 10px 15px;
+    font-size: 0.9em;
+}
+
+#surrender-modal .modal-content h2 {
+    font-size: 1.5em;
+}
+#surrender-modal .modal-content p {
+    font-size: 1em;
+}
+
+div#surrender-modal div.modal-content > button {
+    padding: 10px 15px !important;
+    font-size: 0.9em !important;
+}
+
+
 
 .moves-container {
     flex: 1;
@@ -755,7 +781,7 @@ canvas#board {
     }
     #mobile-return-button {
         position: fixed;
-        top: calc(10px + 1em + 10px);
+        top: calc(25px + 4em);
         right: 10px;
         z-index: 1100;
         background-color: #00ADB5;
@@ -784,13 +810,13 @@ canvas#board {
     .mobile-moves-history {
         display: block;
         position: fixed;
-        top: 0;
+        top: 54px;
         left: 0;
         right: 0;
         width: 100%;
         font-size: 1em;
         background-color: #1F1F1F;
-        padding: 10px 20px 10px 20px !important;
+        padding: 10px 20px;
         margin: 0;
         text-align: left;
         color: #FFFFFF;
