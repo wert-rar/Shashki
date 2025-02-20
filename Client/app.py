@@ -123,7 +123,21 @@ def get_board(game_id, user_login):
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
         opponent_rank = "0"
-    return render_template('board.html', user_login=user_login, game_id=game_id, user_color=user_color, opponent_login=opponent_login, f_user=game.f_user, c_user=game.c_user, is_ghost=is_ghost, user_avatar_url=user_avatar_url, opponent_avatar_url=opponent_avatar_url, user_rank=user_rank, opponent_rank=opponent_rank)
+    from Client.redis_base import get_move_status
+    move_status = get_move_status(game_id)
+    return render_template('board.html',
+                           user_login=user_login,
+                           game_id=game_id,
+                           user_color=user_color,
+                           opponent_login=opponent_login,
+                           f_user=game.f_user,
+                           c_user=game.c_user,
+                           is_ghost=is_ghost,
+                           user_avatar_url=user_avatar_url,
+                           opponent_avatar_url=opponent_avatar_url,
+                           user_rank=user_rank,
+                           opponent_rank=opponent_rank,
+                           move_status=move_status)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -478,6 +492,8 @@ def move():
             game.no_capture_moves = 0
             game.status = f"{current_player}4"
             game.must_capture_piece = result['next_capture_piece']
+            from Client.redis_base import set_move_status
+            set_move_status(game_id_int, game.status)
             return jsonify({
                 "status_": game.status,
                 "pieces": get_db_pieces(game_id_int),

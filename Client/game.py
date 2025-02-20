@@ -1,6 +1,9 @@
-import time, threading, json
+import time, threading
 from base import SessionLocal
 from models import Game as DBGame
+from Client.redis_base import redis_client
+import json
+import random
 all_games_lock = threading.Lock()
 all_games_dict = {}
 
@@ -32,22 +35,13 @@ pieces = [
 ]
 
 def get_db_pieces(game_id):
-    db_session = SessionLocal()
-    db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
-    if not db_game or not db_game.board_state:
-        db_session.close()
-        return []
-    current_pieces = json.loads(db_game.board_state)
-    db_session.close()
-    return current_pieces
+    board_state = redis_client.get(f"game:{game_id}:board_state")
+    if board_state is not None:
+        return json.loads(board_state)
+    return []
 
 def update_db_pieces(game_id, new_pieces):
-    db_session = SessionLocal()
-    db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
-    if db_game:
-        db_game.board_state = json.dumps(new_pieces)
-        db_session.commit()
-    db_session.close()
+    redis_client.set(f"game:{game_id}:board_state", json.dumps(new_pieces))
 
 class Game:
     def __init__(self, f_user, c_user, game_id):
@@ -151,6 +145,8 @@ class Game:
         self.current_player = 'b' if self.current_player == 'w' else 'w'
         self.update_status()
         self.last_update_time = time.time()
+        from Client.redis_base import set_move_status
+        set_move_status(self.game_id, self.status)
 
     def __str__(self):
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
@@ -230,7 +226,7 @@ def update_game_with_user_in_db(game_id, user_login, color):
     return True
 
 def create_new_game_in_db(user_login, forced_game_id=None):
-    import random
+    import random, json
     db_session = SessionLocal()
     try:
         if forced_game_id is not None:
@@ -245,23 +241,23 @@ def create_new_game_in_db(user_login, forced_game_id=None):
                 )
                 db_session.add(new_db_game)
                 db_session.commit()
-
                 new_game = Game(f_user=user_login, c_user=None, game_id=forced_game_id)
                 with all_games_lock:
                     all_games_dict[forced_game_id] = new_game
-
+                redis_client.set(f"game:{forced_game_id}:board_state", json.dumps(pieces))
+                redis_client.delete(f"game:{forced_game_id}:moves")
+                from Client.redis_base import set_move_status
+                set_move_status(forced_game_id, "w1")
                 db_session.close()
                 return forced_game_id
             else:
                 db_session.close()
                 return existing_game.game_id
-
         while True:
             game_id_candidate = random.randint(1, 99999999)
             exists = db_session.query(DBGame).filter(DBGame.game_id == game_id_candidate).first()
             if not exists:
                 break
-
         new_db_game = DBGame(
             game_id=game_id_candidate,
             f_user=user_login,
@@ -271,14 +267,15 @@ def create_new_game_in_db(user_login, forced_game_id=None):
         )
         db_session.add(new_db_game)
         db_session.commit()
-
         new_game = Game(f_user=user_login, c_user=None, game_id=game_id_candidate)
         with all_games_lock:
             all_games_dict[game_id_candidate] = new_game
-
+        redis_client.set(f"game:{game_id_candidate}:board_state", json.dumps(pieces))
+        redis_client.delete(f"game:{game_id_candidate}:moves")
+        from Client.redis_base import set_move_status
+        set_move_status(game_id_candidate, "w1")
         db_session.close()
         return game_id_candidate
-
     except:
         db_session.close()
         raise

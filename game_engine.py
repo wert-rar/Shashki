@@ -1,6 +1,6 @@
 from Client import base
 from Client.game import update_game_status_in_db
-import datetime
+from Client.redis_base import clear_move_status
 
 
 def get_piece_at(pieces, x, y):
@@ -219,11 +219,15 @@ def finalize_game(game, user_login):
             game.final_result_moves[u] = result_move
             if not user_is_ghost:
                 base.update_user_rang(u, rating_change)
+                import datetime
                 date_end = datetime.datetime.now().isoformat()
-                base.add_completed_game(u, game.game_id, date_end,
-                                        user_old_rating, new_rating, rating_change, result_move)
+                base.add_completed_game(u, game.game_id, date_end, user_old_rating, new_rating, rating_change, result_move)
         game.rank_updated = True
         update_game_status_in_db(game.game_id, 'completed')
+        clear_move_status(game.game_id)
+        if not hasattr(game, 'persisted'):
+            base.persist_game_data(game.game_id)
+            game.persisted = True
     result_move = game.final_result_moves.get(user_login, None)
     rating_change = game.final_rating_changes.get(user_login, 0)
     if result_move in ('win', 'draw'):
@@ -233,7 +237,6 @@ def finalize_game(game, user_login):
     result = (result_move, points_gained)
     game.final_results[user_login] = result
     return result
-
 
 def validate_move(selected_piece, new_pos, current_player, pieces, game):
     x, y = selected_piece['x'], selected_piece['y']

@@ -82,6 +82,7 @@ class RememberToken(Base):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+# по идее в redis добавил все
 class Game(Base):
     __tablename__ = "games"
     game_id = Column(Integer, primary_key=True, index=True, autoincrement=True)

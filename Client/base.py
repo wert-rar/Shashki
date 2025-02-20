@@ -300,16 +300,46 @@ def remove_friend_db(user: str, friend_username: str, session: Session | None = 
 
 @connect
 def add_move(game_id: int, move_record: dict, session: Session | None = None):
-    session.add(GameMove(game_id=game_id, player=move_record['player'], from_x=move_record['from']['x'], from_y=move_record['from']['y'], to_x=move_record['to']['x'], to_y=move_record['to']['y'], captured_piece=move_record['captured'], promotion=move_record['promotion']))
-    session.commit()
+    from Client.redis_base import redis_client
+    import json
+    redis_client.rpush(f"game:{game_id}:moves", json.dumps(move_record))
 
 @connect
 def get_game_moves_from_db(game_id, session: Session | None = None):
-    moves = session.query(GameMove).filter_by(game_id=game_id).order_by(GameMove.move_id).all()
-    move_list = []
-    for m in moves:
-        move_list.append({"player": m.player, "from": {"x": m.from_x, "y": m.from_y}, "to": {"x": m.to_x, "y": m.to_y}, "captured": m.captured_piece, "promotion": m.promotion})
-    return move_list
+    from Client.redis_base import redis_client
+    import json
+    moves = redis_client.lrange(f"game:{game_id}:moves", 0, -1)
+    return [json.loads(m.decode('utf-8')) for m in moves]
+
+@connect
+def persist_game_data(game_id, session: Session | None = None):
+    from Client.redis_base import redis_client
+    import json
+    from Client.models import Game as DBGame, GameMove
+    board_state_key = f"game:{game_id}:board_state"
+    moves_key = f"game:{game_id}:moves"
+    board_state = redis_client.get(board_state_key)
+    db_game = session.query(DBGame).filter(DBGame.game_id == game_id).first()
+    if db_game and board_state is not None:
+        db_game.board_state = board_state.decode('utf-8')
+        session.commit()
+    moves = redis_client.lrange(moves_key, 0, -1)
+    for move in moves:
+        move_record = json.loads(move.decode('utf-8'))
+        new_move = GameMove(
+            game_id=game_id,
+            player=move_record['player'],
+            from_x=move_record['from']['x'],
+            from_y=move_record['from']['y'],
+            to_x=move_record['to']['x'],
+            to_y=move_record['to']['y'],
+            captured_piece=move_record['captured'],
+            promotion=move_record['promotion']
+        )
+        session.add(new_move)
+    session.commit()
+    redis_client.delete(board_state_key)
+    redis_client.delete(moves_key)
 
 @connect
 def get_incoming_game_invitations_db(user: str, session: Session | None = None) -> list:
