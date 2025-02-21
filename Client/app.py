@@ -5,6 +5,8 @@ import hmac
 import hashlib
 import time
 import secrets
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import game_engine
 import base
 import utils
