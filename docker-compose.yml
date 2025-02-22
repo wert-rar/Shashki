@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:latest
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: db.db
+      POSTGRES_HOST: host.docker.internal
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    restart: on-failure
+
+  redis:
+    image: redis:latest
+    command: redis-server --bind 0.0.0.0 --protected-mode no
+    ports:
+      - "6379:6379"
+    restart: on-failure
+    volumes:
+      - redis-data:/data
+
+  shashki:
+    build: .
+    command: ["python", "-m", "thecheckers"]
+    restart: always
+    depends_on:
+      - db
+      - redis
+
+volumes:
+    pgdata:
+    redis-data:
