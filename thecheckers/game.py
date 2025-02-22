@@ -1,7 +1,7 @@
 import time, threading
 from base import SessionLocal
 from models import Game as DBGame
-from Client.redis_base import redis_client
+from thecheckers.redis_base import redis_client
 import json
 import random
 all_games_lock = threading.Lock()
@@ -145,7 +145,7 @@ class Game:
         self.current_player = 'b' if self.current_player == 'w' else 'w'
         self.update_status()
         self.last_update_time = time.time()
-        from Client.redis_base import set_move_status
+        from thecheckers.redis_base import set_move_status
         set_move_status(self.game_id, self.status)
 
     def __str__(self):
@@ -246,7 +246,7 @@ def create_new_game_in_db(user_login, forced_game_id=None):
                     all_games_dict[forced_game_id] = new_game
                 redis_client.set(f"game:{forced_game_id}:board_state", json.dumps(pieces))
                 redis_client.delete(f"game:{forced_game_id}:moves")
-                from Client.redis_base import set_move_status
+                from thecheckers.redis_base import set_move_status
                 set_move_status(forced_game_id, "w1")
                 db_session.close()
                 return forced_game_id
@@ -272,7 +272,7 @@ def create_new_game_in_db(user_login, forced_game_id=None):
             all_games_dict[game_id_candidate] = new_game
         redis_client.set(f"game:{game_id_candidate}:board_state", json.dumps(pieces))
         redis_client.delete(f"game:{game_id_candidate}:moves")
-        from Client.redis_base import set_move_status
+        from thecheckers.redis_base import set_move_status
         set_move_status(game_id_candidate, "w1")
         db_session.close()
         return game_id_candidate

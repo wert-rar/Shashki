@@ -1,4 +1,3 @@
-import os
 import logging
 import subprocess
 import hmac
@@ -7,9 +6,8 @@ import time
 import secrets
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import game_engine
+from thecheckers import game_engine, utils
 import base
-import utils
 from datetime import (timedelta,
                       datetime,
                       timezone)
@@ -125,7 +123,7 @@ def get_board(game_id, user_login):
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
         opponent_rank = "0"
-    from Client.redis_base import get_move_status
+    from thecheckers.redis_base import get_move_status
     move_status = get_move_status(game_id)
     return render_template('board.html',
                            user_login=user_login,
@@ -494,7 +492,7 @@ def move():
             game.no_capture_moves = 0
             game.status = f"{current_player}4"
             game.must_capture_piece = result['next_capture_piece']
-            from Client.redis_base import set_move_status
+            from thecheckers.redis_base import set_move_status
             set_move_status(game_id_int, game.status)
             return jsonify({
                 "status_": game.status,
@@ -516,7 +514,7 @@ def move():
             game.moves_count += 1
             game.must_capture_piece = None
             game.switch_turn()
-            from game_engine import compute_position_signature
+            from thecheckers.game_engine import compute_position_signature
             sig = compute_position_signature(updated_pieces, game.current_player)
             if sig in game.position_history:
                 game.position_history[sig] += 1
