@@ -1,6 +1,6 @@
-from Client import base
-from Client.game import update_game_status_in_db
-from Client.redis_base import clear_move_status
+from thecheckers import base
+from thecheckers.game import update_game_status_in_db
+from thecheckers.redis_base import clear_move_status
 
 
 def get_piece_at(pieces, x, y):

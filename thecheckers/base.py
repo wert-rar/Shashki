@@ -3,8 +3,8 @@ from sqlalchemy import select, update, and_, or_, union_all, func, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 import logging
-import utils
-from Client.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, GameMove, Game, Room
+from thecheckers import utils
+from thecheckers.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, Game, Room
 
 DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
 #DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
@@ -301,22 +301,22 @@ def remove_friend_db(user: str, friend_username: str, session: Session | None = 
 
 @connect
 def add_move(game_id: int, move_record: dict, session: Session | None = None):
-    from Client.redis_base import redis_client
+    from thecheckers.redis_base import redis_client
     import json
     redis_client.rpush(f"game:{game_id}:moves", json.dumps(move_record))
 
 @connect
 def get_game_moves_from_db(game_id, session: Session | None = None):
-    from Client.redis_base import redis_client
+    from thecheckers.redis_base import redis_client
     import json
     moves = redis_client.lrange(f"game:{game_id}:moves", 0, -1)
     return [json.loads(m.decode('utf-8')) for m in moves]
 
 @connect
 def persist_game_data(game_id, session: Session | None = None):
-    from Client.redis_base import redis_client
+    from thecheckers.redis_base import redis_client
     import json
-    from Client.models import Game as DBGame, GameMove
+    from thecheckers.models import Game as DBGame, GameMove
     board_state_key = f"game:{game_id}:board_state"
     moves_key = f"game:{game_id}:moves"
     board_state = redis_client.get(board_state_key)
