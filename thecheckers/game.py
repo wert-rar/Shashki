@@ -1,6 +1,6 @@
 import time, threading
-from base import SessionLocal
-from models import Game as DBGame
+from thecheckers.base import SessionLocal
+from thecheckers.models import Game as DBGame
 from thecheckers.redis_base import redis_client
 import json
 import random

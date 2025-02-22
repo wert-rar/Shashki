@@ -4,10 +4,18 @@ import hmac
 import hashlib
 import time
 import secrets
+
+import werkzeug.urls
+werkzeug.urls.url_encode = werkzeug.urls.urlencode
+
+import markupsafe
+import flask
+flask.Markup = markupsafe.Markup
+
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from thecheckers import game_engine, utils
-import base
+from thecheckers import base
 from datetime import (timedelta,
                       datetime,
                       timezone)
@@ -24,8 +32,8 @@ from flask import (Flask,
                    flash,
                    make_response)
 from flask_wtf.csrf import CSRFProtect
-from base import init_db
-from game import (get_game_status_internally,
+from thecheckers.base import init_db
+from thecheckers.game import (get_game_status_internally,
                   find_waiting_game_in_db,
                   update_game_with_user_in_db,
                   remove_game_in_db,

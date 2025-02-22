@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: db.db
       POSTGRES_HOST: host.docker.internal
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
