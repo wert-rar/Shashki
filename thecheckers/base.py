@@ -7,7 +7,6 @@ from thecheckers import utils
 from thecheckers.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, Game, Room
 
 DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
-#DATABASE_URL = "postgresql://cloud_user:sqfxuf1Ko&kh@kluysopgednem.beget.app:5432/default_db"
 #DATABASE_URL = "postgresql://J0muty:951753aA.!@ogustidid.beget.app:5432/Beget"
 
 engine = create_engine(DATABASE_URL)
