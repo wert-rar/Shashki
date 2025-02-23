@@ -67,7 +67,7 @@ def ensure_user():
         session['is_ghost'] = user_login.startswith('ghost')
         return user_login
 
-def get_valid_user(session, base):
+async def get_valid_user(session, base):
     """
         Проверяет, что пользователь аутентифицирован и существует в базе данных.
         Если проверка не пройдена, завершает выполнение с ошибкой 403.
@@ -77,7 +77,7 @@ def get_valid_user(session, base):
         logging.warning("Пользователь не аутентифицирован")
         abort(403)
     user_login = session['user']
-    user = base.get_user_by_login(user_login)
+    user = await base.get_user_by_login(user_login)
     if not user or user_login.startswith('ghost'):
         logging.warning("Пользователь не найден или является ghost")
         abort(403)

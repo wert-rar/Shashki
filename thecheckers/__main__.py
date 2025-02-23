@@ -81,19 +81,19 @@ status_ = {
 }
 
 @app.route("/")
-def home():
+async def home():
     user_login = session.get('user')
     user_is_registered = False
     room_id = session.get('room_id')
     if room_id:
         db_session = base.async_session()
-        room_obj = base.get_room_by_room_id_db(room_id, session=db_session)
+        room_obj = await base.get_room_by_room_id_db(room_id, session=db_session)
         db_session.close()
         if not room_obj:
             session.pop('room_id', None)
             room_id = None
     if user_login and not user_login.startswith('ghost'):
-        user = base.get_user_by_login(user_login)
+        user = await base.get_user_by_login(user_login)
         if user:
             user_is_registered = True
     return render_template('home.html', user_is_registered=user_is_registered, room_id=room_id)
@@ -101,7 +101,7 @@ def home():
 
 @app.route('/board/<int:game_id>/<user_login>')
 @csrf.exempt
-def get_board(game_id, user_login):
+async def get_board(game_id, user_login):
     if session.get('user') != user_login:
         abort(403)
     game = get_or_create_ephemeral_game(game_id)
@@ -112,7 +112,7 @@ def get_board(game_id, user_login):
         abort(403)
     opponent_login = game.c_user if user_login == game.f_user else game.f_user
     is_ghost = user_login.startswith('ghost')
-    user = base.get_user_by_login(user_login)
+    user = await base.get_user_by_login(user_login)
     if is_ghost:
         user_avatar_url = '/static/avatars/default_avatar.jpg'
         user_rank = "0"
@@ -123,7 +123,7 @@ def get_board(game_id, user_login):
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
         else:
             user_avatar_url = '/static/avatars/default_avatar.jpg'
-    opponent = base.get_user_by_login(opponent_login)
+    opponent = await base.get_user_by_login(opponent_login)
     if opponent and (not opponent_login.startswith('ghost')):
         opponent_rank = str(opponent.get('rang', "0"))
         if opponent.get('avatar_filename'):
@@ -150,7 +150,7 @@ def get_board(game_id, user_login):
                            move_status=move_status)
 
 @app.route("/register", methods=["GET", "POST"])
-def register():
+async def register():
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
@@ -160,8 +160,8 @@ def register():
         if user_login.lower().startswith('ghost'):
             flash('Имя пользователя не может начинаться с "ghost"', 'error')
             return redirect(url_for('register'))
-        if not base.check_user_exists(user_login):
-            base.register_user(user_login, user_password)
+        if not await base.check_user_exists(user_login):
+            await base.register_user(user_login, user_password)
             flash('Регистрация прошла успешно!', 'success')
             return redirect(url_for('login'))
         else:
@@ -184,7 +184,7 @@ def ratelimit_error():
 
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("7 per minute")
-def login():
+async def login():
     if request.method == "POST":
         user_login = request.form['login']
         user_password = request.form['password']
@@ -192,7 +192,7 @@ def login():
         if not utils.is_valid_username(user_login):
             flash('Имя пользователя может содержать только латинские буквы и цифры (3-15 символов)', 'error')
             return redirect(url_for('register'))
-        user = base.authenticate_user(user_login, user_password)
+        user = await base.authenticate_user(user_login, user_password)
         if user:
             session['user'] = user_login
             flash('Вход выполнен', 'success')
@@ -200,7 +200,7 @@ def login():
                 session.permanent = True
                 token = secrets.token_urlsafe(64)
                 expires_at = datetime.now(timezone.utc) + timedelta(days=30)
-                if base.add_remember_token(user_login, token, expires_at):
+                if await base.add_remember_token(user_login, token, expires_at):
                     resp = make_response(redirect(url_for('home')))
                     resp.set_cookie('remember_token', token, expires=expires_at, httponly=True, secure=True, samesite='Lax')
                     return resp
@@ -274,26 +274,26 @@ async def profile(username):
         abort(404)
 
 @app.route("/logout")
-def logout():
+async def logout():
     user_login = session.pop('user', None)
     session.pop('game_id', None)
     session.pop('color', None)
     flash('Вы вышли из аккаунта', 'info')
     token = request.cookies.get('remember_token')
     if token:
-        base.delete_remember_token(token)
+        await base.delete_remember_token(token)
     resp = make_response(redirect(url_for('home')))
     resp.delete_cookie('remember_token')
     if user_login:
-        base.delete_all_remember_tokens(user_login)
+        await base.delete_all_remember_tokens(user_login)
     return resp
 
 @app.errorhandler(404)
-def page_not_found(error):
+def page_not_found():
     return render_template('404.html'), 404
 
 @app.errorhandler(403)
-def forbidden(e):
+def forbidden():
     return render_template('403.html'), 403
 
 @app.route('/trigger_error')
@@ -801,12 +801,12 @@ def get_possible_moves_route():
 
 @app.route('/api/profile/<username>', methods=['GET'])
 @csrf.exempt
-def api_profile(username):
+async def api_profile(username):
     if not utils.is_valid_username(username):
         return jsonify({"error": "Неверный пользователь"}), 404
     if username.startswith('ghost'):
         return jsonify({"error": "Профиль не доступен"}), 403
-    user = base.get_user_by_login(username)
+    user = await base.get_user_by_login(username)
     if user:
         return jsonify({
             "user_login": user["login"],
@@ -883,7 +883,7 @@ def start_singleplayer():
 
 @app.route('/player_loaded', methods=['POST'])
 @csrf.exempt
-def player_loaded():
+async def player_loaded():
     data = request.json
     game_id = data.get('game_id')
     user_login = session.get('user')
@@ -910,11 +910,11 @@ def player_loaded():
         room_id = session.get("room_id")
         app.logger.debug(f"Оба игрока загрузили доску, room_id из сессии: {room_id}")
         if room_id:
-            room = base.get_room_by_room_id_db(int(room_id))
+            room = await base.get_room_by_room_id_db(int(room_id))
             if room:
                 app.logger.debug(f"Проверка delete_after_start для комнаты {room_id}: {room.delete_after_start}")
                 if room.delete_after_start:
-                    deleted = base.delete_room_if_flag_set(int(room_id))
+                    deleted = await base.delete_room_if_flag_set(int(room_id))
                     if deleted:
                         session.pop("room_id", None)
                         app.logger.debug(f"Комната {room_id} удалена после загрузки доски обоими игроками")
@@ -931,9 +931,9 @@ def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
 
 @app.route('/upload_avatar', methods=['POST'])
-def upload_avatar():
+async def upload_avatar():
     logging.debug("Начало загрузки аватарки")
-    user_login, user = utils.get_valid_user(session, base)
+    user_login, user = await utils.get_valid_user(session, base)
     if 'avatar' not in request.files:
         flash('Нет файла для загрузки', 'error')
         logging.warning("Файл не найден в запросе")
@@ -944,18 +944,18 @@ def upload_avatar():
         flash(error, 'error')
         return redirect(url_for('profile', username=user_login))
     utils.remove_old_avatar(user.get("avatar_filename"), safe_filename, app.config['UPLOAD_FOLDER'])
-    base.update_user_avatar(user_login, safe_filename)
+    await base.update_user_avatar(user_login, safe_filename)
     flash('Аватар успешно обновлен!', 'success')
     logging.info("Аватар успешно обновлен для пользователя")
     return redirect(url_for('profile', username=user_login))
 
 @app.route('/delete_avatar', methods=['POST'])
 @csrf.exempt
-def delete_avatar():
+async def delete_avatar():
     if 'user' not in session:
         abort(403)
     user_login = session['user']
-    user = base.get_user_by_login(user_login)
+    user = await base.get_user_by_login(user_login)
     if not user or user_login.startswith('ghost'):
         abort(403)
     avatar_filename = user["avatar_filename"]
@@ -963,14 +963,14 @@ def delete_avatar():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], avatar_filename)
         if os.path.exists(file_path):
             os.remove(file_path)
-        base.update_user_avatar(user_login, None)
+        await base.update_user_avatar(user_login, None)
     else:
         flash('У вас уже дефолтный аватар', 'info')
     return redirect(url_for('profile', username=user_login))
 
 @app.route("/send_friend_request", methods=["POST"])
 @csrf.exempt
-def send_friend_request():
+async def send_friend_request():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     data = request.get_json()
@@ -980,10 +980,10 @@ def send_friend_request():
         return jsonify({"error": "Не указан получатель"}), 400
     if friend_username == sender:
         return jsonify({"error": "Нельзя добавить себя в друзья"}), 400
-    user_row = base.get_user_by_login(friend_username)
+    user_row = await base.get_user_by_login(friend_username)
     if not user_row:
         return jsonify({"error": "Пользователь не найден"}), 404
-    status = base.send_friend_request_db(sender, friend_username)
+    status = await base.send_friend_request_db(sender, friend_username)
     status_messages = {
         "sent": ({"message": "Запрос успешно отправлен"}, 200),
         "already_sent": ({"message": "Вы уже отправили запрос этому пользователю"}, 200),
@@ -997,7 +997,7 @@ def send_friend_request():
 
 @app.route("/respond_friend_request", methods=["POST"])
 @csrf.exempt
-def respond_friend_request():
+async def respond_friend_request():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     data = request.get_json()
@@ -1006,7 +1006,7 @@ def respond_friend_request():
     receiver = session.get("user")
     if not sender_username or response not in ["accept", "decline"]:
         return jsonify({"error": "Некорректные данные"}), 400
-    updated = base.respond_friend_request_db(sender_username, receiver, response)
+    updated = await base.respond_friend_request_db(sender_username, receiver, response)
     if not updated:
         return jsonify({"error": "Нет запроса от данного пользователя"}), 400
     if response == "accept":
@@ -1017,11 +1017,11 @@ def respond_friend_request():
 
 @app.route("/get_friend_requests", methods=["GET"])
 @csrf.exempt
-def get_friend_requests():
+async def get_friend_requests():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     receiver = session.get("user")
-    requests_list = base.get_incoming_friend_requests_db(receiver)
+    requests_list = await base.get_incoming_friend_requests_db(receiver)
     return jsonify({"requests": requests_list}), 200
 
 @app.route("/get_notifications", methods=["GET"])
@@ -1036,16 +1036,16 @@ async def get_notifications():
 
 @app.route("/get_friends", methods=["GET"])
 @csrf.exempt
-def get_friends():
+async def get_friends():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     current_user = session.get("user")
-    user_friends = base.get_friends_db(current_user)
+    user_friends = await base.get_friends_db(current_user)
     return jsonify({"friends": user_friends}), 200
 
 @app.route("/remove_friend", methods=["POST"])
 @csrf.exempt
-def remove_friend():
+async def remove_friend():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     data = request.get_json()
@@ -1053,46 +1053,46 @@ def remove_friend():
     current_user = session.get("user")
     if not friend_username:
         return jsonify({"error": "Не указан друг"}), 400
-    success = base.remove_friend_db(current_user, friend_username)
+    success = await base.remove_friend_db(current_user, friend_username)
     if not success:
         return jsonify({"error": "Пользователь не является вашим другом или не найден"}), 400
     return jsonify({"message": f"Пользователь {friend_username} удалён из друзей"}), 200
 
 @app.route("/search_users")
 @csrf.exempt
-def search_users():
+async def search_users():
     query = request.args.get("query", "").strip()
     if not query:
         return jsonify({"results": []})
     current_user = session.get('user')
-    results = base.search_users(query, exclude_user=current_user, limit=10)
+    results = await base.search_users(query, exclude_user=current_user, limit=10)
     return jsonify({"results": results})
 
 @app.route("/get_invited_friends", methods=["GET"])
 @csrf.exempt
-def get_invited_friends():
+async def get_invited_friends():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     current_user = session.get("user")
     room_id = session.get("room_id")
     if not room_id:
         return jsonify({"error": "Нет room_id"}), 400
-    invites = base.get_outgoing_game_invitations_db(current_user, room_id)
+    invites = await base.get_outgoing_game_invitations_db(current_user, room_id)
     return jsonify({"invited": invites}), 200
 
 @app.before_request
-def load_user_from_remember_token():
+async def load_user_from_remember_token():
     if 'user' not in session:
         token = request.cookies.get('remember_token')
         if token:
-            user_login = base.get_user_by_remember_token(token)
+            user_login = await base.get_user_by_remember_token(token)
             if user_login:
                 session['user'] = user_login
                 session.permanent = True
                 new_token = secrets.token_urlsafe(64)
                 new_expires_at = datetime.now() + timedelta(days=30)
-                if base.add_remember_token(user_login, new_token, new_expires_at):
-                    base.delete_remember_token(token)
+                if await base.add_remember_token(user_login, new_token, new_expires_at):
+                    await base.delete_remember_token(token)
                     g.new_remember_token = new_token
                     g.new_expires_at = new_expires_at
 
@@ -1111,9 +1111,9 @@ def set_new_remember_token(response):
 
 @app.route("/get_top_players", methods=["GET"])
 @csrf.exempt
-def get_top_players_route():
+async def get_top_players_route():
     try:
-        top_players_data = base.get_top_players(limit=3)
+        top_players_data = await base.get_top_players(limit=3)
         top_players = []
         for player in top_players_data:
             avatar_filename = player["avatar_filename"]
@@ -1133,7 +1133,7 @@ def get_top_players_route():
 
 @app.route("/invite_friend", methods=["POST"])
 @csrf.exempt
-def invite_friend():
+async def invite_friend():
     user_login = session.get("user")
     if not user_login:
         return jsonify({"error": "Пользователь не авторизован"}), 200
@@ -1144,14 +1144,14 @@ def invite_friend():
     if not friend_username or not room_id:
         return jsonify({"error": "Отсутствует имя друга или room_id"}), 200
 
-    friend_room = base.get_room_by_user(friend_username)
+    friend_room = await base.get_room_by_user(friend_username)
     if friend_room:
         if friend_room.room_id == int(room_id):
             return jsonify({"error": "Пользователь уже в комнате"}), 200
         else:
             return jsonify({"error": "Пользователь уже находится в другой комнате"}), 200
 
-    status = base.send_game_invite_db(user_login, friend_username, int(room_id))
+    status = await base.send_game_invite_db(user_login, friend_username, int(room_id))
     if status == "self_invite":
         return jsonify({"error": "Нельзя пригласить самого себя"}), 200
     elif status == "already_sent":
@@ -1165,7 +1165,7 @@ def invite_friend():
 
 @app.route("/respond_game_invite", methods=["POST"])
 @csrf.exempt
-def respond_game_invite():
+async def respond_game_invite():
     data = request.get_json()
     user_login = session.get("user")
     if not user_login:
@@ -1177,12 +1177,12 @@ def respond_game_invite():
         return jsonify({"error": "Отсутствуют необходимые данные"}), 400
     if response_ not in ["accept", "decline"]:
         return jsonify({"error": "Некорректный ответ"}), 400
-    updated = base.respond_game_invite_db(from_user, user_login, int(room_id), response_)
+    updated = await base.respond_game_invite_db(from_user, user_login, int(room_id), response_)
     if not updated:
         return jsonify({"error": "Приглашение не найдено"}), 400
     if response_ == "accept":
         db_session = base.async_session()
-        base.update_room_occupant_db(int(room_id), user_login, session=db_session)
+        await base.update_room_occupant_db(int(room_id), user_login, session=db_session)
         db_session.close()
         session['room_id'] = int(room_id)
         return jsonify({"message": "Приглашение принято", "room_id": room_id}), 200
@@ -1191,12 +1191,12 @@ def respond_game_invite():
 
 @app.route("/check_room_status", methods=["GET"])
 @csrf.exempt
-def check_room_status():
+async def check_room_status():
     room_id = request.args.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
     db_session = base.async_session()
-    room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
+    room_obj = await base.get_room_by_room_id_db(int(room_id), session=db_session)
     if not room_obj:
         db_session.close()
         session.pop("room_id", None)
@@ -1230,14 +1230,14 @@ def check_room_status():
     if game_id_db:
         response["game_id"] = game_id_db
     if user == creator:
-        response["invited_friends"] = base.get_outgoing_game_invitations_db(user, int(room_id))
+        response["invited_friends"] = await base.get_outgoing_game_invitations_db(user, int(room_id))
     if response["game_status"] in ["current", "active"] and game_id_db:
         response["redirect"] = f"/board/{game_id_db}/{user}"
     return jsonify(response), 200
 
 @app.route("/cancel_room", methods=["POST"])
 @csrf.exempt
-def cancel_room():
+async def cancel_room():
     user_login = session.get("user")
     data = request.get_json()
     if not user_login:
@@ -1249,18 +1249,18 @@ def cancel_room():
     if not game_obj or game_obj.f_user != user_login:
         return jsonify({"error": "Комната не найдена или нет прав доступа"}), 400
     remove_game_in_db(int(game_id))
-    base.remove_game_invite_by_game_id(int(game_id))
+    await base.remove_game_invite_by_game_id(int(game_id))
     return jsonify({"message": "Комната отменена"}), 200
 
 @app.route("/start_room_game", methods=["POST"])
 @csrf.exempt
-def start_room_game():
+async def start_room_game():
     data = request.get_json()
     room_id = data.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
     db_session = base.async_session()
-    room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
+    room_obj = await base.get_room_by_room_id_db(int(room_id), session=db_session)
     if not room_obj:
         db_session.close()
         return jsonify({"error": "Комната не найдена"}), 404
@@ -1287,7 +1287,7 @@ def start_room_game():
     if db_game and not db_game.c_user:
         db_game.c_user = c_user
         db_session.commit()
-    base.update_room_game_db(int(room_id), new_game_id, session=db_session)
+    await base.update_room_game_db(int(room_id), new_game_id, session=db_session)
     db_session.close()
     game_obj = get_or_create_ephemeral_game(new_game_id)
     if game_obj:
@@ -1305,7 +1305,7 @@ def start_room_game():
 
 
 @app.route("/room")
-def new_room():
+async def new_room():
     user_login = session.get("user")
     if not user_login:
         flash("Пользователь не авторизован", "error")
@@ -1317,13 +1317,13 @@ def new_room():
     import random
     room_id_candidate = random.randint(1, 99999999)
     db_session = base.async_session()
-    existing = base.get_room_by_room_id_db(room_id_candidate, session=db_session)
+    existing = await base.get_room_by_room_id_db(room_id_candidate, session=db_session)
     while existing:
         room_id_candidate = random.randint(1, 99999999)
-        existing = base.get_room_by_room_id_db(room_id_candidate, session=db_session)
-    user = base.get_user_by_login(user_login)
+        existing = await base.get_room_by_room_id_db(room_id_candidate, session=db_session)
+    user = await base.get_user_by_login(user_login)
     default_flag = user.get("default_delete_after_start", False) if user else False
-    created_room = base.create_room_db(room_id_candidate, user_login, default_flag, session=db_session)
+    created_room = await base.create_room_db(room_id_candidate, user_login, default_flag, session=db_session)
     db_session.close()
     if not created_room:
         flash('Не удалось создать комнату', 'error')
@@ -1332,13 +1332,13 @@ def new_room():
     return redirect(url_for('show_room', room_id=room_id_candidate))
 
 @app.route("/room/<int:room_id>")
-def show_room(room_id):
+async def show_room(room_id):
     if 'user' not in session:
         flash("Пользователь не авторизован", "error")
         return redirect(url_for('login'))
     user_login = session.get('user')
     db_session = base.async_session()
-    room_obj = base.get_room_by_room_id_db(room_id, session=db_session)
+    room_obj = await base.get_room_by_room_id_db(room_id, session=db_session)
     db_session.close()
     if not room_obj:
         flash("Комната не найдена", "error")
@@ -1348,11 +1348,11 @@ def show_room(room_id):
         return redirect(url_for('home'))
     is_creator = (room_obj.room_creator == user_login)
 
-    friends_list = base.get_friends_db(user_login)
+    friends_list = await base.get_friends_db(user_login)
 
     invited_friends = []
     if is_creator:
-        invited_friends = base.get_outgoing_game_invitations_db(user_login, room_id)
+        invited_friends = await base.get_outgoing_game_invitations_db(user_login, room_id)
 
     return render_template(
         "create_room.html",
@@ -1376,13 +1376,13 @@ def get_current_user():
 
 @app.route('/leave_room', methods=['POST'])
 @csrf.exempt
-def leave_room_route():
+async def leave_room_route():
     data = request.json
     room_id = data.get('room_id')
     user = session.get('user')
     if not room_id or not user:
         return jsonify({"error": "Нет идентификатора комнаты или пользователь не авторизован"}), 400
-    success = base.leave_room_db(room_id, user)
+    success = await base.leave_room_db(room_id, user)
     if success:
         session.pop('room_id', None)
         return jsonify({"message": "Вы покинули комнату"}), 200
@@ -1391,50 +1391,50 @@ def leave_room_route():
 
 @app.route('/delete_room', methods=['POST'])
 @csrf.exempt
-def delete_room_route():
+async def delete_room_route():
     data = request.json
     room_id = data.get('room_id')
     user = session.get('user')
     if not room_id or not user:
         return jsonify({"error": "Нет идентификатора комнаты или пользователь не авторизован"}), 400
-    room = base.get_room_by_room_id_db(room_id)
+    room = await base.get_room_by_room_id_db(room_id)
     if not room or room.room_creator != user:
         return jsonify({"error": "Нет прав для удаления комнаты"}), 403
-    base.delete_room_db(room_id)
+    await base.delete_room_db(room_id)
     session.pop('room_id', None)
     return jsonify({"message": "Комната удалена"}), 200
 
 @app.route("/kick_user", methods=["POST"])
 @csrf.exempt
-def kick_user():
+async def kick_user():
     data = request.json
     room_id = data.get("room_id")
     kicked_user = data.get("kicked_user")
     user = session.get("user")
     if not room_id or not kicked_user or not user:
         return jsonify({"error": "Недостаточно данных"}), 400
-    db_room = base.get_room_by_room_id_db(room_id)
+    db_room = await base.get_room_by_room_id_db(room_id)
     if not db_room:
         return jsonify({"error": "Комната не найдена"}), 404
     if db_room.room_creator != user:
         return jsonify({"error": "Нет прав"}), 403
     if kicked_user == user:
         return jsonify({"error": "Нельзя кикнуть себя"}), 400
-    success = base.kick_user_from_room_db(room_id, kicked_user)
+    success = await base.kick_user_from_room_db(room_id, kicked_user)
     if success:
         return jsonify({"message": "Пользователь кикнут"}), 200
     return jsonify({"error": "Не удалось кикнуть пользователя"}), 400
 
 @app.route("/transfer_leader", methods=["POST"])
 @csrf.exempt
-def transfer_leader():
+async def transfer_leader():
     data = request.json
     room_id = data.get("room_id")
     new_leader = data.get("new_leader")
     user = session.get("user")
     if not room_id or not new_leader or not user:
         return jsonify({"error": "Недостаточно данных"}), 400
-    db_room = base.get_room_by_room_id_db(room_id)
+    db_room = await base.get_room_by_room_id_db(room_id)
     if not db_room:
         return jsonify({"error": "Комната не найдена"}), 404
     if db_room.room_creator != user:
@@ -1443,14 +1443,14 @@ def transfer_leader():
         return jsonify({"error": "Нельзя передать права самому себе"}), 400
     if db_room.occupant != new_leader:
         return jsonify({"error": "Пользователь не в комнате"}), 400
-    success = base.transfer_room_leadership_db(room_id, new_leader)
+    success = await base.transfer_room_leadership_db(room_id, new_leader)
     if success:
         return jsonify({"message": "Права переданы"}), 200
     return jsonify({"error": "Не удалось передать права"}), 400
 
 @app.route("/select_color", methods=["POST"])
 @csrf.exempt
-def select_color():
+async def select_color():
     data = request.json
     room_id = data.get("room_id")
     color = data.get("color")
@@ -1461,12 +1461,12 @@ def select_color():
         room_id_int = int(room_id)
     except Exception as e:
         return jsonify({"error": "Некорректный room_id"}), 400
-    room = base.get_room_by_room_id_db(room_id_int)
+    room = await base.get_room_by_room_id_db(room_id_int)
     if not room:
         return jsonify({"error": "Комната не найдена"}), 404
     if user_login not in [room.room_creator, room.occupant]:
         return jsonify({"error": "Нет прав для выбора цвета"}), 403
-    result = base.toggle_room_color_choice(room_id_int, user_login, color)
+    result = await base.toggle_room_color_choice(room_id_int, user_login, color)
     if result.get("error"):
         return jsonify(result), 400
     return jsonify(result), 200
@@ -1532,19 +1532,19 @@ def respond_rematch():
 
 @app.route("/update_room_delete_flag", methods=["POST"])
 @csrf.exempt
-def update_room_delete_flag_route():
+async def update_room_delete_flag_route():
     data = request.get_json()
     room_id = data.get("room_id")
     delete_flag = data.get("delete_flag")
     if not room_id or delete_flag is None:
          return jsonify({"error": "Необходимы room_id и delete_flag"}), 400
-    result = base.update_room_delete_flag(int(room_id), bool(delete_flag))
+    result = await base.update_room_delete_flag(int(room_id), bool(delete_flag))
     if result.get("error"):
          return jsonify(result), 400
     user_login = session.get("user")
-    room = base.get_room_by_room_id_db(int(room_id))
+    room = await base.get_room_by_room_id_db(int(room_id))
     if room and room.room_creator == user_login:
-        base.update_user_default_delete_flag(user_login, bool(delete_flag))
+        await base.update_user_default_delete_flag(user_login, bool(delete_flag))
     return jsonify(result), 200
 
 

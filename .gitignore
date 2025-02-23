@@ -195,4 +195,4 @@ alembic/script.py.mako
 /alembic/versions/
 /alembic
 /alembic/versions
-/Client/static/avatars/
+/thecheckers/static/avatars/avatars/
