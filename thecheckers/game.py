@@ -1,9 +1,8 @@
 import time, threading
-from thecheckers.base import SessionLocal
+from thecheckers.base import async_session
 from thecheckers.models import Game as DBGame
 from thecheckers.redis_base import redis_client
 import json
-import random
 all_games_lock = threading.Lock()
 all_games_dict = {}
 
@@ -155,7 +154,7 @@ def get_or_create_ephemeral_game(game_id):
     with all_games_lock:
         if game_id in all_games_dict:
             return all_games_dict[game_id]
-        db_session = SessionLocal()
+        db_session = async_session()
         db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
         if not db_game:
             db_session.close()
@@ -172,7 +171,7 @@ def get_or_create_ephemeral_game(game_id):
         return new_game
 
 def find_waiting_game_in_db():
-    db_session = SessionLocal()
+    db_session = async_session()
     db_game = db_session.query(DBGame).filter(
         DBGame.status == 'unstarted',
         DBGame.c_user.is_(None),
@@ -183,7 +182,7 @@ def find_waiting_game_in_db():
 
 
 def update_game_with_user_in_db(game_id, user_login, color):
-    db_session = SessionLocal()
+    db_session = async_session()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if not db_game:
         db_session.close()
@@ -227,7 +226,7 @@ def update_game_with_user_in_db(game_id, user_login, color):
 
 def create_new_game_in_db(user_login, forced_game_id=None):
     import random, json
-    db_session = SessionLocal()
+    db_session = async_session()
     try:
         if forced_game_id is not None:
             existing_game = db_session.query(DBGame).filter(DBGame.game_id == forced_game_id).first()
@@ -281,7 +280,7 @@ def create_new_game_in_db(user_login, forced_game_id=None):
         raise
 
 def remove_game_in_db(game_id):
-    db_session = SessionLocal()
+    db_session = async_session()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if db_game:
         db_game.status = 'completed'
@@ -292,7 +291,7 @@ def remove_game_in_db(game_id):
             del all_games_dict[game_id]
 
 def get_game_status_internally(game_id):
-    db_session = SessionLocal()
+    db_session = async_session()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if not db_game:
         db_session.close()
@@ -302,7 +301,7 @@ def get_game_status_internally(game_id):
     return status
 
 def update_game_status_in_db(game_id, new_status):
-    db_session = SessionLocal()
+    db_session = async_session()
     db_game = db_session.query(DBGame).filter(DBGame.game_id == game_id).first()
     if db_game:
         db_game.status = new_status

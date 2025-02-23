@@ -1,22 +1,35 @@
 from datetime import datetime
-from sqlalchemy import select, update, and_, or_, union_all, func, create_engine, URL
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
 import logging
+import json
+from sqlalchemy import select, update, and_, or_, union_all, func, NullPool
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.engine.url import URL
 from thecheckers import utils
-from thecheckers.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, Game, Room
+from thecheckers.models import (
+    Base, Player, CompletedGames, RememberToken, FriendRelation,
+    GameInvitation, Game, Room, GameMove
+)
 
 DATABASE_URL = URL.create(
-    "postgresql",
+    "postgresql+asyncpg",
     username="postgres",
     password="951753aA.",
-    host="db",
+    host="localhost",
     database="postgres",
     port="5432"
 )
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+async_session: None | AsyncSession = None
+
+
+async def async_main(url):
+    global async_session
+    engine = create_async_engine(url, future=True, echo=False, poolclass=NullPool)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
 
 def connect(method):
     """
@@ -29,31 +42,31 @@ def connect(method):
             Returns:
             wrapper (callable): The decorated function. This function will handle the database session management.
     """
-    def wrapper(*args, **kwargs):
-        with SessionLocal() as session:
+
+    async def wrapper(*args, **kwargs):
+        async with async_session() as session:
             try:
-                return method(*args, session=session)
+                return await method(*args, session=session)
             except Exception as e:
-                session.rollback()
+                await session.rollback()
                 raise Exception(f'Ошибка при работе с базой данных: {repr(e)} args:\n{args} kwargs:\n{kwargs}')
             finally:
-                session.close()
-    return wrapper
+                await session.close()
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
+    return wrapper
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 @connect
-def check_user_exists(user_login, session: Session | None = None):
-    return session.scalar(select(Player).where(Player.login == user_login)) is not None
+async def check_user_exists(user_login, *, session: AsyncSession):
+    result = await session.scalar(select(Player).where(Player.login == user_login))
+    return result is not None
 
 @connect
-def register_user(user_login, user_password, session: Session | None = None):
+async def register_user(user_login, user_password, *, session: AsyncSession):
     hashed_password = utils.hash_password(user_password)
     try:
-        with session.begin():
+        async with session.begin():
             session.add(Player(login=user_login, password=hashed_password))
         return True
     except IntegrityError:
@@ -61,8 +74,8 @@ def register_user(user_login, user_password, session: Session | None = None):
         return False
 
 @connect
-def authenticate_user(user_login, user_password, session: Session | None = None):
-    row = session.scalar(select(Player).where(Player.login == user_login))
+async def authenticate_user(user_login, user_password, *, session: AsyncSession):
+    row = await session.scalar(select(Player).where(Player.login == user_login))
     if row:
         stored_password = row.password
         if utils.verify_password(user_password, stored_password):
@@ -76,46 +89,77 @@ def authenticate_user(user_login, user_password, session: Session | None = None)
         return False
 
 @connect
-def get_user_by_login(user_login, session: Session | None = None) -> dict:
-    user = session.scalar(select(Player).where(Player.login == user_login))
+async def get_user_by_login(user_login, *, session: AsyncSession) -> dict:
+    user = await session.scalar(select(Player).where(Player.login == user_login))
     return user.to_dict() if user else None
 
 @connect
-def update_user_rang(user_login, points, session: Session | None = None):
+async def update_user_rang(user_login, points, *, session: AsyncSession):
     try:
-        with session.begin():
-            session.execute(update(Player).where(Player.login == user_login).values(rang=func.coalesce(Player.rang, 0) + points))
+        async with session.begin():
+            await session.execute(
+                update(Player)
+                .where(Player.login == user_login)
+                .values(rang=func.coalesce(Player.rang, 0) + points)
+            )
     except Exception as e:
         logging.error(f"Ошибка обновления ранга: {e}")
 
 @connect
-def update_user_stats(user_login, wins=0, losses=0, draws=0, session: Session | None = None):
+async def update_user_stats(user_login, wins=0, losses=0, draws=0, *, session: AsyncSession):
     try:
-        with session.begin():
-            session.execute(update(Player).where(Player.login == user_login).values(wins=Player.wins + wins, losses=Player.losses + losses, draws=Player.draws + draws))
+        async with session.begin():
+            await session.execute(
+                update(Player)
+                .where(Player.login == user_login)
+                .values(
+                    wins=Player.wins + wins,
+                    losses=Player.losses + losses,
+                    draws=Player.draws + draws
+                )
+            )
     except Exception as e:
         logging.error(f"Ошибка обновления статистики: {e}")
 
 @connect
-def add_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result, session: Session | None = None):
+async def add_completed_game(user_login, game_id, date_start, rating_before, rating_after, rating_change, result, *, session: AsyncSession):
     try:
-        with session.begin():
-            session.add(CompletedGames(user_login=user_login, game_id=game_id, date_start=date_start, rating_before=rating_before, rating_after=rating_after, rating_change=rating_change, result=result))
+        async with session.begin():
+            session.add(
+                CompletedGames(
+                    user_login=user_login,
+                    game_id=game_id,
+                    date_start=date_start,
+                    rating_before=rating_before,
+                    rating_after=rating_after,
+                    rating_change=rating_change,
+                    result=result
+                )
+            )
     except Exception as e:
         logging.error(f"Ошибка при добавлении завершенной игры: {e}")
 
 @connect
-def get_user_history(user_login, session: Session | None = None):
-    games = session.scalars(select(CompletedGames).where(CompletedGames.user_login == user_login).order_by(CompletedGames.ID.asc())).all()
+async def get_user_history(user_login, *, session: AsyncSession):
+    result = await session.execute(
+        select(CompletedGames)
+        .where(CompletedGames.user_login == user_login)
+        .order_by(CompletedGames.ID.asc())
+    )
+    games = result.scalars().all()
     return [game.to_dict() for game in games]
 
 @connect
-def update_user_avatar(user_login, filename, session: Session | None = None):
-    session.execute(update(Player).where(Player.login == user_login).values(avatar_filename=filename))
-    session.commit()
+async def update_user_avatar(user_login, filename, *, session: AsyncSession):
+    await session.execute(
+        update(Player)
+        .where(Player.login == user_login)
+        .values(avatar_filename=filename)
+    )
+    await session.commit()
 
 @connect
-def add_remember_token(user_login, token, expires_at, session: Session | None = None):
+async def add_remember_token(user_login, token, expires_at, *, session: AsyncSession):
     try:
         session.add(RememberToken(user_login=user_login, token=token, expires_at=expires_at.isoformat()))
         logging.info(f"Токен для пользователя '{user_login}' добавлен.")
@@ -125,58 +169,66 @@ def add_remember_token(user_login, token, expires_at, session: Session | None = 
         return False
 
 @connect
-def get_user_by_remember_token(token, session: Session | None = None):
-    row = session.scalar(select(RememberToken).where(RememberToken.token == token))
+async def get_user_by_remember_token(token, *, session: AsyncSession):
+    row = await session.scalar(select(RememberToken).where(RememberToken.token == token))
     if row:
         expires_at = datetime.fromisoformat(row.expires_at)
         if datetime.now() < expires_at:
             return row.user_login
         else:
-            delete_remember_token(token, session)
+            await delete_remember_token(token, session=session)
             return None
     return None
 
 @connect
-def delete_remember_token(token, session: Session | None = None):
+async def delete_remember_token(token, *, session: AsyncSession):
     try:
-        r = session.scalar(select(RememberToken).where(RememberToken.token == token))
-        session.delete(r)
-        session.commit()
-        logging.info(f"Токен '{token}' удален.")
+        row = await session.scalar(select(RememberToken).where(RememberToken.token == token))
+        if row:
+            await session.delete(row)
+            await session.commit()
+            logging.info(f"Токен '{token}' удален.")
     except Exception as e:
         logging.error(f"Ошибка при удалении токена: {e}")
 
 @connect
-def delete_all_remember_tokens(user_login, session: Session | None = None):
+async def delete_all_remember_tokens(user_login, *, session: AsyncSession):
     try:
-        r = session.scalars(select(RememberToken).where(RememberToken.user_login == user_login))
-        for token in r:
-            session.delete(token)
-        session.commit()
+        result = await session.execute(select(RememberToken).where(RememberToken.user_login == user_login))
+        tokens = result.scalars().all()
+        for token in tokens:
+            await session.delete(token)
+        await session.commit()
         logging.info(f"Все токены для пользователя '{user_login}' удалены.")
     except Exception as e:
         logging.error(f"Ошибка при удалении токенов: {e}")
 
 @connect
-def search_users(query: str, exclude_user: str = None, limit: int = 10, session: Session | None = None):
+async def search_users(query: str, exclude_user: str = None, limit: int = 10, *, session: AsyncSession):
     if not query:
         return []
     try:
         like_query = f"{query}%"
         if exclude_user:
-            stmt = select(Player.login).where(and_(Player.login.like(like_query), Player.login != exclude_user)).limit(limit)
+            stmt = select(Player.login).where(
+                and_(Player.login.like(like_query), Player.login != exclude_user)
+            ).limit(limit)
         else:
             stmt = select(Player.login).where(Player.login.like(like_query)).limit(limit)
-        rows = session.scalars(stmt)
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
         return [row for row in rows]
     except Exception as e:
         logging.error(f"Ошибка при поиске пользователей: {e}")
         return []
 
 @connect
-def get_top_players(limit: int = 3, session: Session | None = None):
+async def get_top_players(limit: int = 3, *, session: AsyncSession):
     try:
-        players = session.scalars(select(Player).order_by(Player.rang.desc()).limit(limit)).all()
+        result = await session.execute(
+            select(Player).order_by(Player.rang.desc()).limit(limit)
+        )
+        players = result.scalars().all()
         return [player.to_dict() for player in players]
     except Exception as e:
         logging.error(f"Ошибка при получении топ игроков: {e}")
@@ -185,56 +237,69 @@ def get_top_players(limit: int = 3, session: Session | None = None):
 # ----------------------------------------------------------------------------------------------------------------------
 
 @connect
-def send_game_invite_db(sender: str, receiver: str, game_id: int, session: Session | None = None) -> str:
+async def send_game_invite_db(sender: str, receiver: str, game_id: int, *, session: AsyncSession) -> str:
     if sender == receiver:
         return "self_invite"
-    existing = session.query(GameInvitation).filter_by(from_user=sender, to_user=receiver, game_id=game_id).first()
+    result = await session.execute(
+        select(GameInvitation).filter_by(from_user=sender, to_user=receiver, game_id=game_id)
+    )
+    existing = result.scalars().first()
     if existing:
         if existing.status == "pending":
             return "already_sent"
         elif existing.status == "declined":
             existing.status = "pending"
-            session.commit()
+            await session.commit()
             return "sent_again"
-    reverse_existing = session.query(GameInvitation).filter_by(from_user=receiver, to_user=sender, game_id=game_id).first()
+    result = await session.execute(
+        select(GameInvitation).filter_by(from_user=receiver, to_user=sender, game_id=game_id)
+    )
+    reverse_existing = result.scalars().first()
     if reverse_existing and reverse_existing.status == "pending":
         return "reverse_already_sent"
     new_invite = GameInvitation(from_user=sender, to_user=receiver, status="pending", game_id=game_id)
     session.add(new_invite)
-    session.commit()
+    await session.commit()
     return "sent"
 
 @connect
-def respond_game_invite_db(from_user: str, to_user: str, game_id: int, response: str, session: Session | None = None) -> bool:
-    invite = session.query(GameInvitation).filter_by(from_user=from_user, to_user=to_user, game_id=game_id, status="pending").first()
+async def respond_game_invite_db(from_user: str, to_user: str, game_id: int, response: str, *, session: AsyncSession) -> bool:
+    result = await session.execute(
+        select(GameInvitation).filter_by(from_user=from_user, to_user=to_user, game_id=game_id, status="pending")
+    )
+    invite = result.scalars().first()
     if not invite:
         return False
-    if response == "accept":
-        invite.status = "accepted"
-    else:
-        invite.status = "declined"
-    session.commit()
+    invite.status = "accepted" if response == "accept" else "declined"
+    await session.commit()
     if invite.status == "accepted":
-        db_game = session.query(Game).filter_by(game_id=game_id).first()
+        result = await session.execute(select(Game).filter_by(game_id=game_id))
+        db_game = result.scalars().first()
         if db_game and db_game.c_user is None:
             db_game.c_user = to_user
-            session.commit()
+            await session.commit()
     return True
 
 @connect
-def remove_game_invite_by_game_id(game_id: int, session: Session | None = None):
-    invites = session.query(GameInvitation).filter_by(game_id=game_id).all()
+async def remove_game_invite_by_game_id(game_id: int, *, session: AsyncSession):
+    result = await session.execute(
+        select(GameInvitation).filter_by(game_id=game_id)
+    )
+    invites = result.scalars().all()
     for inv in invites:
-        session.delete(inv)
-    session.commit()
+        await session.delete(inv)
+    await session.commit()
 
 @connect
-def send_friend_request_db(sender: str, receiver: str, session: Session | None = None) -> str:
+async def send_friend_request_db(sender: str, receiver: str, *, session: AsyncSession) -> str:
     if sender == receiver:
         return "self_request"
     try:
-        with session.begin():
-            existing = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver).first()
+        async with session.begin():
+            result = await session.execute(
+                select(FriendRelation).filter_by(user_login=sender, friend_login=receiver)
+            )
+            existing = result.scalars().first()
             if existing:
                 if existing.status == "pending":
                     return "already_sent"
@@ -245,7 +310,10 @@ def send_friend_request_db(sender: str, receiver: str, session: Session | None =
                     return "sent_again"
                 else:
                     return "error"
-            reverse_existing = session.query(FriendRelation).filter_by(user_login=receiver, friend_login=sender).first()
+            result = await session.execute(
+                select(FriendRelation).filter_by(user_login=receiver, friend_login=sender)
+            )
+            reverse_existing = result.scalars().first()
             if reverse_existing:
                 if reverse_existing.status == "pending":
                     return "receiver_already_sent"
@@ -264,71 +332,78 @@ def send_friend_request_db(sender: str, receiver: str, session: Session | None =
         return "error"
 
 @connect
-def get_incoming_friend_requests_db(user: str, session: Session | None = None) -> list:
-    records = session.query(FriendRelation).filter_by(friend_login=user, status="pending").all()
+async def get_incoming_friend_requests_db(user: str, *, session: AsyncSession) -> list:
+    result = await session.execute(
+        select(FriendRelation).filter_by(friend_login=user, status="pending")
+    )
+    records = result.scalars().all()
     return [r.user_login for r in records]
 
 @connect
-def respond_friend_request_db(sender: str, receiver: str, response: str, session: Session | None = None) -> bool:
-    record = session.query(FriendRelation).filter_by(user_login=sender, friend_login=receiver, status="pending").first()
+async def respond_friend_request_db(sender: str, receiver: str, response: str, *, session: AsyncSession) -> bool:
+    result = await session.execute(
+        select(FriendRelation).filter_by(user_login=sender, friend_login=receiver, status="pending")
+    )
+    record = result.scalars().first()
     if not record:
         return False
-    if response == "accept":
-        record.status = "accepted"
-    elif response == "decline":
-        record.status = "declined"
-    else:
-        return False
-    session.commit()
+    record.status = "accepted" if response == "accept" else "declined" if response == "decline" else record.status
+    await session.commit()
     return True
 
 @connect
-def get_friends_db(user: str, session: Session | None = None) -> list:
+async def get_friends_db(user: str, *, session: AsyncSession) -> list:
     sent_query = select(FriendRelation.friend_login).where(FriendRelation.user_login == user, FriendRelation.status == "accepted")
     received_query = select(FriendRelation.user_login).where(FriendRelation.friend_login == user, FriendRelation.status == "accepted")
     union_query = union_all(sent_query, received_query)
-    friends = session.scalars(union_query).all()
+    result = await session.execute(union_query)
+    friends = result.scalars().all()
     return list(set(friends))
 
 @connect
-def remove_friend_db(user: str, friend_username: str, session: Session | None = None) -> bool:
+async def remove_friend_db(user: str, friend_username: str, *, session: AsyncSession) -> bool:
     try:
-        with session.begin():
-            relations = session.query(FriendRelation).filter(or_(and_((FriendRelation.user_login == user), (FriendRelation.friend_login == friend_username)), and_((FriendRelation.user_login == friend_username), (FriendRelation.friend_login == user)))).all()
+        async with session.begin():
+            result = await session.execute(
+                select(FriendRelation).filter(
+                    or_(
+                        and_(FriendRelation.user_login == user, FriendRelation.friend_login == friend_username),
+                        and_(FriendRelation.user_login == friend_username, FriendRelation.friend_login == user)
+                    )
+                )
+            )
+            relations = result.scalars().all()
             if not relations:
                 return False
             for rel in relations:
-                session.delete(rel)
+                await session.delete(rel)
         return True
     except Exception as e:
         logging.error(f"Ошибка при удалении друга: {e}")
         return False
 
 @connect
-def add_move(game_id: int, move_record: dict, session: Session | None = None):
+async def add_move(game_id: int, move_record: dict, *, session: AsyncSession):
     from thecheckers.redis_base import redis_client
-    import json
     redis_client.rpush(f"game:{game_id}:moves", json.dumps(move_record))
 
 @connect
-def get_game_moves_from_db(game_id, session: Session | None = None):
+async def get_game_moves_from_db(game_id, *, session: AsyncSession):
     from thecheckers.redis_base import redis_client
-    import json
     moves = redis_client.lrange(f"game:{game_id}:moves", 0, -1)
     return [json.loads(m.decode('utf-8')) for m in moves]
 
 @connect
-def persist_game_data(game_id, session: Session | None = None):
+async def persist_game_data(game_id, *, session: AsyncSession):
     from thecheckers.redis_base import redis_client
-    import json
-    from thecheckers.models import Game as DBGame, GameMove
     board_state_key = f"game:{game_id}:board_state"
     moves_key = f"game:{game_id}:moves"
     board_state = redis_client.get(board_state_key)
-    db_game = session.query(DBGame).filter(DBGame.game_id == game_id).first()
+    result = await session.execute(select(Game).filter_by(game_id=game_id))
+    db_game = result.scalars().first()
     if db_game and board_state is not None:
         db_game.board_state = board_state.decode('utf-8')
-        session.commit()
+        await session.commit()
     moves = redis_client.lrange(moves_key, 0, -1)
     for move in moves:
         move_record = json.loads(move.decode('utf-8'))
@@ -343,98 +418,109 @@ def persist_game_data(game_id, session: Session | None = None):
             promotion=move_record['promotion']
         )
         session.add(new_move)
-    session.commit()
+    await session.commit()
     redis_client.delete(board_state_key)
     redis_client.delete(moves_key)
 
 @connect
-def get_incoming_game_invitations_db(user: str, session: Session | None = None) -> list:
-    records = session.query(GameInvitation).filter_by(to_user=user, status="pending").all()
+async def get_incoming_game_invitations_db(user: str, *, session: AsyncSession) -> list:
+    result = await session.execute(
+        select(GameInvitation).filter_by(to_user=user, status="pending")
+    )
+    records = result.scalars().all()
     invites = []
     for invite in records:
-        room = session.query(Room).filter_by(room_id=invite.game_id).first()
+        room_result = await session.execute(select(Room).filter_by(room_id=invite.game_id))
+        room = room_result.scalars().first()
         if room:
             invites.append({"from_user": invite.from_user, "game_id": invite.game_id})
         else:
-            session.delete(invite)
-            session.commit()
+            await session.delete(invite)
+            await session.commit()
     return invites
 
 @connect
-def create_room_db(room_id, creator, delete_flag, session: Session | None = None):
+async def create_room_db(room_id, creator, delete_flag, *, session: AsyncSession):
     room = Room(room_id=room_id, room_creator=creator, delete_after_start=delete_flag)
     session.add(room)
-    session.commit()
+    await session.commit()
     return room
 
 @connect
-def get_room_by_room_id_db(room_id, session: Session | None = None):
-    return session.query(Room).filter_by(room_id=room_id).first()
+async def get_room_by_room_id_db(room_id, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    return result.scalars().first()
 
 @connect
-def update_room_occupant_db(room_id, occupant_login, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def update_room_occupant_db(room_id, occupant_login, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
         return None
     room.occupant = occupant_login
-    session.commit()
+    await session.commit()
     return room
 
 @connect
-def update_room_game_db(room_id, new_game_id, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def update_room_game_db(room_id, new_game_id, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
         return None
     room.game_id = new_game_id
-    session.commit()
+    await session.commit()
     return room
 
 @connect
-def leave_room_db(room_id, user, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def leave_room_db(room_id, user, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
         return False
     if room.room_creator == user:
         if room.occupant:
             room.room_creator = room.occupant
             room.occupant = None
-            session.commit()
+            await session.commit()
             return True
         else:
-            session.delete(room)
-            session.commit()
+            await session.delete(room)
+            await session.commit()
             return True
     elif room.occupant == user:
         room.occupant = None
-        session.commit()
+        await session.commit()
         return True
     return False
 
 @connect
-def delete_room_db(room_id, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def delete_room_db(room_id, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if room:
-        session.delete(room)
-        session.commit()
+        await session.delete(room)
+        await session.commit()
         return True
     return False
 
 @connect
-def kick_user_from_room_db(room_id, kicked_user, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def kick_user_from_room_db(room_id, kicked_user, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
         return False
     if room.room_creator == kicked_user:
         return False
     if room.occupant == kicked_user:
         room.occupant = None
-        session.commit()
+        await session.commit()
         return True
     return False
 
 @connect
-def transfer_room_leadership_db(room_id, new_leader, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def transfer_room_leadership_db(room_id, new_leader, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
         return False
     if room.occupant != new_leader:
@@ -442,21 +528,25 @@ def transfer_room_leadership_db(room_id, new_leader, session: Session | None = N
     old_leader = room.room_creator
     room.room_creator = new_leader
     room.occupant = old_leader
-    session.commit()
+    await session.commit()
     return True
 
 @connect
-def get_outgoing_game_invitations_db(user: str, room_id: int, session: Session | None = None):
-    records = session.query(GameInvitation).filter(
-        GameInvitation.from_user == user,
-        GameInvitation.game_id == room_id,
-        GameInvitation.status.in_(["pending", "declined"])
-    ).all()
+async def get_outgoing_game_invitations_db(user: str, room_id: int, *, session: AsyncSession):
+    result = await session.execute(
+        select(GameInvitation).filter(
+            GameInvitation.from_user == user,
+            GameInvitation.game_id == room_id,
+            GameInvitation.status.in_(["pending", "declined"])
+        )
+    )
+    records = result.scalars().all()
     return {r.to_user: r.status for r in records}
 
 @connect
-def toggle_room_color_choice(room_id: int, user: str, color: str, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def toggle_room_color_choice(room_id: int, user: str, color: str, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
         return {"error": "Комната не найдена"}
     if user not in [room.room_creator, room.occupant]:
@@ -464,7 +554,7 @@ def toggle_room_color_choice(room_id: int, user: str, color: str, session: Sessi
     if color == "w":
         if room.chosen_white == user:
             room.chosen_white = None
-            session.commit()
+            await session.commit()
             return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
         else:
             if room.chosen_white is not None and room.chosen_white != user:
@@ -472,12 +562,12 @@ def toggle_room_color_choice(room_id: int, user: str, color: str, session: Sessi
             if room.chosen_black == user:
                 room.chosen_black = None
             room.chosen_white = user
-            session.commit()
+            await session.commit()
             return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
     elif color == "b":
         if room.chosen_black == user:
             room.chosen_black = None
-            session.commit()
+            await session.commit()
             return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
         else:
             if room.chosen_black is not None and room.chosen_black != user:
@@ -485,49 +575,44 @@ def toggle_room_color_choice(room_id: int, user: str, color: str, session: Sessi
             if room.chosen_white == user:
                 room.chosen_white = None
             room.chosen_black = user
-            session.commit()
+            await session.commit()
             return {"chosen_white": room.chosen_white, "chosen_black": room.chosen_black}
     else:
         return {"error": "Неверный цвет"}
 
 @connect
-def get_room_by_user(username, session=None):
-    close_session = False
-    if session is None:
-        session = SessionLocal()
-        close_session = True
-
-    room_obj = session.query(Room).filter(
-        (Room.room_creator == username) | (Room.occupant == username)
-    ).first()
-
-    if close_session:
-        session.close()
+async def get_room_by_user(username, *, session: AsyncSession):
+    result = await session.execute(
+        select(Room).filter((Room.room_creator == username) | (Room.occupant == username))
+    )
+    room_obj = result.scalars().first()
     return room_obj
 
 @connect
-def update_room_delete_flag(room_id: int, delete_flag: bool, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def update_room_delete_flag(room_id: int, delete_flag: bool, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if not room:
          return {"error": "Комната не найдена"}
     room.delete_after_start = delete_flag
-    session.commit()
+    await session.commit()
     return {"delete_after_start": room.delete_after_start}
 
 @connect
-def delete_room_if_flag_set(room_id: int, session: Session | None = None):
-    room = session.query(Room).filter_by(room_id=room_id).first()
+async def delete_room_if_flag_set(room_id: int, *, session: AsyncSession):
+    result = await session.execute(select(Room).filter_by(room_id=room_id))
+    room = result.scalars().first()
     if room and room.delete_after_start:
-         session.delete(room)
-         session.commit()
+         await session.delete(room)
+         await session.commit()
          return True
     return False
 
 @connect
-def update_user_default_delete_flag(user_login, flag, session: Session | None = None):
-    session.execute(
+async def update_user_default_delete_flag(user_login, flag, *, session: AsyncSession):
+    await session.execute(
         update(Player)
         .where(Player.login == user_login)
         .values(default_delete_after_start=flag)
     )
-    session.commit()
+    await session.commit()

@@ -4,8 +4,11 @@ import hmac
 import hashlib
 import time
 import secrets
-
 import werkzeug.urls
+from sqlalchemy import URL
+import asyncio
+from thecheckers.base import async_main
+
 werkzeug.urls.url_encode = werkzeug.urls.urlencode
 
 import markupsafe
@@ -32,7 +35,6 @@ from flask import (Flask,
                    flash,
                    make_response)
 from flask_wtf.csrf import CSRFProtect
-from thecheckers.base import init_db
 from thecheckers.game import (get_game_status_internally,
                   find_waiting_game_in_db,
                   update_game_with_user_in_db,
@@ -84,7 +86,7 @@ def home():
     user_is_registered = False
     room_id = session.get('room_id')
     if room_id:
-        db_session = base.SessionLocal()
+        db_session = base.async_session()
         room_obj = base.get_room_by_room_id_db(room_id, session=db_session)
         db_session.close()
         if not room_obj:
@@ -214,15 +216,15 @@ def login():
     return render_template('login.html')
 
 @app.route('/profile/<username>')
-def profile(username):
+async def profile(username):
     if not utils.is_valid_username(username):
         abort(404)
     if username.startswith('ghost'):
         abort(403)
-    user_row = base.get_user_by_login(username)
+    user_row = await base.get_user_by_login(username)
     if user_row:
         user = dict(user_row)
-        user_history = base.get_user_history(username)
+        user_history = await base.get_user_history(username)
         wins = 0
         losses = 0
         draws = 0
@@ -236,9 +238,9 @@ def profile(username):
         total_games = wins + losses + draws
         current_user = session.get('user')
         is_own_profile = (username == current_user)
+        room_id = session.get('room_id')
         in_game = False
         game_id = None
-        room_id = session.get('room_id')
         if current_user and session.get('game_id'):
             try:
                 game_id_int = int(session.get('game_id'))
@@ -249,7 +251,7 @@ def profile(username):
                         game_id = game_id_int
             except (ValueError, TypeError):
                 in_game = False
-        avatar_filename = user['avatar_filename']
+        avatar_filename = user.get('avatar_filename')
         if avatar_filename:
             user_avatar_url = url_for('static', filename='avatars/' + avatar_filename)
         else:
@@ -262,8 +264,8 @@ def profile(username):
                                losses=losses,
                                draws=draws,
                                is_own_profile=is_own_profile,
-                               in_game=False,
-                               game_id=None,
+                               in_game=in_game,
+                               game_id=game_id,
                                room_id=room_id,
                                current_user_login=current_user,
                                user_history=user_history,
@@ -1024,12 +1026,12 @@ def get_friend_requests():
 
 @app.route("/get_notifications", methods=["GET"])
 @csrf.exempt
-def get_notifications():
+async def get_notifications():
     if 'user' not in session:
         return jsonify({"error": "Не авторизован"}), 403
     receiver = session.get("user")
-    friend_requests = base.get_incoming_friend_requests_db(receiver)
-    game_invitations = base.get_incoming_game_invitations_db(receiver)
+    friend_requests = await base.get_incoming_friend_requests_db(receiver)
+    game_invitations = await base.get_incoming_game_invitations_db(receiver)
     return jsonify({"friend_requests": friend_requests, "game_invitations": game_invitations}), 200
 
 @app.route("/get_friends", methods=["GET"])
@@ -1179,7 +1181,7 @@ def respond_game_invite():
     if not updated:
         return jsonify({"error": "Приглашение не найдено"}), 400
     if response_ == "accept":
-        db_session = base.SessionLocal()
+        db_session = base.async_session()
         base.update_room_occupant_db(int(room_id), user_login, session=db_session)
         db_session.close()
         session['room_id'] = int(room_id)
@@ -1193,7 +1195,7 @@ def check_room_status():
     room_id = request.args.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
-    db_session = base.SessionLocal()
+    db_session = base.async_session()
     room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
     if not room_obj:
         db_session.close()
@@ -1257,7 +1259,7 @@ def start_room_game():
     room_id = data.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
-    db_session = base.SessionLocal()
+    db_session = base.async_session()
     room_obj = base.get_room_by_room_id_db(int(room_id), session=db_session)
     if not room_obj:
         db_session.close()
@@ -1314,7 +1316,7 @@ def new_room():
 
     import random
     room_id_candidate = random.randint(1, 99999999)
-    db_session = base.SessionLocal()
+    db_session = base.async_session()
     existing = base.get_room_by_room_id_db(room_id_candidate, session=db_session)
     while existing:
         room_id_candidate = random.randint(1, 99999999)
@@ -1335,7 +1337,7 @@ def show_room(room_id):
         flash("Пользователь не авторизован", "error")
         return redirect(url_for('login'))
     user_login = session.get('user')
-    db_session = base.SessionLocal()
+    db_session = base.async_session()
     room_obj = base.get_room_by_room_id_db(room_id, session=db_session)
     db_session.close()
     if not room_obj:
@@ -1545,6 +1547,14 @@ def update_room_delete_flag_route():
         base.update_user_default_delete_flag(user_login, bool(delete_flag))
     return jsonify(result), 200
 
+
 if __name__ == "__main__":
+    DATABASE_URL = URL.create(
+        "postgresql+asyncpg",
+        username="postgres",
+        password="951753aA.",
+        host="localhost",
+        database="postgres",
+        port="5432")
+    asyncio.run(async_main(DATABASE_URL))
     app.run(debug=True)
-    init_db()
