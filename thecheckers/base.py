@@ -1,13 +1,19 @@
 from datetime import datetime
-from sqlalchemy import select, update, and_, or_, union_all, func, create_engine
+from sqlalchemy import select, update, and_, or_, union_all, func, create_engine, URL
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 import logging
 from thecheckers import utils
 from thecheckers.models import Base, Player, CompletedGames, RememberToken, FriendRelation, GameInvitation, Game, Room
 
-DATABASE_URL = "postgresql://postgres:951753aA.@localhost:5432/postgres"
-#DATABASE_URL = "postgresql://J0muty:951753aA.!@ogustidid.beget.app:5432/Beget"
+DATABASE_URL = URL.create(
+    "postgresql",
+    username="postgres",
+    password="951753aA.",
+    host="db",
+    database="postgres",
+    port="5432"
+)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
