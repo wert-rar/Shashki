@@ -1,6 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import logging
 import json
+import secrets
+import subprocess
+import hmac, hashlib
+from thecheckers.redis_base import get_board_state, get_moves, delete_game_keys
 from sqlalchemy import select, update, and_, or_, union_all, func, NullPool
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -11,17 +15,11 @@ from thecheckers.models import (
     GameInvitation, Game, Room, GameMove
 )
 
-DATABASE_URL = URL.create(
-    "postgresql+asyncpg",
-    username="postgres",
-    password="951753aA.",
-    host="localhost",
-    database="postgres",
-    port="5432"
-)
-
 async_session: None | AsyncSession = None
 
+# =============================================================================
+# Инициализация и подключение к базе данных
+# =============================================================================
 
 async def async_main(url):
     global async_session
@@ -29,7 +27,6 @@ async def async_main(url):
     async_session = async_sessionmaker(engine, expire_on_commit=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
 
 def connect(method):
     """
@@ -42,7 +39,6 @@ def connect(method):
             Returns:
             wrapper (callable): The decorated function. This function will handle the database session management.
     """
-
     async def wrapper(*args, **kwargs):
         async with async_session() as session:
             try:
@@ -52,10 +48,11 @@ def connect(method):
                 raise Exception(f'Ошибка при работе с базой данных: {repr(e)} args:\n{args} kwargs:\n{kwargs}')
             finally:
                 await session.close()
-
     return wrapper
 
-# ----------------------------------------------------------------------------------------------------------------------
+# =============================================================================
+# Пользовательский менеджмент (регистрация, аутентификация, профиль, статистика)
+# =============================================================================
 
 @connect
 async def check_user_exists(user_login, *, session: AsyncSession):
@@ -234,7 +231,9 @@ async def get_top_players(limit: int = 3, *, session: AsyncSession):
         logging.error(f"Ошибка при получении топ игроков: {e}")
         return []
 
-# ----------------------------------------------------------------------------------------------------------------------
+# =============================================================================
+# Управление игровыми приглашениями
+# =============================================================================
 
 @connect
 async def send_game_invite_db(sender: str, receiver: str, game_id: int, *, session: AsyncSession) -> str:
@@ -289,6 +288,10 @@ async def remove_game_invite_by_game_id(game_id: int, *, session: AsyncSession):
     for inv in invites:
         await session.delete(inv)
     await session.commit()
+
+# =============================================================================
+# Управление запросами в друзья
+# =============================================================================
 
 @connect
 async def send_friend_request_db(sender: str, receiver: str, *, session: AsyncSession) -> str:
@@ -382,29 +385,30 @@ async def remove_friend_db(user: str, friend_username: str, *, session: AsyncSes
         logging.error(f"Ошибка при удалении друга: {e}")
         return False
 
+# =============================================================================
+# Управление игровыми данными и ходами
+# =============================================================================
+
 @connect
 async def add_move(game_id: int, move_record: dict, *, session: AsyncSession):
-    from thecheckers.redis_base import redis_client
-    redis_client.rpush(f"game:{game_id}:moves", json.dumps(move_record))
+    from thecheckers.redis_base import add_move
+    add_move(game_id, move_record)
 
 @connect
 async def get_game_moves_from_db(game_id, *, session: AsyncSession):
-    from thecheckers.redis_base import redis_client
-    moves = redis_client.lrange(f"game:{game_id}:moves", 0, -1)
-    return [json.loads(m.decode('utf-8')) for m in moves]
+    from thecheckers.redis_base import get_game_moves
+    return get_game_moves(game_id)
 
 @connect
 async def persist_game_data(game_id, *, session: AsyncSession):
-    from thecheckers.redis_base import redis_client
-    board_state_key = f"game:{game_id}:board_state"
-    moves_key = f"game:{game_id}:moves"
-    board_state = redis_client.get(board_state_key)
+    board_state = get_board_state(game_id)
     result = await session.execute(select(Game).filter_by(game_id=game_id))
     db_game = result.scalars().first()
     if db_game and board_state is not None:
         db_game.board_state = board_state.decode('utf-8')
         await session.commit()
-    moves = redis_client.lrange(moves_key, 0, -1)
+
+    moves = get_moves(game_id)
     for move in moves:
         move_record = json.loads(move.decode('utf-8'))
         new_move = GameMove(
@@ -419,25 +423,114 @@ async def persist_game_data(game_id, *, session: AsyncSession):
         )
         session.add(new_move)
     await session.commit()
-    redis_client.delete(board_state_key)
-    redis_client.delete(moves_key)
+    delete_game_keys(game_id)
 
 @connect
-async def get_incoming_game_invitations_db(user: str, *, session: AsyncSession) -> list:
+async def get_active_db_game(game_id, *, session: AsyncSession):
+    result = await session.execute(select(DBGame).filter(DBGame.game_id == game_id))
+    db_game = result.scalars().first()
+    if not db_game or db_game.status == 'completed':
+        return None
+    return db_game
+
+@connect
+async def find_waiting_game_db(*, session: AsyncSession):
     result = await session.execute(
-        select(GameInvitation).filter_by(to_user=user, status="pending")
+        select(DBGame).where(
+            DBGame.status == 'unstarted',
+            DBGame.c_user.is_(None),
+            DBGame.f_user.isnot(None)
+        ).order_by(DBGame.game_id.asc())
     )
-    records = result.scalars().all()
-    invites = []
-    for invite in records:
-        room_result = await session.execute(select(Room).filter_by(room_id=invite.game_id))
-        room = room_result.scalars().first()
-        if room:
-            invites.append({"from_user": invite.from_user, "game_id": invite.game_id})
+    return result.scalar()
+
+@connect
+async def update_game_with_user_db(game_id: int, user_login: str, color: str, *, session: AsyncSession):
+    result = await session.execute(select(DBGame).where(DBGame.game_id == game_id))
+    db_game = result.scalar()
+    if not db_game:
+        return False
+    if db_game.f_user == user_login or db_game.c_user == user_login:
+        return False
+    if color == 'w':
+        if db_game.f_user is None:
+            db_game.f_user = user_login
+            if db_game.c_user:
+                db_game.status = 'current'
         else:
-            await session.delete(invite)
+            return False
+    elif color == 'b':
+        if db_game.c_user is None:
+            db_game.c_user = user_login
+            if db_game.f_user:
+                db_game.status = 'current'
+        else:
+            return False
+    else:
+        return False
+    await session.commit()
+    return True
+
+@connect
+async def create_new_game_record(user_login, forced_game_id, pieces, *, session: AsyncSession):
+    import random, json
+    if forced_game_id is not None:
+        result = await session.execute(select(DBGame).where(DBGame.game_id == forced_game_id))
+        existing_game = result.scalar()
+        if not existing_game:
+            new_db_game = DBGame(
+                game_id=forced_game_id,
+                f_user=user_login,
+                c_user=None,
+                status='unstarted',
+                board_state=json.dumps(pieces)
+            )
+            session.add(new_db_game)
             await session.commit()
-    return invites
+            return forced_game_id
+        else:
+            return existing_game.game_id
+    while True:
+        game_id_candidate = random.randint(1, 99999999)
+        result = await session.execute(select(DBGame).where(DBGame.game_id == game_id_candidate))
+        exists = result.scalar()
+        if not exists:
+            break
+    new_db_game = DBGame(
+        game_id=game_id_candidate,
+        f_user=user_login,
+        c_user=None,
+        status='unstarted',
+        board_state=json.dumps(pieces)
+    )
+    session.add(new_db_game)
+    await session.commit()
+    return game_id_candidate
+
+@connect
+async def remove_game_record(game_id, *, session: AsyncSession):
+    result = await session.execute(select(DBGame).where(DBGame.game_id == game_id))
+    db_game = result.scalar()
+    if db_game:
+        db_game.status = 'completed'
+        await session.commit()
+
+@connect
+async def get_game_status_db(game_id, *, session: AsyncSession):
+    result = await session.execute(select(DBGame.status).where(DBGame.game_id == game_id))
+    return result.scalar()
+
+@connect
+async def update_game_status_db(game_id, new_status, *, session: AsyncSession):
+    result = await session.execute(select(DBGame).where(DBGame.game_id == game_id))
+    db_game = result.scalar()
+    if db_game:
+        db_game.status = new_status
+        await session.commit()
+
+# =============================================================================
+# Управление комнатами (Room Management)
+# =============================================================================
 
 @connect
 async def create_room_db(room_id, creator, delete_flag, *, session: AsyncSession):
@@ -616,3 +709,23 @@ async def update_user_default_delete_flag(user_login, flag, *, session: AsyncSes
         .values(default_delete_after_start=flag)
     )
     await session.commit()
+
+# =============================================================================
+# Управление токенами "Запомнить меня" и загрузка пользователя по токену
+# =============================================================================
+
+@connect
+async def load_user_from_remember_token(flask_session, flask_request, flask_g, *, session: AsyncSession):
+    if 'user' not in flask_session:
+        token = flask_request.cookies.get('remember_token')
+        if token:
+            user_login = await get_user_by_remember_token(token, session=session)
+            if user_login:
+                flask_session['user'] = user_login
+                flask_session.permanent = True
+                new_token = secrets.token_urlsafe(64)
+                new_expires_at = datetime.now() + timedelta(days=30)
+                if await add_remember_token(user_login, new_token, new_expires_at, session=session):
+                    await delete_remember_token(token, session=session)
+                    flask_g.new_remember_token = new_token
+                    flask_g.new_expires_at = new_expires_at

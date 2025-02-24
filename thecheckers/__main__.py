@@ -5,26 +5,31 @@ import hashlib
 import time
 import secrets
 import werkzeug.urls
-from sqlalchemy import URL
 import asyncio
-from thecheckers.base import async_main
-
+import random
 werkzeug.urls.url_encode = werkzeug.urls.urlencode
-
 import markupsafe
 import flask
 flask.Markup = markupsafe.Markup
-
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from thecheckers import game_engine, utils
 from thecheckers import base
-from datetime import (timedelta,
-                      datetime,
-                      timezone)
+from models import Game as DBGame
+from sqlalchemy import URL
 from flask import g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
+
+
+from thecheckers import (game_engine,
+                         utils,
+                         compute_position_signature)
+
+from datetime import (timedelta,
+                      datetime,
+                      timezone)
+
 from flask import (Flask,
                    render_template,
                    request,
@@ -34,7 +39,7 @@ from flask import (Flask,
                    session, abort,
                    flash,
                    make_response)
-from flask_wtf.csrf import CSRFProtect
+
 from thecheckers.game import (get_game_status_internally,
                   find_waiting_game_in_db,
                   update_game_with_user_in_db,
@@ -42,10 +47,14 @@ from thecheckers.game import (get_game_status_internally,
                   get_or_create_ephemeral_game,
                   all_games_lock,
                   all_games_dict,
-                  get_db_pieces,
-                  update_db_pieces,
                   create_new_game_in_db,
                   update_game_status_in_db)
+
+from thecheckers.redis_base import (get_db_pieces,
+                                    get_move_status,
+                                    update_db_pieces,
+                                    set_move_status)
+
 
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
@@ -86,9 +95,7 @@ async def home():
     user_is_registered = False
     room_id = session.get('room_id')
     if room_id:
-        db_session = base.async_session()
-        room_obj = await base.get_room_by_room_id_db(room_id, session=db_session)
-        db_session.close()
+        room_obj = await base.get_room_by_room_id_db(room_id)
         if not room_obj:
             session.pop('room_id', None)
             room_id = None
@@ -104,7 +111,7 @@ async def home():
 async def get_board(game_id, user_login):
     if session.get('user') != user_login:
         abort(403)
-    game = get_or_create_ephemeral_game(game_id)
+    game = await get_or_create_ephemeral_game(game_id)
     if not game:
         abort(404)
     user_color = 'w' if user_login == game.f_user else 'b' if user_login == game.c_user else None
@@ -133,7 +140,6 @@ async def get_board(game_id, user_login):
     else:
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
         opponent_rank = "0"
-    from thecheckers.redis_base import get_move_status
     move_status = get_move_status(game_id)
     return render_template('board.html',
                            user_login=user_login,
@@ -307,7 +313,7 @@ def internal_server_error(e):
 
 @app.route('/start_game')
 @csrf.exempt
-def start_game():
+async def start_game():
     user_login = utils.ensure_user()
     game_id = session.get('game_id')
     if game_id:
@@ -327,7 +333,7 @@ def start_game():
 
                 session.pop('game_id', None)
                 session.pop('color', None)
-                new_game_id = create_new_game_in_db(user_login)
+                new_game_id = await create_new_game_in_db(user_login)
                 if new_game_id:
                     session['game_id'] = new_game_id
                     session['color'] = 'w'
@@ -343,11 +349,11 @@ def start_game():
                     session['search_start_time'] = time.time()
                     return render_template('waiting.html', game_id=game_id_int, user_login=user_login)
 
-    waiting_game = find_waiting_game_in_db()
+    waiting_game = await find_waiting_game_in_db()
     if waiting_game:
         color = 'w' if waiting_game.f_user is None else 'b'
         try:
-            updated = update_game_with_user_in_db(waiting_game.game_id, user_login, color)
+            updated = await update_game_with_user_in_db(waiting_game.game_id, user_login, color)
             if updated:
                 session['game_id'] = waiting_game.game_id
                 session['color'] = color
@@ -355,7 +361,7 @@ def start_game():
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('home'))
-    game_id_new = create_new_game_in_db(user_login)
+    game_id_new = await create_new_game_in_db(user_login)
     if not game_id_new:
         flash('Не удалось создать игру.', 'error')
         return redirect(url_for('home'))
@@ -366,7 +372,7 @@ def start_game():
         del rematch_responses[user_login]
     if user_login in rematch_redirect:
         del rematch_redirect[user_login]
-    g_obj = get_or_create_ephemeral_game(session['game_id'])
+    g_obj = await get_or_create_ephemeral_game(session['game_id'])
     if g_obj and g_obj.f_user and g_obj.c_user:
         return redirect(url_for('get_board', game_id=session['game_id'], user_login=user_login))
     else:
@@ -375,7 +381,7 @@ def start_game():
 
 @app.route("/check_game_status", methods=["GET"])
 @csrf.exempt
-def check_game_status_route():
+async def check_game_status_route():
     game_id = session.get('game_id')
     user_login = session.get('user')
     if not game_id:
@@ -389,7 +395,7 @@ def check_game_status_route():
         elapsed = time.time() - search_start_time
         if elapsed >= 600:
             return jsonify({"status": "timeout"}), 200
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"status": "game_not_found"}), 404
     if game.status in ['w3', 'b3', 'n', 'ns1']:
@@ -399,7 +405,7 @@ def check_game_status_route():
             'game_id': game_id_int
         }
     else:
-        db_status = get_game_status_internally(game_id_int)
+        db_status = await get_game_status_internally(game_id_int)
         if db_status == 'current':
             response = {
                 'status': 'active',
@@ -502,7 +508,6 @@ def move():
             game.no_capture_moves = 0
             game.status = f"{current_player}4"
             game.must_capture_piece = result['next_capture_piece']
-            from thecheckers.redis_base import set_move_status
             set_move_status(game_id_int, game.status)
             return jsonify({
                 "status_": game.status,
@@ -524,7 +529,6 @@ def move():
             game.moves_count += 1
             game.must_capture_piece = None
             game.switch_turn()
-            from thecheckers.game_engine import compute_position_signature
             sig = compute_position_signature(updated_pieces, game.current_player)
             if sig in game.position_history:
                 game.position_history[sig] += 1
@@ -1082,27 +1086,15 @@ async def get_invited_friends():
 
 @app.before_request
 async def load_user_from_remember_token():
-    if 'user' not in session:
-        token = request.cookies.get('remember_token')
-        if token:
-            user_login = await base.get_user_by_remember_token(token)
-            if user_login:
-                session['user'] = user_login
-                session.permanent = True
-                new_token = secrets.token_urlsafe(64)
-                new_expires_at = datetime.now() + timedelta(days=30)
-                if await base.add_remember_token(user_login, new_token, new_expires_at):
-                    await base.delete_remember_token(token)
-                    g.new_remember_token = new_token
-                    g.new_expires_at = new_expires_at
+    await base.load_user_from_remember_token(session, request, g)
 
 @app.after_request
-def set_new_remember_token(response):
-    if hasattr(g, 'new_remember_token') and g.new_remember_token:
+async def apply_new_remember_token(response, flask_g, *, session: AsyncSession):
+    if hasattr(flask_g, 'new_remember_token') and flask_g.new_remember_token:
         response.set_cookie(
             'remember_token',
-            g.new_remember_token,
-            expires=g.new_expires_at,
+            flask_g.new_remember_token,
+            expires=flask_g.new_expires_at,
             httponly=True,
             secure=True,
             samesite='Lax'
@@ -1181,9 +1173,7 @@ async def respond_game_invite():
     if not updated:
         return jsonify({"error": "Приглашение не найдено"}), 400
     if response_ == "accept":
-        db_session = base.async_session()
-        await base.update_room_occupant_db(int(room_id), user_login, session=db_session)
-        db_session.close()
+        await base.update_room_occupant_db(int(room_id), user_login)
         session['room_id'] = int(room_id)
         return jsonify({"message": "Приглашение принято", "room_id": room_id}), 200
     else:
@@ -1195,15 +1185,13 @@ async def check_room_status():
     room_id = request.args.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
-    db_session = base.async_session()
-    room_obj = await base.get_room_by_room_id_db(int(room_id), session=db_session)
+
+    room_obj = await base.get_room_by_room_id_db(int(room_id))
     if not room_obj:
-        db_session.close()
         session.pop("room_id", None)
         return jsonify({"status": "deleted", "redirect": "/"}), 200
     user = session.get("user")
     if user != room_obj.room_creator and user != room_obj.occupant:
-        db_session.close()
         session.pop("room_id", None)
         return jsonify({"status": "kicked", "redirect": "/"}), 200
 
@@ -1214,11 +1202,10 @@ async def check_room_status():
     game_id_db = room_obj.game_id
     db_status = None
     if game_id_db:
-        db_status = get_game_status_internally(game_id_db)
+        db_status = await get_game_status_internally(game_id_db)
         if creator and occupant and db_status == 'unstarted':
-            update_game_status_in_db(game_id_db, 'current')
+            await update_game_status_in_db(game_id_db, 'current')
             db_status = 'current'
-    db_session.close()
 
     response = {
         "creator": creator,
@@ -1245,12 +1232,14 @@ async def cancel_room():
     game_id = data.get("game_id")
     if not game_id:
         return jsonify({"error": "Отсутствует game_id"}), 400
-    game_obj = get_or_create_ephemeral_game(int(game_id))
+    game_obj = await get_or_create_ephemeral_game(int(game_id))
     if not game_obj or game_obj.f_user != user_login:
         return jsonify({"error": "Комната не найдена или нет прав доступа"}), 400
-    remove_game_in_db(int(game_id))
+    await remove_game_in_db(int(game_id))
     await base.remove_game_invite_by_game_id(int(game_id))
+
     return jsonify({"message": "Комната отменена"}), 200
+
 
 @app.route("/start_room_game", methods=["POST"])
 @csrf.exempt
@@ -1259,15 +1248,11 @@ async def start_room_game():
     room_id = data.get("room_id")
     if not room_id:
         return jsonify({"error": "Отсутствует room_id"}), 400
-    db_session = base.async_session()
-    room_obj = await base.get_room_by_room_id_db(int(room_id), session=db_session)
+    room_obj = await base.get_room_by_room_id_db(int(room_id))
     if not room_obj:
-        db_session.close()
         return jsonify({"error": "Комната не найдена"}), 404
     if not (room_obj.occupant and room_obj.room_creator and room_obj.chosen_white and room_obj.chosen_black):
-        db_session.close()
         return jsonify({"error": "Недостаточно игроков или не выбраны цвета"}), 400
-
     if room_obj.chosen_white == room_obj.room_creator and room_obj.chosen_black == room_obj.occupant:
         f_user = room_obj.room_creator
         c_user = room_obj.occupant
@@ -1275,21 +1260,15 @@ async def start_room_game():
         f_user = room_obj.occupant
         c_user = room_obj.room_creator
     else:
-        db_session.close()
         return jsonify({"error": "Неверный выбор цветов"}), 400
-
-    new_game_id = create_new_game_in_db(f_user)
+    new_game_id = await create_new_game_in_db(f_user)
     if not new_game_id:
-        db_session.close()
         return jsonify({"error": "Не удалось создать игру"}), 500
-    from models import Game as DBGame
-    db_game = db_session.query(DBGame).filter(DBGame.game_id == new_game_id).first()
+    db_game = await base.get_game_by_id(new_game_id)
     if db_game and not db_game.c_user:
-        db_game.c_user = c_user
-        db_session.commit()
-    await base.update_room_game_db(int(room_id), new_game_id, session=db_session)
-    db_session.close()
-    game_obj = get_or_create_ephemeral_game(new_game_id)
+        await base.update_game_with_user_db(new_game_id, c_user, 'b')
+    await base.update_room_game_db(int(room_id), new_game_id)
+    game_obj = await get_or_create_ephemeral_game(new_game_id)
     if game_obj:
         with game_obj.lock:
             game_obj.status = "w1"
@@ -1313,23 +1292,21 @@ async def new_room():
     if session.get("room_id"):
         flash("Вы уже находитесь в комнате", "info")
         return redirect(url_for('home'))
-
-    import random
     room_id_candidate = random.randint(1, 99999999)
-    db_session = base.async_session()
-    existing = await base.get_room_by_room_id_db(room_id_candidate, session=db_session)
+    existing = await base.get_room_by_room_id_db(room_id_candidate)
     while existing:
         room_id_candidate = random.randint(1, 99999999)
-        existing = await base.get_room_by_room_id_db(room_id_candidate, session=db_session)
+        existing = await base.get_room_by_room_id_db(room_id_candidate)
+
     user = await base.get_user_by_login(user_login)
     default_flag = user.get("default_delete_after_start", False) if user else False
-    created_room = await base.create_room_db(room_id_candidate, user_login, default_flag, session=db_session)
-    db_session.close()
+    created_room = await base.create_room_db(room_id_candidate, user_login, default_flag)
     if not created_room:
         flash('Не удалось создать комнату', 'error')
         return redirect(url_for('home'))
     session['room_id'] = room_id_candidate
     return redirect(url_for('show_room', room_id=room_id_candidate))
+
 
 @app.route("/room/<int:room_id>")
 async def show_room(room_id):
@@ -1337,9 +1314,7 @@ async def show_room(room_id):
         flash("Пользователь не авторизован", "error")
         return redirect(url_for('login'))
     user_login = session.get('user')
-    db_session = base.async_session()
-    room_obj = await base.get_room_by_room_id_db(room_id, session=db_session)
-    db_session.close()
+    room_obj = await base.get_room_by_room_id_db(room_id)
     if not room_obj:
         flash("Комната не найдена", "error")
         return redirect(url_for('home'))
@@ -1367,6 +1342,7 @@ async def show_room(room_id):
         chosen_black=room_obj.chosen_black,
         delete_after_start=room_obj.delete_after_start
     )
+
 
 @app.route('/get_current_user')
 def get_current_user():
@@ -1556,5 +1532,5 @@ if __name__ == "__main__":
         host="localhost",
         database="postgres",
         port="5432")
-    asyncio.run(async_main(DATABASE_URL))
+    asyncio.run(base.async_main(DATABASE_URL))
     app.run(debug=True)

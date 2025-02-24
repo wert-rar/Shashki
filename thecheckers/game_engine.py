@@ -1,4 +1,5 @@
 from thecheckers import base
+import datetime
 from thecheckers.game import update_game_status_in_db
 from thecheckers.redis_base import clear_move_status
 
@@ -219,7 +220,6 @@ def finalize_game(game, user_login):
             game.final_result_moves[u] = result_move
             if not user_is_ghost:
                 base.update_user_rang(u, rating_change)
-                import datetime
                 date_end = datetime.datetime.now().isoformat()
                 base.add_completed_game(u, game.game_id, date_end, user_old_rating, new_rating, rating_change, result_move)
         game.rank_updated = True
