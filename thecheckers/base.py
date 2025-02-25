@@ -12,8 +12,11 @@ from sqlalchemy.engine.url import URL
 from thecheckers import utils
 from thecheckers.models import (
     Base, Player, CompletedGames, RememberToken, FriendRelation,
-    GameInvitation, Game, Room, GameMove
+    GameInvitation, Room, GameMove
 )
+from game import Game
+
+from thecheckers.models import Games as DBGame
 
 async_session: None | AsyncSession = None
 
@@ -45,9 +48,9 @@ def connect(method):
                 return await method(*args, session=session)
             except Exception as e:
                 await session.rollback()
-                raise Exception(f'Ошибка при работе с базой данных: {repr(e)} args:\n{args} kwargs:\n{kwargs}')
-            finally:
-                await session.close()
+                raise Exception(
+                    f'Ошибка при работе с базой данных: {repr(e)} args:\n{args} kwargs:\n{kwargs}'
+                )
     return wrapper
 
 # =============================================================================
@@ -341,6 +344,14 @@ async def get_incoming_friend_requests_db(user: str, *, session: AsyncSession) -
     )
     records = result.scalars().all()
     return [r.user_login for r in records]
+
+@connect
+async def get_incoming_game_invitations_db(user: str, *, session: AsyncSession) -> list:
+    result = await session.execute(
+        select(GameInvitation).filter_by(to_user=user, status="pending")
+    )
+    invites = result.scalars().all()
+    return [invite.from_user for invite in invites]
 
 @connect
 async def respond_friend_request_db(sender: str, receiver: str, response: str, *, session: AsyncSession) -> bool:

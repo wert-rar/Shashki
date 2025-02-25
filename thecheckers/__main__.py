@@ -14,46 +14,18 @@ flask.Markup = markupsafe.Markup
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from thecheckers import base
-from models import Game as DBGame
 from sqlalchemy import URL
 from flask import g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
-
-
-from thecheckers import (game_engine,
-                         utils,
-                         compute_position_signature)
-
-from datetime import (timedelta,
-                      datetime,
-                      timezone)
-
-from flask import (Flask,
-                   render_template,
-                   request,
-                   jsonify,
-                   redirect,
-                   url_for,
-                   session, abort,
-                   flash,
-                   make_response)
-
-from thecheckers.game import (get_game_status_internally,
-                  find_waiting_game_in_db,
-                  update_game_with_user_in_db,
-                  remove_game_in_db,
-                  get_or_create_ephemeral_game,
-                  all_games_lock,
-                  all_games_dict,
-                  create_new_game_in_db,
-                  update_game_status_in_db)
-
-from thecheckers.redis_base import (get_db_pieces,
-                                    get_move_status,
-                                    update_db_pieces,
-                                    set_move_status)
+from thecheckers.game_engine import *
+from thecheckers import utils
+from datetime import *
+from flask import *
+from thecheckers.game import *
+from thecheckers.redis_base import *
+from game import Game
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -314,7 +286,7 @@ def internal_server_error(e):
 @app.route('/start_game')
 @csrf.exempt
 async def start_game():
-    user_login = utils.ensure_user()
+    user_login = await utils.ensure_user()
     game_id = session.get('game_id')
     if game_id:
         try:
@@ -434,13 +406,13 @@ async def check_game_status_route():
 
 @app.route("/move", methods=["POST"])
 @csrf.exempt
-def move():
-    def finalize_and_respond(game, user_login, game_id_int):
-        result_move, points_gained = game_engine.finalize_game(game, user_login)
+async def move():
+    async def finalize_and_respond(game, user_login, game_id_int):
+        result_move, points_gained = await finalize_game(game, user_login)
         response_data = {
             "status_": game.status,
             "pieces": get_db_pieces(game_id_int),
-            "move_history": base.get_game_moves_from_db(game_id_int),
+            "move_history": await base.get_game_moves_from_db(game_id_int),
             "result": result_move,
             "points_gained": points_gained,
             "white_countdown": int(game.white_countdown_remaining),
@@ -458,7 +430,7 @@ def move():
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
@@ -470,11 +442,11 @@ def move():
     with game.lock:
         game.update_timers()
         p = get_db_pieces(game_id_int)
-        result = game_engine.validate_move(selected_piece, new_pos, current_player, p, game)
+        result = validate_move(selected_piece, new_pos, current_player, p, game)
         if result['move_result'] == 'invalid':
             return jsonify({"error": "Invalid move"}), 400
         updated_pieces = result['new_pieces']
-        update_db_pieces(game_id_int, updated_pieces)
+        await asyncio.to_thread(update_db_pieces, game_id_int, updated_pieces)
         move_record = {
             'player': game.f_user if current_player == 'w' else game.c_user,
             'from': {'x': selected_piece['x'], 'y': selected_piece['y']},
@@ -499,10 +471,10 @@ def move():
         game.last_update_time = time.time()
         game.update_timers()
         game.move_history.append(move_record)
-        base.add_move(game_id_int, move_record)
-        game_engine.check_and_update_big_road(game, updated_pieces, current_player, result['captured'])
+        await asyncio.to_thread(base.add_move, game_id_int, move_record)
+        check_and_update_big_road(game, updated_pieces, current_player, result['captured'])
         if game.status in ['w3', 'b3']:
-            return finalize_and_respond(game, user_login, game_id_int)
+            return await finalize_and_respond(game, user_login, game_id_int)
 
         if result['move_result'] == 'continue_capture':
             game.no_capture_moves = 0
@@ -512,7 +484,7 @@ def move():
             return jsonify({
                 "status_": game.status,
                 "pieces": get_db_pieces(game_id_int),
-                "move_history": base.get_game_moves_from_db(game_id_int),
+                "move_history": await base.get_game_moves_from_db(game_id_int),
                 "multiple_capture": True,
                 "white_countdown": int(game.white_countdown_remaining),
                 "black_countdown": int(game.black_countdown_remaining)
@@ -525,7 +497,7 @@ def move():
                 game.no_capture_moves += 1
             if game.no_capture_moves >= 25:
                 game.status = "n"
-                return finalize_and_respond(game, user_login, game_id_int)
+                return await finalize_and_respond(game, user_login, game_id_int)
             game.moves_count += 1
             game.must_capture_piece = None
             game.switch_turn()
@@ -536,35 +508,36 @@ def move():
                 game.position_history[sig] = 1
             if game.position_history[sig] >= 3:
                 game.status = "n"
-                return finalize_and_respond(game, user_login, game_id_int)
+                return await finalize_and_respond(game, user_login, game_id_int)
         else:
             return jsonify({"error": "Invalid move"}), 400
         p = get_db_pieces(game_id_int)
-        if game_engine.is_all_kings(p):
+        if is_all_kings(p):
             game.status = "n"
-            return finalize_and_respond(game, user_login, game_id_int)
-        if game_engine.check_draw(p):
+            return await finalize_and_respond(game, user_login, game_id_int)
+        if check_draw(p):
             game.status = "n"
-            return finalize_and_respond(game, user_login, game_id_int)
+            return await finalize_and_respond(game, user_login, game_id_int)
         opponent_color = 'b' if current_player == 'w' else 'w'
         opponent_pieces = [x for x in p if x['color'] == (0 if opponent_color == 'w' else 1)]
         if not opponent_pieces:
             game.status = f"{current_player}3"
-            return finalize_and_respond(game, user_login, game_id_int)
-        if not game_engine.can_player_move(p, 0 if opponent_color == 'w' else 1):
+            return await finalize_and_respond(game, user_login, game_id_int)
+        if not can_player_move(p, 0 if opponent_color == 'w' else 1):
             game.status = "n"
-            return finalize_and_respond(game, user_login, game_id_int)
+            return await finalize_and_respond(game, user_login, game_id_int)
         return jsonify({
             "status_": game.status,
             "pieces": get_db_pieces(game_id_int),
-            "move_history": base.get_game_moves_from_db(game_id_int),
+            "move_history": await get_game_moves_from_db(game_id_int),
             "white_countdown": int(game.white_countdown_remaining),
             "black_countdown": int(game.black_countdown_remaining)
         })
 
+
 @app.route("/update_board", methods=["POST"])
 @csrf.exempt
-def update_board():
+async def update_board():
     global rematch_redirect, rematch_responses, pending_rematch_requests
     if not request.is_json:
         return jsonify({"error": "Request data must be in JSON format"}), 400
@@ -584,17 +557,19 @@ def update_board():
         game_id_int = int(data.get("game_id"))
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Invalid game ID"}), 400
     user_color = game.user_color(user_login)
     game.update_timers()
+    pieces = await asyncio.to_thread(get_db_pieces, game_id_int)
+    move_history = await get_game_moves_from_db(game_id_int)
     response_data = {
         "status_": game.status,
-        "pieces": get_db_pieces(game_id_int),
+        "pieces": pieces,
         "white_time": max(round(game.white_time_remaining), 0),
         "black_time": max(round(game.black_time_remaining), 0),
-        "move_history": base.get_game_moves_from_db(game_id_int),
+        "move_history": move_history,
         "white_countdown": int(game.white_countdown_remaining),
         "black_countdown": int(game.black_countdown_remaining)
     }
@@ -605,7 +580,7 @@ def update_board():
             response_data['draw_response'] = game.draw_response['response']
             game.draw_response = None
     if game.status in ['w3', 'b3', 'n', 'ns1']:
-        result_move, points_gained = game_engine.finalize_game(game, user_login)
+        result_move, points_gained = await finalize_game(game, user_login)
         response_data['points_gained'] = points_gained
         response_data['result'] = result_move
     for (req_from, req_to) in pending_rematch_requests.keys():
@@ -617,13 +592,11 @@ def update_board():
         if rematch_responses[key_response] == "decline":
             response_data["rematch_response"] = "decline"
         del rematch_responses[key_response]
-
     return jsonify(response_data)
-
 
 @app.route("/give_up", methods=["POST"])
 @csrf.exempt
-def give_up_route():
+async def give_up_route():
     try:
         data = request.json
         game_id = data.get("game_id")
@@ -634,7 +607,7 @@ def give_up_route():
             game_id_int = int(game_id)
         except (ValueError, TypeError):
             return jsonify({"error": "Invalid game ID"}), 400
-        game = get_or_create_ephemeral_game(game_id_int)
+        game = await get_or_create_ephemeral_game(game_id_int)
         if not game:
             return jsonify({"error": "Игра не найдена"}), 404
         if user_login not in [game.f_user, game.c_user]:
@@ -644,7 +617,7 @@ def give_up_route():
             game.status = 'b3'
         else:
             game.status = 'w3'
-        result_move, points_gained = game_engine.finalize_game(game, user_login)
+        result_move, points_gained = await finalize_game(game, user_login)
         updated_pieces = get_db_pieces(game.game_id)
         response = {
             "status_": game.status,
@@ -659,7 +632,7 @@ def give_up_route():
 
 @app.route('/leave_game', methods=['POST'])
 @csrf.exempt
-def leave_game():
+async def leave_game():
     game_id = session.get('game_id')
     user_login = session.get('user')
     if not game_id or not user_login:
@@ -668,17 +641,19 @@ def leave_game():
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Некорректный ID игры"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Игра не найдена"}), 404
+
     if game.f_user == user_login:
         game.f_user = None
     elif game.c_user == user_login:
         game.c_user = None
     else:
         return jsonify({"error": "Пользователь не участвует в игре"}), 403
+
     pending_to_remove = []
-    for (from_user, to_user) in pending_rematch_requests.keys():
+    for (from_user, to_user) in list(pending_rematch_requests.keys()):
         if user_login in (from_user, to_user):
             pending_to_remove.append((from_user, to_user))
     for key in pending_to_remove:
@@ -686,7 +661,7 @@ def leave_game():
         del pending_rematch_requests[key]
 
     if game.status == 'unstarted':
-        remove_game_in_db(game_id_int)
+        await remove_game_in_db(game_id_int)
         session.pop('game_id', None)
         session.pop('color', None)
         session.pop('search_start_time', None)
@@ -694,7 +669,7 @@ def leave_game():
         return jsonify({"message": "Покинул игру и игра была удалена"}), 200
 
     if (game.f_user is None) and (game.c_user is None):
-        remove_game_in_db(game_id_int)
+        await remove_game_in_db(game_id_int)
     session.pop('game_id', None)
     session.pop('color', None)
     session.pop('search_start_time', None)
@@ -702,7 +677,7 @@ def leave_game():
 
 @app.route("/offer_draw", methods=["POST"])
 @csrf.exempt
-def offer_draw():
+async def offer_draw():
     data = request.json
     game_id = data.get("game_id")
     user_login = session.get('user')
@@ -712,7 +687,7 @@ def offer_draw():
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Игра не найдена"}), 404
     if user_login not in [game.f_user, game.c_user]:
@@ -725,7 +700,7 @@ def offer_draw():
 
 @app.route("/respond_draw", methods=["POST"])
 @csrf.exempt
-def respond_draw_route():
+async def respond_draw_route():
     data = request.json
     game_id = data.get("game_id")
     user_login = session.get('user')
@@ -736,7 +711,7 @@ def respond_draw_route():
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Игра не найдена"}), 404
     if user_login not in [game.f_user, game.c_user]:
@@ -755,20 +730,16 @@ def respond_draw_route():
         game.draw_offer = None
     else:
         return jsonify({"error": "Неверный ответ"}), 400
-    if game.status == "n":
-        updated_pieces = get_db_pieces(game.game_id)
-        response_data = {
-            "status_": game.status,
-            "pieces": updated_pieces
-        }
-        return jsonify(response_data), 200
-    else:
-        updated_pieces = get_db_pieces(game.game_id)
-        return jsonify({"status_": game.status, "pieces": updated_pieces}), 200
+    updated_pieces = get_db_pieces(game.game_id)
+    response_data = {
+        "status_": game.status,
+        "pieces": updated_pieces
+    }
+    return jsonify(response_data), 200
 
 @app.route("/get_possible_moves", methods=["POST"])
 @csrf.exempt
-def get_possible_moves_route():
+async def get_possible_moves_route():
     data = request.json
     selected_piece = data.get("selected_piece")
     game_id = data.get("game_id")
@@ -779,7 +750,7 @@ def get_possible_moves_route():
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if game is None:
         return jsonify({"error": "Invalid game ID"}), 400
     if user_login not in [game.f_user, game.c_user]:
@@ -796,10 +767,10 @@ def get_possible_moves_route():
     moves = []
     if game.must_capture_piece:
         if (x, y) == (game.must_capture_piece['x'], game.must_capture_piece['y']):
-            valid_moves = game_engine.get_possible_moves(p, color, must_capture_piece=game.must_capture_piece)
+            valid_moves = get_possible_moves(p, color, must_capture_piece=game.must_capture_piece)
             moves = valid_moves.get((x, y), [])
     else:
-        valid_moves = game_engine.get_possible_moves(p, color)
+        valid_moves = get_possible_moves(p, color)
         moves = valid_moves.get((x, y), [])
     return jsonify({"moves": moves})
 
@@ -873,11 +844,11 @@ def singleplayer_hard(username):
 
 @app.route("/start_singleplayer", methods=["GET", "POST"])
 @csrf.exempt
-def start_singleplayer():
+async def start_singleplayer():
     if request.method == "POST":
         difficulty = request.form.get("difficulty")
         color = request.form.get("color")
-        user_login = utils.ensure_user()
+        user_login = await utils.ensure_user()
         if difficulty not in ["easy", "medium", "hard"]:
             flash('Неизвестная сложность', 'error')
             return redirect(url_for('home'))
@@ -897,7 +868,7 @@ async def player_loaded():
         game_id_int = int(game_id)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid game ID"}), 400
-    game = get_or_create_ephemeral_game(game_id_int)
+    game = await get_or_create_ephemeral_game(game_id_int)
     if not game:
         return jsonify({"error": "Game not found"}), 404
 
@@ -1089,12 +1060,13 @@ async def load_user_from_remember_token():
     await base.load_user_from_remember_token(session, request, g)
 
 @app.after_request
-async def apply_new_remember_token(response, flask_g, *, session: AsyncSession):
-    if hasattr(flask_g, 'new_remember_token') and flask_g.new_remember_token:
+async def apply_new_remember_token(response):
+    from flask import g
+    if hasattr(g, 'new_remember_token') and g.new_remember_token:
         response.set_cookie(
             'remember_token',
-            flask_g.new_remember_token,
-            expires=flask_g.new_expires_at,
+            g.new_remember_token,
+            expires=g.new_expires_at,
             httponly=True,
             secure=True,
             samesite='Lax'
@@ -1449,7 +1421,7 @@ async def select_color():
 
 @app.route('/request_rematch', methods=['POST'])
 @csrf.exempt
-def request_rematch():
+async def request_rematch():
     data = request.get_json()
     from_user = data.get("from_user")
     to_user = data.get("to_user")
@@ -1457,6 +1429,7 @@ def request_rematch():
 
     if not from_user or not to_user or not game_id:
         return jsonify({"error": "Недостаточно данных для реванша"}), 400
+
     pending_rematch_requests[(from_user, to_user)] = True
 
     return jsonify({"message": "OK"}), 200
@@ -1464,7 +1437,7 @@ def request_rematch():
 
 @app.route('/respond_rematch', methods=['POST'])
 @csrf.exempt
-def respond_rematch():
+async def respond_rematch():
     data = request.get_json()
     from_user = data.get("from_user")
     to_user = data.get("to_user")
@@ -1476,11 +1449,11 @@ def respond_rematch():
         return jsonify({"error": "Нет запроса на реванш"}), 400
     del pending_rematch_requests[(from_user, to_user)]
     if answer == "accept":
-        new_game_id = create_new_game_in_db(from_user)
+        new_game_id = await asyncio.to_thread(create_new_game_in_db, from_user)
         if not new_game_id:
             return jsonify({"error": "Не удалось создать игру"}), 500
         try:
-            update_game_with_user_in_db(new_game_id, to_user, 'b')
+            await asyncio.to_thread(update_game_with_user_in_db, new_game_id, to_user, 'b')
         except Exception as e:
             return jsonify({"error": f"Ошибка при добавлении второго игрока: {str(e)}"}), 500
         current_user = session.get('user')

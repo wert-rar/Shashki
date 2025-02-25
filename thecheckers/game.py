@@ -1,15 +1,21 @@
 import time
 import threading
 import json
-from thecheckers.base import async_session, get_active_db_game
-from thecheckers.models import Game as DBGame
-from thecheckers.redis_base import (redis_client,
-                                    set_move_status,
-                                    update_db_pieces,
-                                    clear_game_moves)
+import asyncio
+from thecheckers.base import *
+from thecheckers.models import Games as DBGame
+from thecheckers.redis_base import *
+from thecheckers.base import *
 
-all_games_lock = threading.Lock()
+all_games_lock = None
 all_games_dict = {}
+
+def get_all_games_lock():
+    global all_games_lock
+    current_loop = asyncio.get_running_loop()
+    if (all_games_lock is None) or (getattr(all_games_lock, "_loop", None) != current_loop):
+        all_games_lock = asyncio.Lock()
+    return all_games_lock
 
 pieces = [
     {"color": 1, "x": 1, "y": 0, "mode": "p"},
@@ -146,17 +152,15 @@ class Game:
         return f"Game ID: {self.game_id}, White: {self.f_user}, Black: {self.c_user}"
 
 async def get_or_create_ephemeral_game(game_id):
-    async with all_games_lock:
+    lock = get_all_games_lock()
+    async with lock:
         if game_id in all_games_dict:
             return all_games_dict[game_id]
-
         db_game = await get_active_db_game(game_id)
         if not db_game:
             return None
-
         new_game = Game(db_game.f_user, db_game.c_user, db_game.game_id)
         new_game.status = db_game.status
-
         all_games_dict[game_id] = new_game
         return new_game
 
@@ -187,7 +191,8 @@ async def create_new_game_in_db(user_login, forced_game_id=None):
     global pieces
     new_game_id = await create_new_game_record(user_login, forced_game_id, pieces)
     new_game = Game(f_user=user_login, c_user=None, game_id=new_game_id)
-    with all_games_lock:
+    lock = get_all_games_lock()
+    async with lock:
         all_games_dict[new_game_id] = new_game
     update_db_pieces(new_game_id, pieces)
     clear_game_moves(new_game_id)
@@ -197,7 +202,8 @@ async def create_new_game_in_db(user_login, forced_game_id=None):
 
 async def remove_game_in_db(game_id):
     await remove_game_record(game_id)
-    with all_games_lock:
+    lock = get_all_games_lock()
+    async with lock:
         if game_id in all_games_dict:
             del all_games_dict[game_id]
 

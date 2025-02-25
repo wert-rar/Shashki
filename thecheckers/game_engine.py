@@ -1,7 +1,7 @@
 from thecheckers import base
 import datetime
-from thecheckers.game import update_game_status_in_db
-from thecheckers.redis_base import clear_move_status
+from thecheckers.game import *
+from thecheckers.redis_base import *
 
 
 def get_piece_at(pieces, x, y):
@@ -162,7 +162,7 @@ def calculate_new_rating(rating, opponent_rating, result, base_K=20):
     return round(new_rating)
 
 
-def finalize_game(game, user_login):
+async def finalize_game(game, user_login):
     if not hasattr(game, 'final_results'):
         game.final_results = {}
     if user_login in game.final_results:
@@ -174,7 +174,7 @@ def finalize_game(game, user_login):
             game.initial_ratings = {}
             for u in [game.f_user, game.c_user]:
                 if u and (not u.startswith('ghost')):
-                    user_data = base.get_user_by_login(u)
+                    user_data = await base.get_user_by_login(u)
                     game.initial_ratings[u] = user_data["rang"]
                 else:
                     game.initial_ratings[u] = 0
@@ -219,14 +219,14 @@ def finalize_game(game, user_login):
             game.final_rating_changes[u] = rating_change
             game.final_result_moves[u] = result_move
             if not user_is_ghost:
-                base.update_user_rang(u, rating_change)
+                await base.update_user_rang(u, rating_change)
                 date_end = datetime.datetime.now().isoformat()
-                base.add_completed_game(u, game.game_id, date_end, user_old_rating, new_rating, rating_change, result_move)
+                await base.add_completed_game(u, game.game_id, date_end, user_old_rating, new_rating, rating_change, result_move)
         game.rank_updated = True
-        update_game_status_in_db(game.game_id, 'completed')
+        await update_game_status_in_db(game.game_id, 'completed')
         clear_move_status(game.game_id)
         if not hasattr(game, 'persisted'):
-            base.persist_game_data(game.game_id)
+            await base.persist_game_data(game.game_id)
             game.persisted = True
     result_move = game.final_result_moves.get(user_login, None)
     rating_change = game.final_rating_changes.get(user_login, 0)

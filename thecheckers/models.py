@@ -82,8 +82,7 @@ class RememberToken(Base):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-# по идее в redis добавил все
-class Game(Base):
+class Games(Base):
     __tablename__ = "games"
     game_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     f_user = Column(String, nullable=True)
@@ -104,7 +103,7 @@ class GameMove(Base):
     move_time = Column(DateTime, default=func.now())
     captured_piece = Column(Boolean, default=False)
     promotion = Column(Boolean, default=False)
-    game = relationship("Game", back_populates="moves")
+    game = relationship("Games", back_populates="moves")
 
 class FriendRelation(Base):
     __tablename__ = "friends"

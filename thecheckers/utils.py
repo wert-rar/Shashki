@@ -11,9 +11,10 @@ from PIL import Image
 from flask import session, abort
 from passlib.context import CryptContext
 from werkzeug.utils import secure_filename
+import asyncio
 
 ghost_counter = itertools.count(1)
-ghost_lock = threading.Lock()
+ghost_lock = asyncio.Lock()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -50,14 +51,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверяет, соответствует ли открытый пароль его хэшированному значению."""
     return pwd_context.verify(plain_password, hashed_password)
 
-def ensure_user():
+async def ensure_user():
     """
         Проверяет наличие пользователя в сессии. Если пользователь отсутствует,
         создаёт ghost-пользователя и сохраняет его в сессии.
     """
     user_login = session.get('user')
     if not user_login:
-        with ghost_lock:
+        async with ghost_lock:
             ghost_num = next(ghost_counter)
             ghost_username = f"ghost{ghost_num}"
         session['user'] = ghost_username
