@@ -74,8 +74,11 @@ def get_moves(game_id):
 def delete_game_keys(game_id):
     board_state_key = f"game:{game_id}:board_state"
     moves_key = f"game:{game_id}:moves"
+    main_hash_key = f"game:{game_id}"
+
     redis_client.delete(board_state_key)
     redis_client.delete(moves_key)
+    redis_client.delete(main_hash_key)
 
 
 def get_db_pieces(game_id):

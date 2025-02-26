@@ -493,25 +493,27 @@ async def create_new_game_record(user_login, forced_game_id, pieces, *, session:
                 f_user=user_login,
                 c_user=None,
                 status='unstarted',
-                board_state=json.dumps(pieces)
+                board_state=None
             )
             session.add(new_db_game)
             await session.commit()
             return forced_game_id
         else:
             return existing_game.game_id
+
     while True:
         game_id_candidate = random.randint(1, 99999999)
         result = await session.execute(select(DBGame).where(DBGame.game_id == game_id_candidate))
         exists = result.scalar()
         if not exists:
             break
+
     new_db_game = DBGame(
         game_id=game_id_candidate,
         f_user=user_login,
         c_user=None,
         status='unstarted',
-        board_state=json.dumps(pieces)
+        board_state=None
     )
     session.add(new_db_game)
     await session.commit()
@@ -522,10 +524,13 @@ async def remove_game_record(game_id, *, session: AsyncSession):
     result = await session.execute(select(DBGame).where(DBGame.game_id == game_id))
     db_game = result.scalar()
     if db_game:
+        from thecheckers.redis_base import delete_game_keys
         if db_game.status in ['unstarted', 'cancelled']:
             await session.delete(db_game)
+            delete_game_keys(game_id)
         else:
             db_game.status = 'completed'
+            delete_game_keys(game_id)
         await session.commit()
 
 @connect
