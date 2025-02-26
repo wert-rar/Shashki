@@ -522,7 +522,10 @@ async def remove_game_record(game_id, *, session: AsyncSession):
     result = await session.execute(select(DBGame).where(DBGame.game_id == game_id))
     db_game = result.scalar()
     if db_game:
-        db_game.status = 'completed'
+        if db_game.status in ['unstarted', 'cancelled']:
+            await session.delete(db_game)
+        else:
+            db_game.status = 'completed'
         await session.commit()
 
 @connect

@@ -652,29 +652,24 @@ async def leave_game():
         game.c_user = None
     else:
         return jsonify({"error": "Пользователь не участвует в игре"}), 403
-
-    pending_to_remove = []
     for (from_user, to_user) in list(pending_rematch_requests.keys()):
         if user_login in (from_user, to_user):
-            pending_to_remove.append((from_user, to_user))
-    for key in pending_to_remove:
-        rematch_responses[key[0]] = "decline"
-        del pending_rematch_requests[key]
-
-    if game.status == 'unstarted':
+            rematch_responses[from_user] = "decline"
+            del pending_rematch_requests[(from_user, to_user)]
+    if not game.game_started:
+        await update_game_status_in_db(game_id_int, 'cancelled')
         await remove_game_in_db(game_id_int)
         session.pop('game_id', None)
         session.pop('color', None)
         session.pop('search_start_time', None)
-        flash('Поиск игры отменен и игра удалена.', 'info')
         return jsonify({"message": "Покинул игру и игра была удалена"}), 200
-
     if (game.f_user is None) and (game.c_user is None):
         await remove_game_in_db(game_id_int)
     session.pop('game_id', None)
     session.pop('color', None)
     session.pop('search_start_time', None)
     return jsonify({"message": "Покинул игру успешно"}), 200
+
 
 @app.route("/offer_draw", methods=["POST"])
 @csrf.exempt
