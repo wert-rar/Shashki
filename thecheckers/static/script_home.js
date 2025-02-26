@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             acceptBtn.style.color = "#fff";
                             acceptBtn.addEventListener("click", (e) => {
                                 e.stopPropagation();
-                                respondGameInvite(inv.from_user, inv.game_id, "accept", notifItem);
+                                respondGameInvite(inv.from_user, inv.room_id, "accept", notifItem);
                             });
 
                             const declineBtn = document.createElement("button");
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             declineBtn.style.color = "#fff";
                             declineBtn.addEventListener("click", (e) => {
                                 e.stopPropagation();
-                                respondGameInvite(inv.from_user, inv.game_id, "decline", notifItem);
+                                respondGameInvite(inv.from_user, inv.room_id, "decline", notifItem);
                             });
 
                             btnContainer.appendChild(acceptBtn);

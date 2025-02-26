@@ -239,11 +239,11 @@ async def get_top_players(limit: int = 3, *, session: AsyncSession):
 # =============================================================================
 
 @connect
-async def send_game_invite_db(sender: str, receiver: str, game_id: int, *, session: AsyncSession) -> str:
+async def send_game_invite_db(sender: str, receiver: str, room_id: int, *, session: AsyncSession) -> str:
     if sender == receiver:
         return "self_invite"
     result = await session.execute(
-        select(GameInvitation).filter_by(from_user=sender, to_user=receiver, game_id=game_id)
+        select(GameInvitation).filter_by(from_user=sender, to_user=receiver, room_id=room_id)
     )
     existing = result.scalars().first()
     if existing:
@@ -254,32 +254,25 @@ async def send_game_invite_db(sender: str, receiver: str, game_id: int, *, sessi
             await session.commit()
             return "sent_again"
     result = await session.execute(
-        select(GameInvitation).filter_by(from_user=receiver, to_user=sender, game_id=game_id)
+        select(GameInvitation).filter_by(from_user=receiver, to_user=sender, room_id=room_id)
     )
     reverse_existing = result.scalars().first()
     if reverse_existing and reverse_existing.status == "pending":
         return "reverse_already_sent"
-    new_invite = GameInvitation(from_user=sender, to_user=receiver, status="pending", game_id=game_id)
+    new_invite = GameInvitation(from_user=sender, to_user=receiver, status="pending", room_id=room_id)
     session.add(new_invite)
     await session.commit()
     return "sent"
 
 @connect
-async def respond_game_invite_db(from_user: str, to_user: str, game_id: int, response: str, *, session: AsyncSession) -> bool:
-    result = await session.execute(
-        select(GameInvitation).filter_by(from_user=from_user, to_user=to_user, game_id=game_id, status="pending")
+async def respond_game_invite_db(from_user: str, to_user: str, room_id: int, response: str, *, session: AsyncSession) -> bool:
+    invite = await session.scalar(
+        select(GameInvitation).filter_by(from_user=from_user, to_user=to_user, room_id=room_id, status="pending")
     )
-    invite = result.scalars().first()
     if not invite:
         return False
     invite.status = "accepted" if response == "accept" else "declined"
     await session.commit()
-    if invite.status == "accepted":
-        result = await session.execute(select(Game).filter_by(game_id=game_id))
-        db_game = result.scalars().first()
-        if db_game and db_game.c_user is None:
-            db_game.c_user = to_user
-            await session.commit()
     return True
 
 @connect
@@ -351,7 +344,13 @@ async def get_incoming_game_invitations_db(user: str, *, session: AsyncSession) 
         select(GameInvitation).filter_by(to_user=user, status="pending")
     )
     invites = result.scalars().all()
-    return [invite.from_user for invite in invites]
+    return [
+        {
+            "from_user": invite.from_user,
+            "room_id": invite.room_id
+        }
+        for invite in invites
+    ]
 
 @connect
 async def respond_friend_request_db(sender: str, receiver: str, response: str, *, session: AsyncSession) -> bool:
@@ -640,7 +639,7 @@ async def get_outgoing_game_invitations_db(user: str, room_id: int, *, session: 
     result = await session.execute(
         select(GameInvitation).filter(
             GameInvitation.from_user == user,
-            GameInvitation.game_id == room_id,
+            GameInvitation.room_id == room_id,
             GameInvitation.status.in_(["pending", "declined"])
         )
     )
@@ -720,6 +719,11 @@ async def update_user_default_delete_flag(user_login, flag, *, session: AsyncSes
         .values(default_delete_after_start=flag)
     )
     await session.commit()
+
+@connect
+async def get_game_by_id(game_id: int, *, session: AsyncSession):
+    result = await session.execute(select(DBGame).where(DBGame.game_id == game_id))
+    return result.scalar()
 
 # =============================================================================
 # Управление токенами "Запомнить меня" и загрузка пользователя по токену

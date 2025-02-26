@@ -1,3 +1,26 @@
+function createNotification(message, type) {
+    const container = document.getElementById("notification-container");
+    const notification = document.createElement("div");
+    notification.classList.add("notification", type);
+    notification.innerHTML = message;
+    const progressBar = document.createElement("div");
+    progressBar.classList.add("progress-bar");
+    notification.appendChild(progressBar);
+    container.appendChild(notification);
+    notification.addEventListener("click", () => {
+        notification.style.opacity = "0";
+        setTimeout(() => {
+            if (notification.parentNode) notification.parentNode.removeChild(notification);
+        }, 500);
+    });
+    setTimeout(() => {
+        notification.style.opacity = "0";
+        setTimeout(() => {
+            if (notification.parentNode) notification.parentNode.removeChild(notification);
+        }, 500);
+    }, 2000);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const modalOverlay = document.getElementById('modalOverlay');
     modalOverlay.style.display = 'none';
@@ -271,28 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal();
         });
     });
-    function createNotification(message, type) {
-        const container = document.getElementById("notification-container");
-        const notification = document.createElement("div");
-        notification.classList.add("notification", type);
-        notification.innerHTML = message;
-        const progressBar = document.createElement("div");
-        progressBar.classList.add("progress-bar");
-        notification.appendChild(progressBar);
-        container.appendChild(notification);
-        notification.addEventListener("click", () => {
-            notification.style.opacity = "0";
-            setTimeout(() => {
-                if (notification.parentNode) notification.parentNode.removeChild(notification);
-            }, 500);
-        });
-        setTimeout(() => {
-            notification.style.opacity = "0";
-            setTimeout(() => {
-                if (notification.parentNode) notification.parentNode.removeChild(notification);
-            }, 500);
-        }, 2000);
-    }
     function startPollingRoomStatus() {
         if (pollInterval) return;
         pollInterval = setInterval(() => {

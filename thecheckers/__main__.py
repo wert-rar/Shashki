@@ -113,6 +113,7 @@ async def get_board(game_id, user_login):
         opponent_avatar_url = '/static/avatars/default_avatar.jpg'
         opponent_rank = "0"
     move_status = get_move_status(game_id)
+    session['game_id'] = game_id
     return render_template('board.html',
                            user_login=user_login,
                            game_id=game_id,
